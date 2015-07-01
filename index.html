@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Path Tracing</title>
+<script type="text/javascript" src="gl-matrix-min.js"></script>
+<script id="shader-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  varying vec2 coords;
+  uniform sampler2D tex;
+  void main(void) {
+    gl_FragColor = texture2D(tex,coords);
+  }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+  attribute vec3 corner;
+  varying vec2 coords;
+  void main(void) {
+    coords = corner.xy;
+    gl_Position = vec4(corner, 1.0);
+  }
+</script>
+
+<script src="fspt.js" type="text/javascript"></script>
+</head>
+
+
+<body onload="webGLStart();">
+    <canvas id="trace" style="border: none;" width="512" height="512"></canvas>
+</body>
+
+</html>
