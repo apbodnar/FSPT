@@ -4,6 +4,11 @@ var squareBuffer;
 var textures = []
 var noiseTex;
 var framebuffers = [];
+var numSpheres = 5;
+var spheres = [];
+var sphereAttrs = [];
+var colors = [];
+var eye = new Float32Array([0,0,-2]);
 
 function initGL(canvas) {
   gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -12,26 +17,8 @@ function initGL(canvas) {
 }
 
 function getShader(gl, id) {
-  var shaderScript = document.getElementById(id);
-  if (!shaderScript) {
-    return null;
-  }
-  var str = "";
-  var k = shaderScript.firstChild;
-  while (k) {
-    if (k.nodeType == 3) {
-      str += k.textContent;
-    }
-    k = k.nextSibling;
-  }
-  var shader;
-  if (shaderScript.type == "x-shader/x-fragment") {
-    shader = gl.createShader(gl.FRAGMENT_SHADER);
-  } else if (shaderScript.type == "x-shader/x-vertex") {
-    shader = gl.createShader(gl.VERTEX_SHADER);
-  } else {
-    return null;
-  }
+  var str = document.getElementById(id).innerText;
+  var shader = gl.createShader(gl[id]);
   gl.shaderSource(shader, str);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -41,7 +28,7 @@ function getShader(gl, id) {
   return shader;
 }
 
-function initTexture(){
+function initNoise(){
   var b = new ArrayBuffer(gl.viewportWidth*gl.viewportHeight*4*4);
   var v1 = new Float32Array(b);
 
@@ -56,10 +43,20 @@ function initTexture(){
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.viewportWidth, gl.viewportHeight, 0, gl.RGBA, gl.FLOAT, v1);
 }
 
+function initPrimitives(){
+  for(var i=0; i< numSpheres; i++){
+    spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,2*Math.random()-1]);
+    sphereAttrs = sphereAttrs.concat([0.2,0.75,0.0]);
+    colors = colors.concat([Math.random(),Math.random(),Math.random()]);
+  }
+  spheres = new Float32Array(spheres);
+  sphereAttrs = new Float32Array(sphereAttrs);
+  colors = new Float32Array(colors);
+}
+
 function createTexture() {
   var t = gl.createTexture () ;
   gl.getExtension('OES_texture_float');
-  //gl.getExtension('OES_texture_float_linear');
   gl.bindTexture( gl.TEXTURE_2D, t ) ;
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -70,7 +67,7 @@ function createTexture() {
     gl.RGBA, gl.UNSIGNED_BYTE, null);
   return t;
 }
-
+                        
 function createFramebuffer(tex){
   var fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -79,8 +76,8 @@ function createFramebuffer(tex){
 }
 
 function initShaders() {
-  var fs = getShader(gl, "shader-fs");
-  var vs = getShader(gl, "shader-vs");
+  var fs = getShader(gl, "FRAGMENT_SHADER");
+  var vs = getShader(gl, "VERTEX_SHADER");
 
   program = gl.createProgram();
   gl.attachShader(program, vs);
@@ -88,7 +85,7 @@ function initShaders() {
   gl.linkProgram(program);
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    alert("you broke it");
+    console.log("you broke it");
   }
 
   gl.useProgram(program);
@@ -96,6 +93,11 @@ function initShaders() {
   gl.enableVertexAttribArray(program.vertexAttribute);
   program.texUniform = gl.getUniformLocation(program, "tex")
   program.modeLocation = gl.getUniformLocation(program, "mode");
+  program.sphereLocations = gl.getUniformLocation(program, "spherePositions");
+  program.attrLocations = gl.getUniformLocation(program, "sphereAttrs");
+  program.colorLocations = gl.getUniformLocation(program, "sphereColors");
+  program.countLocation = gl.getUniformLocation(program, "sphereCount");
+  program.eyeLocation = gl.getUniformLocation(program, "eye");
 }
 
 function initBuffers(){
@@ -122,6 +124,11 @@ function drawScene() {
   gl.bindTexture(gl.TEXTURE_2D, noiseTex);
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
   gl.uniform1i(program.modeLocation, 0);
+  gl.uniform3fv(program.sphereLocations, spheres);
+  gl.uniform3f(program.eyeLocation, eye[0],eye[1],eye[2]);
+  gl.uniform3fv(program.sphereLocations, spheres);
+  gl.uniform3fv(program.attrLocations, sphereAttrs);
+  gl.uniform3fv(program.colorLocations, colors);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.bindTexture(gl.TEXTURE_2D, textures[0]);
@@ -138,8 +145,9 @@ function webGLStart() {
   var canvas = document.getElementById("trace");
   initGL(canvas);
   initShaders();
+  initPrimitives();
   initBuffers();
-  initTexture();
+  initNoise();
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.disable(gl.BLEND);
