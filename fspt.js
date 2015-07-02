@@ -45,7 +45,7 @@ function initNoise(){
 
 function initPrimitives(){
   for(var i=0; i< numSpheres; i++){
-    spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,2*Math.random()-1]);
+    spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,2*Math.random()]);
     sphereAttrs = sphereAttrs.concat([0.2,0.75,0.0]);
     colors = colors.concat([Math.random(),Math.random(),Math.random()]);
   }
@@ -67,7 +67,7 @@ function createTexture() {
     gl.RGBA, gl.UNSIGNED_BYTE, null);
   return t;
 }
-                        
+
 function createFramebuffer(tex){
   var fbo = gl.createFramebuffer();
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -98,6 +98,7 @@ function initShaders() {
   program.colorLocations = gl.getUniformLocation(program, "sphereColors");
   program.countLocation = gl.getUniformLocation(program, "sphereCount");
   program.eyeLocation = gl.getUniformLocation(program, "eye");
+  program.dimensionLocation = gl.getUniformLocation(program, "dims");
 }
 
 function initBuffers(){
@@ -106,7 +107,7 @@ function initBuffers(){
   vertices = [
     1.0,  1.0,  0.0,
    -1.0,  1.0,  0.0,
-   1.0, -1.0,  0.0,
+    1.0, -1.0,  0.0,
    -1.0, -1.0,  0.0
   ];
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
@@ -124,6 +125,7 @@ function drawScene() {
   gl.bindTexture(gl.TEXTURE_2D, noiseTex);
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
   gl.uniform1i(program.modeLocation, 0);
+  gl.uniform2f(program.dimensionLocation, gl.viewportWidth, gl.viewportHeight);
   gl.uniform3fv(program.sphereLocations, spheres);
   gl.uniform3f(program.eyeLocation, eye[0],eye[1],eye[2]);
   gl.uniform3fv(program.sphereLocations, spheres);

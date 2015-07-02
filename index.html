@@ -13,7 +13,20 @@
   const float max_t = 100000.0;
   varying vec2 coords;
   uniform int mode;
+  uniform vec2 dims;
   uniform vec3 eye;
+  struct Sphere {
+    vec3 pos;
+    vec3 attrs;
+    vec3 color;
+  };
+  struct Hit{
+    float t;
+    vec3 color;
+    vec3 pos;
+    vec3 dir;
+    vec3 normal;
+  };
   uniform vec3 spherePositions[sphereCount];
   uniform vec3 sphereAttrs[sphereCount];
   uniform vec3 sphereColors[sphereCount];
@@ -26,23 +39,33 @@
     return squared >= 0.0 ? -scalar - sqrt(squared) : max_t;
   }
 
-  float getDepth(vec3 dir, vec3 origin){
+  Hit getDepth(vec3 dir, vec3 origin){
     float t = max_t;
+    vec3 color = vec3(0,0,0);
+    vec3 pos;
     for(int i=0; i<sphereCount; i++){
-      vec3 pos = spherePositions[i];
-      float radius = sphereAttrs[i].r;
+      Sphere s = Sphere(spherePositions[i],sphereAttrs[i],sphereColors[i]);
+      vec3 pos = s.pos;
+      float radius = s.attrs.r;
+      float nt = t;
       t = min(checkSphereCollision(dir,origin,pos,radius),t);
+      if(t < nt){
+        color = s.color;
+        pos = s.pos;
+      }
     }
-    return t;
+    vec3 p = dir*t;
+    vec3 normal = normalize(p - pos);
+    vec3 ref = reflect(dir, normal);
+    return Hit(t,color,p,ref,normal);
   }
 
   void main(void) {
-    vec3 origin = vec3(coords,0);
+    vec3 origin = vec3(coords.x*dims.x/dims.y,coords.y,0);
     vec3 dir = normalize(origin - eye);
-
-    float t = getDepth(dir, origin);
-    if(t < max_t){
-      gl_FragColor = vec4(t+0.1,t,t,1.0);
+    Hit result = getDepth(dir, origin);
+    if(result.t < max_t){
+      gl_FragColor = vec4(result.color ,1.0);
     } else {
       gl_FragColor = vec4(0.0,0.0,0.0,1.0);
     }
