@@ -1,14 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Path Tracing</title>
+<title>Ping Pong Path Tracing</title>
 <script type="text/javascript" src="gl-matrix-min.js"></script>
+<style>
+  body{ text-align: center; margin: 0; overflow: hidden; }
+  canvas{ border: none; }
+</style>
 <script id="shader-fs" type="x-shader/x-fragment">
   precision mediump float;
   varying vec2 coords;
+  uniform int mode;
   uniform sampler2D tex;
   void main(void) {
-    gl_FragColor = texture2D(tex,coords);
+    if(mode == 0){
+      gl_FragColor = vec4(vec3(abs(coords),1.0) - texture2D(tex,coords*0.5 + 0.5).rgb,1);
+    } else {
+      gl_FragColor = texture2D(tex,coords*0.5 + 0.5);
+    }
   }
 </script>
 
@@ -26,7 +35,7 @@
 
 
 <body onload="webGLStart();">
-    <canvas id="trace" style="border: none;" width="512" height="512"></canvas>
+  <canvas id="trace" style="border: none;"></canvas>
 </body>
 
 </html>
