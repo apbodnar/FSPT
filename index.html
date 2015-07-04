@@ -9,12 +9,19 @@
 </style>
 <script id="FRAGMENT_SHADER" type="x-shader/x-fragment">
   precision highp float;
-  const int sphereCount = 5;
+  const int sphereCount = 11;
   const float max_t = 100000.0;
   varying vec2 coords;
   uniform int mode;
+  uniform int tick;
   uniform vec2 dims;
   uniform vec3 eye;
+  uniform vec3 spherePositions[sphereCount];
+  uniform vec3 sphereAttrs[sphereCount];
+  uniform vec3 sphereColors[sphereCount];
+  uniform sampler2D fbTex;
+  uniform sampler2D noiseTex;
+
   struct Sphere {
     vec3 pos;
     vec3 attrs;
@@ -26,56 +33,77 @@
     vec3 pos;
     vec3 dir;
     vec3 normal;
+    float emmittance;
+    float reflectance;
+    int index;
   };
-  uniform vec3 spherePositions[sphereCount];
-  uniform vec3 sphereAttrs[sphereCount];
-  uniform vec3 sphereColors[sphereCount];
-  uniform sampler2D tex;
+  struct Ray{
+    vec3 origin;
+    vec3 dir;
+  };
 
-  float checkSphereCollision(vec3 dir, vec3 origin,vec3 center,float radius){
-    float scalar = dot(dir,origin - center);
-    float dist = distance(origin, center);
-    float squared = (scalar * scalar) - (dist * dist) + (radius * radius);
-    return squared >= 0.0 ? -scalar - sqrt(squared) : max_t;
+  vec3 randomVec(int index, vec3 normal){
+    float x = mod(coords.x + float(tick)/dims.x, 1.0);
+    float y = mod(coords.y + (float(index) + float(tick)/dims.x)/100.0, 1.0);
+    vec3 tc = normalize(texture2D(noiseTex,vec2(x, y)*0.5 + 0.5).rgb - 0.5);
+    return dot(tc,normal) > 0.0 ? tc : -tc; 
   }
 
-  Hit getDepth(vec3 dir, vec3 origin){
+  float checkSphereCollision(Ray ray,Sphere s){
+    float scalar = dot(ray.dir,ray.origin - s.pos);
+    float dist = distance(ray.origin, s.pos);
+    float squared = (scalar * scalar) - (dist * dist) + (s.attrs.r * s.attrs.r);
+    return squared < 0.0 ? max_t : -scalar - sqrt(squared);
+  }
+
+  Hit getCollision(Ray ray, int current){
     float t = max_t;
-    vec3 color = vec3(0,0,0);
-    vec3 pos;
+    Hit result = Hit(max_t,vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),0.0,0.0,-1);
     for(int i=0; i<sphereCount; i++){
       Sphere s = Sphere(spherePositions[i],sphereAttrs[i],sphereColors[i]);
-      vec3 pos = s.pos;
       float radius = s.attrs.r;
-      float nt = t;
-      t = min(checkSphereCollision(dir,origin,pos,radius),t);
-      if(t < nt){
-        color = s.color;
-        pos = s.pos;
+      float nt = checkSphereCollision(ray,s);
+      if(nt < result.t && nt > 0.0 && current != i){
+        result.t = nt;
+        result.pos = ray.dir*nt + ray.origin;
+        result.normal = normalize(result.pos - s.pos);
+        //result.dir = reflect(ray.dir, result.normal);
+        result.dir = randomVec(i, result.normal);
+        result.color = s.color;
+        result.emmittance = s.attrs.z;
+        result.reflectance = s.attrs.y;
+        result.index = i;
       }
     }
-    vec3 p = dir*t;
-    vec3 normal = normalize(p - pos);
-    vec3 ref = reflect(dir, normal);
-    return Hit(t,color,p,ref,normal);
+    return result;
   }
 
   void main(void) {
-    vec3 origin = vec3(coords.x*dims.x/dims.y,coords.y,0);
-    vec3 dir = normalize(origin - eye);
-    Hit result = getDepth(dir, origin);
-    if(result.t < max_t){
-      gl_FragColor = vec4(result.color ,1.0);
-    } else {
-      gl_FragColor = vec4(0.0,0.0,0.0,1.0);
-    }
-    /*
+    vec3 tcolor = texture2D(fbTex,coords*0.5 + 0.5).rgb;
     if(mode == 0){
-      gl_FragColor = vec4(vec3(abs(coords),1.0) - texture2D(tex,coords*0.5 + 0.5).rgb,1);
+      vec3 origin = vec3(coords.x*dims.x/dims.y,coords.y,0);
+      Ray ray = Ray(origin,normalize(origin - eye));
+      int index = -1;
+      vec3 color = vec3(0,0,0);
+      /*
+      for(int i=0; i < sphereCount; i++){
+        Hit h = getCollision(ray,-1);
+        color += h.color;
+        index = h.index;
+        ray.origin = h.pos;
+        ray.dir = h.dir;
+      }
+      */
+      Hit r0 = getCollision(ray,index);
+      Hit r1 = getCollision(Ray(r0.pos,r0.dir),r0.index);
+      Hit r2 = getCollision(Ray(r1.pos,r1.dir),r1.index);
+      Hit r3 = getCollision(Ray(r2.pos,r2.dir),r2.index);
+      Hit r4 = getCollision(Ray(r3.pos,r3.dir),r3.index);
+      color = r0.color + r1.color + r2.color + r3.color + r4.color;
+      gl_FragColor = vec4((color + (tcolor * float(tick)))/float(tick+1),1.0);
     } else {
-      gl_FragColor = texture2D(tex,coords*0.5 + 0.5);
+      gl_FragColor = vec4(tcolor,1.0);
     }
-    */
   }
 </script>
 
