@@ -2,14 +2,13 @@
 <html>
 <head>
 <title>Ping Pong Blinn Phong</title>
-<script type="text/javascript" src="gl-matrix-min.js"></script>
 <style>
-  body{ text-align: center; margin: 0; overflow: hidden; }
+  body{ text-align: center; margin: 0; overflow: hidden; background: #000;}
   canvas{ border: none; }
 </style>
 <script id="FRAGMENT_SHADER" type="x-shader/x-fragment">
   precision highp float;
-  const int sphereCount = 11;
+  const int sphereCount = 13;
   const float max_t = 100000.0;
   varying vec2 coords;
   uniform int mode;
@@ -18,6 +17,7 @@
   uniform vec3 eye;
   uniform vec3 spherePositions[sphereCount];
   uniform vec3 sphereAttrs[sphereCount];
+  uniform vec3 sphereMats[sphereCount];
   uniform vec3 sphereColors[sphereCount];
   uniform sampler2D fbTex;
   uniform sampler2D noiseTex;
@@ -26,15 +26,15 @@
     vec3 pos;
     vec3 attrs;
     vec3 color;
+    vec3 material;
   };
   struct Hit{
     float t;
-    vec3 color;
     vec3 pos;
     vec3 dir;
     vec3 normal;
-    float emmittance;
-    float reflectance;
+    vec3 emmittance;
+    vec3 BRDF;
     int index;
   };
   struct Ray{
@@ -42,12 +42,26 @@
     vec3 dir;
   };
 
-  vec3 randomVec(int index, vec3 normal){
-    float x = mod(coords.x + float(tick)/dims.x, 1.0);
-    float y = mod(coords.y + (float(index) + float(tick)/dims.x)/100.0, 1.0);
-    vec3 tc = normalize(texture2D(noiseTex,vec2(x, y)*0.5 + 0.5).rgb - 0.5);
-    return dot(tc,normal) > 0.0 ? tc : -tc; 
+  float rand(vec2 co){
+    float a = 12.9898;
+    float b = 78.233;
+    float c = 43758.5453;
+    float dt= dot(co ,vec2(a,b));
+    float sn= mod(dt,3.14);
+    return fract(sin(sn) * c) - 0.5;
   }
+
+  vec3 randomVec(int index, vec3 normal, vec3 pos){
+    vec3 tc = vec3(rand(pos.xy+float(tick)*0.1329),rand(pos.xz+float(tick)*0.7347),rand(pos.yz+float(tick)*0.3391));
+    return normalize(dot(tc,normal) > 0.0 ? tc : -tc); 
+  }
+
+  // vec3 randomVec(int index, vec3 normal, vec3 pos){
+  //   float x = mod(coords.x + pos.x + (float(tick)*33.1234)/float(dims.x), 1.0);
+  //   float y = mod(coords.y + pos.y + (float(tick)*41.7653)/float(dims.y), 1.0);
+  //   vec3 tc = normalize(texture2D(noiseTex,vec2(x, y)).rgb - 0.5);
+  //   return dot(tc,normal) > 0.0 ? tc : -tc; 
+  // }
 
   float checkSphereCollision(Ray ray,Sphere s){
     float scalar = dot(ray.dir,ray.origin - s.pos);
@@ -58,20 +72,19 @@
 
   Hit getCollision(Ray ray, int current){
     float t = max_t;
-    Hit result = Hit(max_t,vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),0.0,0.0,-1);
+    Hit result = Hit(max_t,vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),vec3(0,0,0),-1);
     for(int i=0; i<sphereCount; i++){
-      Sphere s = Sphere(spherePositions[i],sphereAttrs[i],sphereColors[i]);
+      Sphere s = Sphere(spherePositions[i],sphereAttrs[i],sphereColors[i],sphereMats[i]);
       float radius = s.attrs.r;
       float nt = checkSphereCollision(ray,s);
       if(nt < result.t && nt > 0.0 && current != i){
         result.t = nt;
         result.pos = ray.dir*nt + ray.origin;
         result.normal = normalize(result.pos - s.pos);
-        //result.dir = reflect(ray.dir, result.normal);
-        result.dir = randomVec(i, result.normal);
-        result.color = s.color;
-        result.emmittance = s.attrs.z;
-        result.reflectance = s.attrs.y;
+        vec3 ref = (s.material.r > 1.0) ? reflect(ray.dir, result.normal) : result.normal;
+        result.dir = randomVec(i, result.normal, result.pos);
+        result.emmittance = s.attrs.z * s.color;
+        result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,(result.normal+ref)*0.5);
         result.index = i;
       }
     }
@@ -85,24 +98,16 @@
       Ray ray = Ray(origin,normalize(origin - eye));
       int index = -1;
       vec3 color = vec3(0,0,0);
-      /*
-      for(int i=0; i < sphereCount; i++){
-        Hit h = getCollision(ray,-1);
-        color += h.color;
-        index = h.index;
-        ray.origin = h.pos;
-        ray.dir = h.dir;
-      }
-      */
+      //No recursion in GLSL
       Hit r0 = getCollision(ray,index);
       Hit r1 = getCollision(Ray(r0.pos,r0.dir),r0.index);
       Hit r2 = getCollision(Ray(r1.pos,r1.dir),r1.index);
       Hit r3 = getCollision(Ray(r2.pos,r2.dir),r2.index);
       Hit r4 = getCollision(Ray(r3.pos,r3.dir),r3.index);
-      color = r0.color + r1.color + r2.color + r3.color + r4.color;
-      gl_FragColor = vec4((color + (tcolor * float(tick)))/float(tick+1),1.0);
+      color = r0.emmittance + r0.BRDF *(r1.emmittance + r1.BRDF * (r2.emmittance + r2.BRDF *(r3.emmittance + r3.BRDF * (r4.emmittance))));
+      gl_FragColor = abs(vec4((color + (tcolor * float(tick)))/float(tick+1),1.0));
     } else {
-      gl_FragColor = vec4(tcolor,1.0);
+      gl_FragColor = abs(vec4(tcolor,1.0));
     }
   }
 </script>
