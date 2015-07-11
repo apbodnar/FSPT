@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<meta charset="UTF-8">
 <head>
 <title>Ping Pong Blinn Phong</title>
 <style>
@@ -8,7 +9,7 @@
 </style>
 <script id="FRAGMENT_SHADER" type="x-shader/x-fragment">
   precision highp float;
-  const int sphereCount = 13;
+  const int sphereCount = 15;
   const float max_t = 100000.0;
   varying vec2 coords;
   uniform int mode;
@@ -52,16 +53,9 @@
   }
 
   vec3 randomVec(int index, vec3 normal, vec3 pos){
-    vec3 tc = vec3(rand(pos.xy+float(tick)*0.1329),rand(pos.xz+float(tick)*0.7347),rand(pos.yz+float(tick)*0.3391));
-    return normalize(dot(tc,normal) > 0.0 ? tc : -tc); 
+    vec3 tc = vec3(rand(pos.xy+float(tick)*0.01329),rand(pos.xz+float(tick)*0.07347),rand(pos.yz+float(tick)*0.003391));
+    return normalize(dot(tc,normal) > 0.0 ? tc : -tc);
   }
-
-  // vec3 randomVec(int index, vec3 normal, vec3 pos){
-  //   float x = mod(coords.x + pos.x + (float(tick)*33.1234)/float(dims.x), 1.0);
-  //   float y = mod(coords.y + pos.y + (float(tick)*41.7653)/float(dims.y), 1.0);
-  //   vec3 tc = normalize(texture2D(noiseTex,vec2(x, y)).rgb - 0.5);
-  //   return dot(tc,normal) > 0.0 ? tc : -tc; 
-  // }
 
   float checkSphereCollision(Ray ray,Sphere s){
     float scalar = dot(ray.dir,ray.origin - s.pos);
@@ -81,11 +75,18 @@
         result.t = nt;
         result.pos = ray.dir*nt + ray.origin;
         result.normal = normalize(result.pos - s.pos);
-        vec3 ref = (s.material.r > 1.0) ? reflect(ray.dir, result.normal) : result.normal;
-        result.dir = randomVec(i, result.normal, result.pos);
         result.emmittance = s.attrs.z * s.color;
-        result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,(result.normal+ref)*0.5);
         result.index = i;
+        if(int(s.material.z) == 0){ //reflective
+          result.dir = reflect(ray.dir, result.normal);
+          result.BRDF = vec3(0.8);
+        } else if( int(s.material.z) >= 1 ){ //diffuse
+          result.dir = randomVec(i, result.normal, result.pos);
+          result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,result.normal);
+        } else if( int(s.material.z) == 2 ){ //transmissive
+          result.dir = vec3(1);
+          result.BRDF = vec3(1);
+        }
       }
     }
     return result;

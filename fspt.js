@@ -4,13 +4,14 @@ var squareBuffer;
 var textures = []
 var noiseTex;
 var framebuffers = [];
-var numSpheres = 13;
+var numSpheres = 15;
 var spheres = [];
 var sphereAttrs = [];
 var colors = [];
 var materials = [];
 var eye = new Float32Array([0,0,-2]);
 var pingpong = 0;
+var clear = 0;
 
 function initGL(canvas) {
   gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -35,50 +36,50 @@ function getShader(gl, id) {
 function initPrimitives(){
   for(var i=0; i< numSpheres-8; i++){
     spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,1.7*Math.random()+0.3]);
-    sphereAttrs = sphereAttrs.concat([0.3,1.0,0.0]);
+    sphereAttrs = sphereAttrs.concat([0.3,0.85,0.0]);
     colors = colors.concat([Math.random(),Math.random(),Math.random()]);
-    materials = materials.concat([1.0,1.0,0]);
+    materials = materials.concat([1.0,Math.random()*4,Math.random()*3]);
   }
-  spheres = spheres.concat([0,11,0.5]);
+  spheres = spheres.concat([0,11,1]);
   //spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,1.7*Math.random()+0.3]);
-  sphereAttrs = sphereAttrs.concat([10.015,0.0,7.0]);
+  sphereAttrs = sphereAttrs.concat([10.015,0.0,8.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([5.0,0,0]);
+  materials = materials.concat([5.0,0,1]);
 
   spheres = spheres.concat([0,1e3+1,0]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([0,0,1e3+2]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([0,-1e3-1,0]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([1e3+1,0,0]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
-  colors = colors.concat([1,0,0]);
-  materials = materials.concat([1.0,0,0]);
+  colors = colors.concat([1,0.1,0.1]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([-1e3-1,0,0]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
-  colors = colors.concat([0,0,1]);
-  materials = materials.concat([1.0,0,0]);
+  colors = colors.concat([0.1,0.1,1]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([-1e3-1,0,0]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = spheres.concat([0,0,-1e3]);
   sphereAttrs = sphereAttrs.concat([1e3,0.75,0.0]);
   colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  materials = materials.concat([1.0,0,1]);
 
   spheres = new Float32Array(spheres);
   sphereAttrs = new Float32Array(sphereAttrs);
@@ -190,16 +191,16 @@ function rotateY(vec, a){
 }
 
 function initEvents(){
-  var flag = 0;
+
   var element = document.getElementById("trace");
   var xi, yi;
   element.addEventListener("mousedown", function(e){
-    flag = 1;
+    clear = 1;
     xi = e.layerX;
     yi = e.layerY;
   }, false);
   element.addEventListener("mousemove", function(e){
-    if(flag){
+    if(clear){
       for(var i=0; i< numSpheres; i++){
         var p0 = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
         var p1 = rotateX(p0,(e.layerY - yi) / 9000.0);
@@ -208,13 +209,10 @@ function initEvents(){
         spheres[i*3+1] = p2[1];
         spheres[i*3+2] = p2[2];
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      pingpong = 0;
     }
   }, false);
   element.addEventListener("mouseup", function(){
-    flag = 0;
+    clear = 0;
   }, false);
 }
 
@@ -235,6 +233,10 @@ function drawScene(i){
   gl.activeTexture(gl.TEXTURE1);
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i%2]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  if(clear){
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    pingpong = 0;
+  }
   gl.uniform1i(program.modeLocation, 1);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.bindTexture(gl.TEXTURE_2D, textures[i%2]);
