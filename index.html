@@ -8,9 +8,13 @@
   canvas{ border: none; }
 </style>
 <script id="FRAGMENT_SHADER" type="x-shader/x-fragment">
-  precision highp float;
+  precision mediump float;
   const int sphereCount = 15;
   const float max_t = 100000.0;
+  const float n1 = 1.0;
+  const float n2 = 1.458;
+  const float sr = n1/n2;
+  const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
   varying vec2 coords;
   uniform int mode;
   uniform int tick;
@@ -77,15 +81,21 @@
         result.normal = normalize(result.pos - s.pos);
         result.emmittance = s.attrs.z * s.color;
         result.index = i;
-        if(int(s.material.z) == 0){ //reflective
-          result.dir = reflect(ray.dir, result.normal);
-          result.BRDF = vec3(0.8);
-        } else if( int(s.material.z) >= 1 ){ //diffuse
+        if( int(s.material.z) == 0 ){ //diffuse
           result.dir = randomVec(i, result.normal, result.pos);
           result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,result.normal);
-        } else if( int(s.material.z) == 2 ){ //transmissive
-          result.dir = vec3(1);
-          result.BRDF = vec3(1);
+        } else if( int(s.material.z) == 1 ){ //transmissive
+          float dh = dot((-ray.dir+result.normal)*0.5,result.normal);
+          float fresnel = r0 + (1.0 - r0)*(1.0 - dh*dh*dh*dh*dh);
+          if(rand(result.pos.xy + float(tick)*0.0017839) + 0.5 < fresnel){
+            result.dir = reflect(ray.dir, result.normal);
+          }else{
+            float c = dot(ray.dir,-result.normal);
+            vec3 ref = normalize(sr*ray.dir + (sr*c - sqrt(1.0 - sr*sr*(1.0 - c*c)))*result.normal);
+            result.pos = ref*dot(ref,result.normal)*radius*2.0 + result.pos;
+            result.dir = reflect(-ray.dir,ref);
+          }
+          result.BRDF = s.color;
         }
       }
     }
@@ -95,8 +105,9 @@
   void main(void) {
     vec3 tcolor = texture2D(fbTex,coords*0.5 + 0.5).rgb;
     if(mode == 0){
+      vec2 dof = vec2(rand(coords-float(tick)*0.02571)*0.01,rand(coords.yx+float(tick)*0.005831)*0.01);
       vec3 origin = vec3(coords.x*dims.x/dims.y,coords.y,0);
-      Ray ray = Ray(origin,normalize(origin - eye));
+      Ray ray = Ray(origin- vec3(dof.y,dof.x,0),normalize((origin - eye) + vec3(dof.y*2.0,dof.x*2.0,0)));
       int index = -1;
       vec3 color = vec3(0,0,0);
       //No recursion in GLSL
@@ -105,7 +116,11 @@
       Hit r2 = getCollision(Ray(r1.pos,r1.dir),r1.index);
       Hit r3 = getCollision(Ray(r2.pos,r2.dir),r2.index);
       Hit r4 = getCollision(Ray(r3.pos,r3.dir),r3.index);
-      color = r0.emmittance + r0.BRDF *(r1.emmittance + r1.BRDF * (r2.emmittance + r2.BRDF *(r3.emmittance + r3.BRDF * (r4.emmittance))));
+      color = (r0.emmittance + r0.BRDF *
+              (r1.emmittance + r1.BRDF * 
+              (r2.emmittance + r2.BRDF *
+              (r3.emmittance + r3.BRDF * 
+              (r4.emmittance)))));
       gl_FragColor = abs(vec4((color + (tcolor * float(tick)))/float(tick+1),1.0));
     } else {
       gl_FragColor = abs(vec4(tcolor,1.0));
@@ -114,7 +129,7 @@
 </script>
 
 <script id="VERTEX_SHADER" type="x-shader/x-vertex">
-  precision highp float;
+  precision mediump float;
   attribute vec3 corner;
   varying vec2 coords;
   void main(void) {
