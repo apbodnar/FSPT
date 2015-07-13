@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-<meta charset="UTF-8">
 <head>
-<title>Ping Pong Blinn Phong</title>
+<meta charset="UTF-8">
+<title>Blinn Phong Ping Pong</title>
 <style>
   body{ text-align: center; margin: 0; overflow: hidden; background: #000;}
   canvas{ border: none; }
@@ -25,7 +25,6 @@
   uniform vec3 sphereMats[sphereCount];
   uniform vec3 sphereColors[sphereCount];
   uniform sampler2D fbTex;
-  uniform sampler2D noiseTex;
 
   struct Sphere {
     vec3 pos;
@@ -85,9 +84,9 @@
           result.dir = randomVec(i, result.normal, result.pos);
           result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,result.normal);
         } else if( int(s.material.z) == 1 ){ //transmissive
-          float dh = dot((-ray.dir+result.normal)*0.5,result.normal);
-          float fresnel = r0 + (1.0 - r0)*(1.0 - dh*dh*dh*dh*dh);
-          if(rand(result.pos.xy + float(tick)*0.0017839) + 0.5 < fresnel){
+          float dh = 1.0 - dot(-ray.dir,result.normal);
+          float re = r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
+          if(rand(result.pos.xy + float(tick)*0.0017839) + 0.5 < re){
             result.dir = reflect(ray.dir, result.normal);
           }else{
             float c = dot(ray.dir,-result.normal);
@@ -95,7 +94,7 @@
             result.pos = ref*dot(ref,result.normal)*radius*2.0 + result.pos;
             result.dir = reflect(-ray.dir,ref);
           }
-          result.BRDF = s.color;
+          result.BRDF = vec3(1);
         }
       }
     }
