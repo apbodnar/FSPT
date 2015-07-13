@@ -12,6 +12,7 @@ var materials = [];
 var eye = new Float32Array([0,0,-2]);
 var pingpong = 0;
 var clear = 0;
+var max_t = 1000000;
 
 function initGL(canvas) {
   gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -22,20 +23,43 @@ function initGL(canvas) {
 }
 
 function getShader(gl, id) {
-  var str = document.getElementById(id).innerText;
+  var str = document.getElementById(id).textContent;
   var shader = gl.createShader(gl[id]);
   gl.shaderSource(shader, str);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert(gl.getShaderInfoLog(shader));
+    console(gl.getShaderInfoLog(shader));
     return null;
   }
   return shader;
 }
 
-function normalize(arr){
-  var m = Math.sqrt(arr[0]*arr[0]+arr[1]*arr[1]+arr[2]*arr[2])
-  return [arr[0]/m,arr[1]/m,arr[2]/m]
+function length(v){
+  return Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+}
+
+function normalize(v){
+  var m = length(v);
+  return [v[0]/m,v[1]/m,v[2]/m];
+}
+
+function dot(v1,v2){
+  return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
+}
+
+function add(v1,v2){
+  return [v1[0]+v2[0],v1[1]+v2[1],v1[2]+v2[2]];
+}
+
+function sub(v1,v2){
+  return [v1[0]-v2[0],v1[1]-v2[1],v1[2]-v2[2]];
+}
+
+function checkSphereCollision(origin,dir,r,pos){
+  var scalar = dot(dir,sub(origin, pos));
+  var dist = length(sub(origin, pos));
+  var squared = (scalar * scalar) - (dist * dist) + (r * r);
+  return squared < 0.0 ? max_t : -scalar - Math.sqrt(squared);
 }
 
 function initPrimitives(){
@@ -43,7 +67,7 @@ function initPrimitives(){
     var r = 0.25;
     spheres = spheres.concat([(2*Math.random()-1)*(1-r),(2*Math.random()-1)*(1-r),(2-r*2)*Math.random()+r]);
     sphereAttrs = sphereAttrs.concat([r,0.85,0.0]);
-    colors = colors.concat([Math.random()*0.25+0.75,Math.random()*0.25+0.75,Math.random()*0.25+0.75]);
+    colors = colors.concat([Math.random(),Math.random(),Math.random()]);
     materials = materials.concat([1.0,Math.random()*4,Math.random()*2]);
   }
   spheres = spheres.concat([0,11,1]);
@@ -53,37 +77,37 @@ function initPrimitives(){
   materials = materials.concat([5.0,0,0]);
 
   spheres = spheres.concat([0,1e3+1,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
   colors = colors.concat([1,1,1]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([0,0,1e3+2]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
-  colors = colors.concat([0.1,1,0.1]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
+  colors = colors.concat([1,1,1]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([0,-1e3-1,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
   colors = colors.concat([1,1,1]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([1e3+1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
-  colors = colors.concat([1,0.1,0.1]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
+  colors = colors.concat([1,0.4,0.4]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([-1e3-1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
-  colors = colors.concat([0.1,0.1,1]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
+  colors = colors.concat([0.4,0.4,1]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([-1e3-1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
   colors = colors.concat([1,1,1]);
   materials = materials.concat([1.0,0,0]);
 
   spheres = spheres.concat([0,0,-1e3]);
-  sphereAttrs = sphereAttrs.concat([1e3,1,0.0]);
+  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
   colors = colors.concat([1,1,1]);
   materials = materials.concat([1.0,0,0]);
 
@@ -129,7 +153,6 @@ function initShaders() {
   gl.useProgram(program);
   program.vertexAttribute = gl.getAttribLocation(program, "corner");
   gl.enableVertexAttribArray(program.vertexAttribute);
-  program.noiseTexLocation = gl.getUniformLocation(program, "noiseTex");
   program.fbTexLocation = gl.getUniformLocation(program, "fbTex");
   program.modeLocation = gl.getUniformLocation(program, "mode");
   program.sphereLocations = gl.getUniformLocation(program, "spherePositions");
@@ -140,21 +163,6 @@ function initShaders() {
   program.eyeLocation = gl.getUniformLocation(program, "eye");
   program.dimensionLocation = gl.getUniformLocation(program, "dims");
   program.tickLocation = gl.getUniformLocation(program, "tick");
-}
-
-function initNoise(){
-  var b = new ArrayBuffer(gl.viewportWidth*gl.viewportHeight*3*4);
-  var v1 = new Float32Array(b);
-
-  for ( var i=0; i<gl.viewportWidth*gl.viewportHeight*4; i+=4 ){
-    //var tv = vec3.normalize([0,0,0],[Math.random(),Math.random(),Math.random()])
-    v1[i] =   Math.random();
-    v1[i+1] = Math.random();
-    v1[i+2] = Math.random();
-  }
-  gl.activeTexture(gl.TEXTURE0);
-  noiseTex = createTexture();
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.viewportWidth, gl.viewportHeight, 0, gl.RGB, gl.FLOAT, v1);
 }
 
 function initBuffers(){
@@ -197,40 +205,58 @@ function rotateY(vec, a){
 }
 
 function initEvents(){
-
   var element = document.getElementById("trace");
   var xi, yi;
+  var mode = 0;
+  var t = max_t;
+  var index = -1;
   element.addEventListener("mousedown", function(e){
     clear = 1;
     xi = e.layerX;
     yi = e.layerY;
+    for(var i=0; i<numSpheres-8; i++){
+      var pos = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
+      var r = sphereAttrs[i*3];
+      var sp = [2*xi/gl.viewportWidth-1,-2*yi/gl.viewportHeight+1,0]
+      var dir = normalize(sub(sp,eye));
+      t = checkSphereCollision(eye,dir,r,pos);
+      if(t < max_t){
+        index= i;
+      }
+    }
   }, false);
   element.addEventListener("mousemove", function(e){
     if(clear){
-      for(var i=0; i< numSpheres; i++){
-        var p0 = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
-        var p1 = rotateX(p0,(e.layerY - yi) / 90.0);
-        var p2 = rotateY(p1,-(e.layerX - xi) / 90.0);
-        spheres[i*3] = p2[0];
-        spheres[i*3+1] = p2[1];
-        spheres[i*3+2] = p2[2];
+      if(index != -1){
+        spheres[index*3] = 2*e.layerX/gl.viewportWidth-1;
+        spheres[index*3+1] = -2*e.layerY/gl.viewportHeight+1;
+      } else {
+        for(var i=0; i< numSpheres; i++){
+          var p0 = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
+          var p1 = rotateX(p0,(e.layerY - yi) / 90.0);
+          var p2 = rotateY(p1,-(e.layerX - xi) / 90.0);
+          spheres[i*3] = p2[0];
+          spheres[i*3+1] = p2[1];
+          spheres[i*3+2] = p2[2];
+        }
       }
-      //gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i+1%2]);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+      var p = pingpong;
+      gl.bindTexture(gl.TEXTURE_2D, textures[p+1%2]);
       pingpong = 0;
+      gl.clear(gl.COLOR_BUFFER_BIT);
     }
     xi = e.layerX;
     yi = e.layerY;
   }, false);
   element.addEventListener("mouseup", function(){
     clear = 0;
+    index = -1;
   }, false);
 }
 
 function drawScene(i){
   gl.uniform1i(program.modeLocation, 0);
-  gl.uniform1i(program.noiseTexLocation, 0);
-  gl.uniform1i(program.fbTexLocation, 1);
+  gl.uniform1i(program.fbTexLocation, 0);
   gl.uniform1i(program.tickLocation, i);
   gl.uniform2f(program.dimensionLocation, gl.viewportWidth, gl.viewportHeight);
   gl.uniform3fv(program.sphereLocations, spheres);
@@ -240,8 +266,6 @@ function drawScene(i){
   gl.uniform3fv(program.matLocation, materials);
   gl.uniform3fv(program.colorLocations, colors);
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, noiseTex);
-  gl.activeTexture(gl.TEXTURE1);
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i%2]);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   gl.uniform1i(program.modeLocation, 1);
@@ -265,7 +289,6 @@ function webGLStart() {
   initShaders();
   initPrimitives();
   initBuffers();
-  initNoise();
   initEvents();
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
