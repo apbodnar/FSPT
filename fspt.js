@@ -4,15 +4,17 @@ var squareBuffer;
 var textures = []
 var noiseTex;
 var framebuffers = [];
-var numSpheres = 13;
+var numSpheres = 5;
 var spheres = [];
+var spherePositions = [];
 var sphereAttrs = [];
 var colors = [];
 var materials = [];
-var eye = new Float32Array([0,0,-2]);
+var eye = new Float32Array([0,0.0,-2]);
 var pingpong = 0;
 var clear = 0;
 var max_t = 1000000;
+var staticCount = 0;
 
 function initGL(canvas) {
   gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -28,7 +30,7 @@ function getShader(gl, id) {
   gl.shaderSource(shader, str);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console(gl.getShaderInfoLog(shader));
+    alert(gl.getShaderInfoLog(shader));
     return null;
   }
   return shader;
@@ -63,55 +65,34 @@ function checkSphereCollision(origin,dir,r,pos){
 }
 
 function initPrimitives(){
-  for(var i=0; i< numSpheres-8; i++){
-    var r = 0.25;
-    spheres = spheres.concat([(2*Math.random()-1)*(1-r),(2*Math.random()-1)*(1-r),(2-r*2)*Math.random()+r]);
-    sphereAttrs = sphereAttrs.concat([r,0.85,0.0]);
-    colors = colors.concat([Math.random(),Math.random(),Math.random()]);
-    materials = materials.concat([1.0,Math.random()*4,Math.random()*2]);
+  var rn = Math.random;
+
+  spheres.push( new Sphere([0,1e3+1,0] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+  spheres.push( new Sphere([0,0,1e3+2] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+  spheres.push( new Sphere([0,-1e3-1,0],[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+  spheres.push( new Sphere([1e3+1,0,0] ,[1e3,0.9,0.0],[1.0,0.4,0.4],[1.0,0,0]));
+  spheres.push( new Sphere([-1e3-1,0,0],[1e3,0.9,0.0],[0.4,1.0,0.4],[1.0,0,0]));
+  spheres.push( new Sphere([0,0,-1e3]  ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+  //spheres.push( new Sphere([0,11,1],[10.01,0,2],[1,1,1],[5.0,0,0]));
+  staticCount = spheres.length;
+  spheres.push( new Sphere([0,-1,1],[0.25,1.0,12.0],[0.9,0.5,0.1],[5.0,0,0]));
+  spheres.push( new Sphere([0,1,1],[0.25,1.0,12.0],[0.1,0.5,0.9],[5.0,0,0]));
+  for(var i=0; i< numSpheres; i++){
+    var r = Math.random()*0.25+0.15;
+    spheres.push(new Sphere([(2*rn()-1)*(1-r),(2*rn()-1)*(1-r),(2-r*2)*rn()+r],
+                            [r,0.85,0.0],
+                            [rn(),rn(),rn()],
+                            [1.0,rn()*4,rn()*2]));
   }
-  spheres = spheres.concat([0,11,1]);
-  //spheres = spheres.concat([2*Math.random()-1,2*Math.random()-1,1.7*Math.random()+0.3]);
-  sphereAttrs = sphereAttrs.concat([10.010,0.0,12.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([5.0,0,0]);
 
-  spheres = spheres.concat([0,1e3+1,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
+  for(var i=0; i< spheres.length; i++){
+    spherePositions = spherePositions.concat(spheres[i].pos);
+    sphereAttrs = sphereAttrs.concat(spheres[i].attrs);
+    colors = colors.concat(spheres[i].color);
+    materials = materials.concat(spheres[i].mat);
+  }
 
-  spheres = spheres.concat([0,0,1e3+2]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = spheres.concat([0,-1e3-1,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = spheres.concat([1e3+1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,0.4,0.4]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = spheres.concat([-1e3-1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([0.4,0.4,1]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = spheres.concat([-1e3-1,0,0]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = spheres.concat([0,0,-1e3]);
-  sphereAttrs = sphereAttrs.concat([1e3,0.9,0.0]);
-  colors = colors.concat([1,1,1]);
-  materials = materials.concat([1.0,0,0]);
-
-  spheres = new Float32Array(spheres);
+  spherePositions = new Float32Array(spherePositions);
   sphereAttrs = new Float32Array(sphereAttrs);
   colors = new Float32Array(colors);
   materials = new Float32Array(materials);
@@ -214,12 +195,12 @@ function initEvents(){
     clear = 1;
     xi = e.layerX;
     yi = e.layerY;
-    for(var i=0; i<numSpheres-8; i++){
-      var pos = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
+    for(var i=staticCount; i<spheres.length; i++){
+      var pos = [spherePositions[i*3],spherePositions[i*3+1],spherePositions[i*3+2]];
       var r = sphereAttrs[i*3];
       var sp = [2*xi/gl.viewportWidth-1,-2*yi/gl.viewportHeight+1,0]
       var dir = normalize(sub(sp,eye));
-      t = checkSphereCollision(eye,dir,r,pos);
+      var t = checkSphereCollision(eye,dir,r,pos);
       if(t < max_t){
         index= i;
       }
@@ -228,16 +209,16 @@ function initEvents(){
   element.addEventListener("mousemove", function(e){
     if(clear){
       if(index != -1){
-        spheres[index*3] = 2*e.layerX/gl.viewportWidth-1;
-        spheres[index*3+1] = -2*e.layerY/gl.viewportHeight+1;
+        spherePositions[index*3] = 2*e.layerX/gl.viewportWidth-1;
+        spherePositions[index*3+1] = -2*e.layerY/gl.viewportHeight+1;
       } else {
-        for(var i=0; i< numSpheres; i++){
-          var p0 = [spheres[i*3],spheres[i*3+1],spheres[i*3+2]];
+        for(var i=0; i<spheres.length; i++){
+          var p0 = [spherePositions[i*3],spherePositions[i*3+1],spherePositions[i*3+2]];
           var p1 = rotateX(p0,(e.layerY - yi) / 90.0);
           var p2 = rotateY(p1,-(e.layerX - xi) / 90.0);
-          spheres[i*3] = p2[0];
-          spheres[i*3+1] = p2[1];
-          spheres[i*3+2] = p2[2];
+          spherePositions[i*3] = p2[0];
+          spherePositions[i*3+1] = p2[1];
+          spherePositions[i*3+2] = p2[2];
         }
       }
       var p = pingpong;
@@ -259,9 +240,9 @@ function drawScene(i){
   gl.uniform1i(program.fbTexLocation, 0);
   gl.uniform1i(program.tickLocation, i);
   gl.uniform2f(program.dimensionLocation, gl.viewportWidth, gl.viewportHeight);
-  gl.uniform3fv(program.sphereLocations, spheres);
+  gl.uniform3fv(program.sphereLocations, spherePositions);
   gl.uniform3f(program.eyeLocation, eye[0],eye[1],eye[2]);
-  gl.uniform3fv(program.sphereLocations, spheres);
+  gl.uniform3fv(program.sphereLocations, spherePositions);
   gl.uniform3fv(program.attrLocations, sphereAttrs);
   gl.uniform3fv(program.matLocation, materials);
   gl.uniform3fv(program.colorLocations, colors);
@@ -296,3 +277,11 @@ function webGLStart() {
 
   tick();
 }
+
+function Sphere(pos,attrs,color,mat){
+  this.pos = pos;
+  this.attrs = attrs;
+  this.color = color;
+  this.mat = mat;
+}
+
