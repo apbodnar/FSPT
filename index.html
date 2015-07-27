@@ -8,13 +8,16 @@
   canvas{ border: none; }
 </style>
 <script id="FRAGMENT_SHADER" type="x-shader/x-fragment">
-  precision mediump float;
-  const int sphereCount = 15;
+  precision highp float;
+  const int sphereCount = 14;
   const float max_t = 100000.0;
   const float n1 = 1.0;
   const float n2 = 1.458;
   const float sr = n1/n2;
   const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
+  const float M_PI = 3.1415926535897932384626433832795;
+  const float epsilon = 0.00001; //not really epsilon
+
   varying vec2 coords;
   uniform int mode;
   uniform int tick;
@@ -26,21 +29,25 @@
   uniform vec3 sphereColors[sphereCount];
   uniform sampler2D fbTex;
 
+  float tick_f = float(tick);
+
   struct Sphere {
     vec3 pos;
     vec3 attrs;
     vec3 color;
     vec3 material;
   };
+
   struct Hit{
     float t;
     vec3 pos;
     vec3 dir;
     vec3 normal;
     vec3 emmittance;
-    vec3 BRDF;
+    vec3 reflectance;
     int index;
   };
+
   struct Ray{
     vec3 origin;
     vec3 dir;
@@ -51,14 +58,41 @@
     float b = 78.233;
     float c = 43758.5453;
     float dt= dot(co ,vec2(a,b));
-    float sn= mod(dt,3.14);
-    return fract(sin(sn) * c) - 0.5;
+    float sn= mod(dt,M_PI);
+    return fract(sin(sn) * c);
   }
 
-  vec3 randomVec(int index, vec3 normal, vec3 pos){
-    vec3 tc = vec3(rand(pos.xy+float(tick)*0.01329),rand(pos.xz+float(tick)*0.07347),rand(pos.yz+float(tick)*0.003391));
-    return normalize(dot(tc,normal) > 0.0 ? tc : -tc);
+  float getAngle(vec3 a){
+    vec3 b = vec3(0.0,0.0,1.0);
+    return atan(length(cross(a,b)),a.z);
   }
+
+  mat3 rotationMatrix(vec3 axis, float angle){
+    axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    return mat3(oc * axis.x * axis.x + c,    oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
+          oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c,          oc * axis.y * axis.z - axis.x * s,
+          oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
+  }
+
+  vec3 randomVec(vec3 normal, vec3 pos){
+    float r2 = rand(pos.xz+tick_f*0.0194161103873);
+    float r1 = rand(pos.xy+tick_f*0.0115572734979)-epsilon;
+    float r = sqrt(r1);
+    float theta = 2.0 * M_PI * r2;
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    vec3 rv = vec3(x, y, sqrt(1.0 - r1));
+    float phi = getAngle(normal);
+    return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
+  }
+
+  // vec3 randomVec(vec3 normal, vec3 pos){
+  //   vec3 tc = vec3(rand(pos.xy+tick_f*0.01329),rand(pos.xz+tick_f*0.07347),rand(pos.yz+tick_f*0.003391));
+  //   return normalize(dot(tc,normal) > 0.0 ? tc : -tc);
+  // }
 
   float checkSphereCollision(Ray ray,Sphere s){
     float scalar = dot(ray.dir,ray.origin - s.pos);
@@ -81,12 +115,12 @@
         result.emmittance = s.attrs.z * s.color;
         result.index = i;
         if( int(s.material.z) == 0 ){ //diffuse
-          result.dir = randomVec(i, result.normal, result.pos);
-          result.BRDF = 2.0 * s.attrs.y * s.color * dot(result.dir,result.normal);
+          result.dir = randomVec(result.normal, result.pos);
+          result.reflectance = s.color;
         } else if( int(s.material.z) == 1 ){ //transmissive
           float dh = 1.0 - dot(-ray.dir,result.normal);
           float re = r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
-          if(rand(result.pos.xy + float(tick)*0.0017839) + 0.5 < re){
+          if(rand(result.pos.xy + tick_f*0.0017839) < re){
             result.dir = reflect(ray.dir, result.normal);
           }else{
             float c = dot(ray.dir,-result.normal);
@@ -94,7 +128,7 @@
             result.pos = ref*dot(ref,result.normal)*radius*2.0 + result.pos;
             result.dir = reflect(-ray.dir,ref);
           }
-          result.BRDF = vec3(1);
+          result.reflectance = vec3(1);
         }
       }
     }
@@ -104,9 +138,10 @@
   void main(void) {
     vec3 tcolor = texture2D(fbTex,coords*0.5 + 0.5).rgb;
     if(mode == 0){
-      vec2 dof = vec2(rand(coords-float(tick)*0.02571)*0.01,rand(coords.yx+float(tick)*0.005831)*0.01);
-      vec3 origin = vec3(coords.x*dims.x/dims.y,coords.y,0);
-      Ray ray = Ray(origin- vec3(dof.y,dof.x,0),normalize((origin - eye) + vec3(dof.y*2.0,dof.x*2.0,0)));
+      vec2 dof = vec2((rand(coords-tick_f*0.02571)+0.5)*0.002,
+                      (rand(coords.yx+tick_f*0.005831)+0.5)*0.002);
+      vec3 origin = vec3(coords.x*dims.x/dims.y + dof.x,coords.y + dof.y,0);
+      Ray ray = Ray(origin,normalize(origin - eye));
       int index = -1;
       vec3 color = vec3(0,0,0);
       //No recursion in GLSL
@@ -115,12 +150,12 @@
       Hit r2 = getCollision(Ray(r1.pos,r1.dir),r1.index);
       Hit r3 = getCollision(Ray(r2.pos,r2.dir),r2.index);
       Hit r4 = getCollision(Ray(r3.pos,r3.dir),r3.index);
-      color = (r0.emmittance + r0.BRDF *
-              (r1.emmittance + r1.BRDF * 
-              (r2.emmittance + r2.BRDF *
-              (r3.emmittance + r3.BRDF * 
+      color = (r0.emmittance + r0.reflectance *
+              (r1.emmittance + r1.reflectance *
+              (r2.emmittance + r2.reflectance *
+              (r3.emmittance + r3.reflectance *
               (r4.emmittance)))));
-      gl_FragColor = abs(vec4((color + (tcolor * float(tick)))/float(tick+1),1.0));
+      gl_FragColor = abs(vec4((color + (tcolor * tick_f))/(tick_f+1.0),1.0));
     } else {
       gl_FragColor = abs(vec4(tcolor,1.0));
     }
@@ -128,7 +163,7 @@
 </script>
 
 <script id="VERTEX_SHADER" type="x-shader/x-vertex">
-  precision mediump float;
+  precision highp float;
   attribute vec3 corner;
   varying vec2 coords;
   void main(void) {
