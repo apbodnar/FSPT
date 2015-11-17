@@ -17,6 +17,7 @@
   const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
   const float M_PI = 3.1415926535897932384626433832795;
   const float epsilon = 0.00001; //not really epsilon
+  const float gamma = 1.0/1.0;
 
   varying vec2 coords;
   uniform int mode;
@@ -125,7 +126,7 @@
           }else{
             float c = dot(ray.dir,-result.normal);
             vec3 ref = normalize(sr*ray.dir + (sr*c - sqrt(1.0 - sr*sr*(1.0 - c*c)))*result.normal);
-            result.pos = ref*dot(ref,result.normal)*radius*2.0 + result.pos;
+            result.pos = ref*dot(ref,-result.normal)*radius*2.0 + result.pos;
             result.dir = reflect(-ray.dir,ref);
           }
           result.reflectance = vec3(1);
@@ -150,14 +151,18 @@
       Hit r2 = getCollision(Ray(r1.pos,r1.dir),r1.index);
       Hit r3 = getCollision(Ray(r2.pos,r2.dir),r2.index);
       Hit r4 = getCollision(Ray(r3.pos,r3.dir),r3.index);
+      Hit r5 = getCollision(Ray(r4.pos,r4.dir),r4.index);
       color = (r0.emmittance + r0.reflectance *
               (r1.emmittance + r1.reflectance *
               (r2.emmittance + r2.reflectance *
               (r3.emmittance + r3.reflectance *
-              (r4.emmittance)))));
-      gl_FragColor = abs(vec4((color + (tcolor * tick_f))/(tick_f+1.0),1.0));
+              (r4.emmittance + r4.reflectance *
+              (r5.emmittance))))));
+      //color = pow(color,vec3(gamma));
+
+      gl_FragColor = vec4((color + (tcolor * tick_f))/(tick_f+1.0),1.0);
     } else {
-      gl_FragColor = abs(vec4(tcolor,1.0));
+      gl_FragColor = vec4(tcolor,1.0);
     }
   }
 </script>
