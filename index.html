@@ -17,7 +17,7 @@
   const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
   const float M_PI = 3.1415926535897932384626433832795;
   const float epsilon = 0.00001; //not really epsilon
-  const float gamma = 1.0/1.0;
+  const float gamma = 1.0/2.2;
 
   varying vec2 coords;
   uniform int mode;
@@ -158,7 +158,7 @@
               (r3.emmittance + r3.reflectance *
               (r4.emmittance + r4.reflectance *
               (r5.emmittance))))));
-      //color = pow(color,vec3(gamma));
+      color = pow(color,vec3(gamma));
 
       gl_FragColor = vec4((color + (tcolor * tick_f))/(tick_f+1.0),1.0);
     } else {

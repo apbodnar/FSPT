@@ -66,17 +66,18 @@ function checkSphereCollision(origin,dir,r,pos){
 
 function initPrimitives(){
   var rn = Math.random;
-
+  //walls
   spheres.push( new Sphere([0,1e3+1,0] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
   spheres.push( new Sphere([0,0,1e3+2] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
   spheres.push( new Sphere([0,-1e3-1,0],[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
-  spheres.push( new Sphere([1e3+1,0,0] ,[1e3,0.9,0.0],[1.0,0.4,0.4],[1.0,0,0]));
-  spheres.push( new Sphere([-1e3-1,0,0],[1e3,0.9,0.0],[0.4,1.0,0.4],[1.0,0,0]));
+  spheres.push( new Sphere([1e3+1,0,0] ,[1e3,0.9,0.5],[1.0,0.2,0.2],[1.0,0,0]));
+  spheres.push( new Sphere([-1e3-1,0,0],[1e3,0.9,0.5],[0.2,1.0,0.2],[1.0,0,0]));
   spheres.push( new Sphere([0,0,-1e3]  ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
-  //spheres.push( new Sphere([0,11,1],[10.01,0,2],[1,1,1],[5.0,0,0]));
+  //lights
   staticCount = spheres.length;
-  spheres.push( new Sphere([0,-1,1],[0.25,1.0,11.0],[0.9,0.5,0.1],[5.0,0,0]));
-  spheres.push( new Sphere([0,1,1],[0.25,1.0,11.0],[0.1,0.5,0.9],[5.0,0,0]));
+  spheres.push( new Sphere([0,-1,1],[0.25,1.0,8.0],[0.9,0.5,0.1],[5.0,0,0]));
+  spheres.push( new Sphere([0,1,1],[0.25,1.0,8.0],[0.1,0.5,0.9],[5.0,0,0]));
+  //objects
   for(var i=0; i< numSpheres; i++){
     var r = Math.random()*0.25+0.15;
     spheres.push(new Sphere([(2*rn()-1)*(1-r),(2*rn()-1)*(1-r),(2-r*2)*rn()+r],
