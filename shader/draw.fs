@@ -1,7 +1,10 @@
+#version 300 es
 precision highp float;
-uniform vec2 dims;
 uniform sampler2D fbTex;
 
+out vec4 fragColor;
+
 void main(void) {
-  gl_FragColor = texture2D(fbTex,gl_FragCoord.xy/dims);
+  vec2 size = vec2(textureSize(fbTex, 0));
+  fragColor = texture(fbTex,gl_FragCoord.xy/size);
 }
