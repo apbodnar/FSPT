@@ -1,3 +1,4 @@
+#version 300 es
 precision highp float;
 const int sphereCount = 14;
 const float max_t = 100000.0;
@@ -9,17 +10,16 @@ const float M_PI = 3.1415926535897932384626433832795;
 const float epsilon = 0.00001; //not really epsilon
 const float gamma = 1.0/2.2;
 
-varying vec2 coords;
+in vec2 coords;
+out vec4 fragColor;
+
 uniform int tick;
-uniform vec2 dims;
 uniform vec3 eye;
 uniform vec3 spherePositions[sphereCount];
 uniform vec3 sphereAttrs[sphereCount];
 uniform vec3 sphereMats[sphereCount];
 uniform vec3 sphereColors[sphereCount];
 uniform sampler2D fbTex;
-
-float tick_f = float(tick);
 
 struct Sphere {
   vec3 origin;
@@ -44,7 +44,7 @@ float rand(vec2 co){
   float a = 12.9898;
   float b = 78.233;
   float c = 43758.5453;
-  float dt= dot(co ,vec2(a,b) + tick_f*0.0194161103873);
+  float dt= dot(co ,vec2(a,b) + float(tick) * 0.0194161103873);
   float sn= mod(dt,M_PI);
   return fract(sin(sn) * c);
 }
@@ -150,10 +150,11 @@ Hit getCollision(Ray ray, int current){
 }
 
 void main(void) {
-  float inv_dim = 1.0 / dims.x;
-  vec3 tcolor = texture2D(fbTex,gl_FragCoord.xy*inv_dim).rgb;
-  vec2 dof = vec2(rand(coords), rand(coords.yx))*inv_dim;
-  vec3 origin = vec3(coords.x*dims.x*inv_dim + dof.x,coords.y + dof.y,0);
+  vec2 size = vec2(textureSize(fbTex, 0));
+  float inv_dim = 1.0 / size.x;
+  vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
+  vec3 dof = vec3(rand(coords), rand(coords.yx), 0.0)*inv_dim;
+  vec3 origin = vec3(coords.x*size.x*inv_dim,coords.y,0) + dof;
   Ray ray = Ray(origin,normalize(origin - eye));
   int index = -1;
   vec3 color = vec3(0,0,0);
@@ -174,5 +175,5 @@ void main(void) {
           (r6.emmittance)))))));
   color = pow(color,vec3(gamma));
 
-  gl_FragColor = vec4((color + (tcolor * tick_f))/(tick_f+1.0),1.0);
+  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

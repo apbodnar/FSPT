@@ -30,7 +30,7 @@ function PathTracer(){
   var assets = {};
 
   function initGL(canvas) {
-    gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    gl = canvas.getContext("webgl2");
     gl.viewportWidth = canvas.width = window.innerHeight;
     gl.viewportHeight = canvas.height = window.innerHeight;
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -146,14 +146,14 @@ function PathTracer(){
 
   function createTexture() {
     var t = gl.createTexture () ;
-    gl.getExtension('OES_texture_float');
-    gl.getExtension('OES_texture_float_linear');
-    gl.bindTexture( gl.TEXTURE_2D, t ) ;
+    gl.getExtension('EXT_color_buffer_float');
+    //gl.getExtension('OES_texture_float_linear');
+    gl.bindTexture(gl.TEXTURE_2D, t);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR ) ;
-    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR ) ;
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.viewportWidth, gl.viewportHeight, 0, gl.RGB, gl.FLOAT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.viewportWidth, gl.viewportHeight, 0, gl.RGBA, gl.FLOAT, null);
     return t;
   }
 
@@ -163,8 +163,6 @@ function PathTracer(){
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     return fbo;
   }
-
-
 
   function initBuffers(){
     squareBuffer = gl.createBuffer();
@@ -288,6 +286,9 @@ function PathTracer(){
 
   function tick() {
     requestAnimationFrame(tick);
+    pingpong++;
+    drawTracer(pingpong);
+    drawQuad(pingpong);
     pingpong++;
     drawTracer(pingpong);
     drawQuad(pingpong);
