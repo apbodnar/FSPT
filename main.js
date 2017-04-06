@@ -22,7 +22,8 @@ function PathTracer(){
     "shader/tracer.vs",
     "shader/tracer.fs",
     "shader/draw.vs",
-    "shader/draw.fs"
+    "shader/draw.fs",
+    "mesh/bunny.obj"
   ];
 
   var staticCount;
@@ -286,12 +287,11 @@ function PathTracer(){
 
   function tick() {
     requestAnimationFrame(tick);
-    pingpong++;
-    drawTracer(pingpong);
-    drawQuad(pingpong);
-    pingpong++;
-    drawTracer(pingpong);
-    drawQuad(pingpong);
+    for (var i = 0; i < 4; i++){
+      pingpong++;
+      drawTracer(pingpong);
+      drawQuad(pingpong);
+    }
     if(!(pingpong % 1000)){
       console.log(pingpong);
     }

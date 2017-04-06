@@ -1,6 +1,7 @@
 #version 300 es
 precision highp float;
 const int sphereCount = 14;
+const int NUM_BOUNCES = 6;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -90,7 +91,7 @@ Hit getSpecular(int i, float t, Ray ray, Sphere s){
   result.index = i;
   normal = randomVec(normal, result.ray.origin, s.material.y);
   result.ray.dir = reflect(ray.dir,normal);
-  result.reflectance = vec3(0.8313,0.6863,0.2157);
+  result.reflectance = vec3(1);
   if(dot(result.ray.dir,normal) < 0.0){
     result.ray.dir = -result.ray.dir;
   }
@@ -155,25 +156,20 @@ void main(void) {
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   vec3 dof = vec3(rand(coords), rand(coords.yx), 0.0)*inv_dim;
   vec3 origin = vec3(coords.x*size.x*inv_dim,coords.y,0) + dof;
-  Ray ray = Ray(origin,normalize(origin - eye));
-  int index = -1;
-  vec3 color = vec3(0,0,0);
   //No recursion in GLSL
-  Hit r0 = getCollision(ray,index);
-  Hit r1 = getCollision(r0.ray,r0.index);
-  Hit r2 = getCollision(r1.ray,r1.index);
-  Hit r3 = getCollision(r2.ray,r2.index);
-  Hit r4 = getCollision(r3.ray,r3.index);
-  Hit r5 = getCollision(r4.ray,r4.index);
-  Hit r6 = getCollision(r5.ray,r5.index);
-  color = (r0.emmittance + r0.reflectance *
-          (r1.emmittance + r1.reflectance *
-          (r2.emmittance + r2.reflectance *
-          (r3.emmittance + r3.reflectance *
-          (r4.emmittance + r4.reflectance *
-          (r5.emmittance + r5.reflectance *
-          (r6.emmittance)))))));
+  vec3 emmittance[NUM_BOUNCES];// = {0.0, 0.0, 0.0, 0.0, 0.0};
+  vec3 reflectance[NUM_BOUNCES];// = {0.0, 0.0, 0.0, 0.0, 0.0};
+  Hit current = Hit(Ray(origin,normalize(origin - eye)), vec3(0), vec3(0), -1);
+  for(int i=0; i<NUM_BOUNCES; i++){
+    current = getCollision(current.ray,current.index);
+    emmittance[i] = current.emmittance;
+    reflectance[i] = current.reflectance;
+  }
+  vec3 color = vec3(0);
+  for(int i=NUM_BOUNCES-1; i>=0; i--){
+    color = reflectance[i]*color + emmittance[i];
+  }
   color = pow(color,vec3(gamma));
 
-  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
+  fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
