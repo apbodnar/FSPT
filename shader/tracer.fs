@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 const int sphereCount = 14;
-const int NUM_BOUNCES = 6;
+const int NUM_BOUNCES = 7;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -84,6 +84,12 @@ float checkSphereCollision(Ray ray,Sphere s){
   return squared < 0.0 ? max_t : -scalar - sqrt(squared);
 }
 
+vec2 getDOF(){
+    float theta = rand(coords) * M_PI * 2.0;
+    float sqrt_r = sqrt(rand(coords.yx));
+    return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
+}
+
 Hit getSpecular(int i, float t, Ray ray, Sphere s){
   Hit result;
   result.ray.origin = ray.dir*t + ray.origin;
@@ -143,7 +149,7 @@ Hit getCollision(Ray ray, int current){
       } else if( int(s.material.z) == 1 ){ //specular
         result = getSpecular(i, t, ray,s);
       } else if( int(s.material.z) == 2 ){ //transmissive
-        result = getTransmissive(i, t, ray,s);
+        result = getTransmissive(i, t, ray, s);
       }
     }
   }
@@ -152,16 +158,15 @@ Hit getCollision(Ray ray, int current){
 
 void main(void) {
   vec2 size = vec2(textureSize(fbTex, 0));
-  float inv_dim = 1.0 / size.x;
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 dof = vec3(rand(coords), rand(coords.yx), 0.0)*inv_dim;
-  vec3 origin = vec3(coords.x*size.x*inv_dim,coords.y,0) + dof;
+  vec3 dof = 60.0 * vec3(getDOF(), 0.0) / size.x;
+  vec3 origin = vec3(coords.x, coords.y, 0) + dof * 1.5;
   //No recursion in GLSL
-  vec3 emmittance[NUM_BOUNCES];// = {0.0, 0.0, 0.0, 0.0, 0.0};
-  vec3 reflectance[NUM_BOUNCES];// = {0.0, 0.0, 0.0, 0.0, 0.0};
-  Hit current = Hit(Ray(origin,normalize(origin - eye)), vec3(0), vec3(0), -1);
-  for(int i=0; i<NUM_BOUNCES; i++){
-    current = getCollision(current.ray,current.index);
+  vec3 emmittance[NUM_BOUNCES];
+  vec3 reflectance[NUM_BOUNCES];
+  Hit current = Hit(Ray(origin, normalize(origin - (eye + 4.0 * dof))), vec3(0), vec3(0), -1);
+  for(int i=0; i < NUM_BOUNCES; i++){
+    current = getCollision(current.ray, current.index);
     emmittance[i] = current.emmittance;
     reflectance[i] = current.reflectance;
   }
@@ -170,6 +175,5 @@ void main(void) {
     color = reflectance[i]*color + emmittance[i];
   }
   color = pow(color,vec3(gamma));
-
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
