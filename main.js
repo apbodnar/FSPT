@@ -12,7 +12,7 @@ function PathTracer(){
   var sphereAttrs = [];
   var colors = [];
   var materials = [];
-  var eye = new Float32Array([0,0.0,-2]);
+  var eye = new Float32Array([0,0.0,-2.1]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
@@ -112,14 +112,14 @@ function PathTracer(){
   function initPrimitives(){
     var rn = Math.random;
     //walls
-    spheres.push( new Sphere([0,1e3+1,0] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
-    spheres.push( new Sphere([0,0,1e3+2] ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
-    spheres.push( new Sphere([0,-1e3-1,0],[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
-    spheres.push( new Sphere([1e3+1,0,0] ,[1e3,0.9,0.0],[1.0,0.2,0.2],[1.0,0,0]));
-    spheres.push( new Sphere([-1e3-1,0,0],[1e3,0.9,0.0],[0.2,1.0,0.2],[1.0,0,0]));
-    spheres.push( new Sphere([0,0,-1e3]  ,[1e3,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+    spheres.push( new Sphere([0,1e2+1,0] ,[1e2,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+    spheres.push( new Sphere([0,0,1e2+2] ,[1e2,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+    spheres.push( new Sphere([0,-1e2-1,0],[1e2,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
+    spheres.push( new Sphere([1e2+1,0,0] ,[1e2,0.9,0.0],[1.0,0.2,0.2],[1.0,0,0]));
+    spheres.push( new Sphere([-1e2-1,0,0],[1e2,0.9,0.0],[0.2,1.0,0.2],[1.0,0,0]));
+    spheres.push( new Sphere([0,0,-1e2]  ,[1e2,0.9,0.0],[1.0,1.0,1.0],[1.0,0,0]));
     //lights
-    spheres.push( new Sphere([0,10.998,1],[10,0.0,1000.0],[1,1,1],[5.0,0,0]));
+    spheres.push( new Sphere([0,10.999,0.5],[10,0.0,1000.0],[1,1,1],[5.0,0,0]));
     staticCount = spheres.length;
     //spheres.push( new Sphere([0,-1,1],[0.25,1.0,8.0],[0.9,0.5,0.1],[5.0,0,0]));
     //spheres.push( new Sphere([0,1,1],[0.25,1.0,8.0],[0.1,0.5,0.9],[5.0,0,0]));
@@ -290,8 +290,8 @@ function PathTracer(){
     for (var i = 0; i < 4; i++){
       pingpong++;
       drawTracer(pingpong);
-      drawQuad(pingpong);
     }
+    drawQuad(pingpong);
     if(!(pingpong % 1000)){
       console.log(pingpong);
     }
