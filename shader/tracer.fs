@@ -159,7 +159,7 @@ Hit getCollision(Ray ray, int current){
 void main(void) {
   vec2 size = vec2(textureSize(fbTex, 0));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 dof = 60.0 * vec3(getDOF(), 0.0) / size.x;
+  vec3 dof = 15.0 * vec3(getDOF(), 0.0) / size.x;
   vec3 origin = vec3(coords.x, coords.y, 0) + dof * 1.5;
   //No recursion in GLSL
   vec3 emmittance[NUM_BOUNCES];
