@@ -6,27 +6,97 @@ loadAll(['mesh/bunny.obj'], function(hash){
 
 function runTest(root){
   var canvas = document.getElementById('trace')
-  canvas.width = canvas.height = 100;
+  canvas.width = canvas.height = 400;
   var ctx = canvas.getContext('2d')
+  var t1 = performance.now()
+  naiveTrace(canvas, ctx, root)
+  console.log(performance.now() - t1)
+  t1 = performance.now()
+  treeTrace(canvas, ctx, root)
+  console.log(performance.now() - t1)
+}
+
+function naiveTrace(canvas, ctx, root){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
       var hit = Infinity;
       var origin = [0,0,-0.2]
-      var dir = normalize(sub([(i - canvas.width/2)/100, (j - canvas.height/2)/100, 0], origin));
+      var dir = normalize(sub([(i - canvas.width/2)/1000, -(j - canvas.height/2)/1000, 0], origin));
       var ray = new Ray(origin, dir);
+      var triIdx
       for(var k=0; k<root.triangles.length; k++){
-        hit = Math.min(hit, rayTriangleIntersect(ray, root.triangles[k]))
+        var res = rayTriangleIntersect(ray, root.triangles[k]);
+        if(res < hit){
+          hit = res;
+          triIdx = k;
+        }
       }
       if(hit < Infinity && hit > 0){
-        ctx.fillStyle = "#FF0000";
+        debugger;
+        var color = getColor(root, triIdx);
+        //console.log(color)
+        ctx.fillStyle = "rgb("+color[0]+","+color[1]+","+color[2]+")";
       } else {
-        ctx.fillStyle = "#00FF00";
+        ctx.fillStyle = "#111111";
       }
-
       ctx.fillRect( i, j, 1, 1 );
       ctx.fill()
     }
   }
+}
+
+function treeTrace(canvas, ctx, root){
+  for(var i=0; i<canvas.width; i++){
+    for(var j=0; j<canvas.height; j++){
+      var hit = Infinity;
+      var origin = [0,0,-0.2]
+      var dir = normalize(sub([(i - canvas.width/2)/1000, -(j - canvas.height/2)/1000, 0], origin));
+      var ray = new Ray(origin, dir);
+      var triIdx;
+      hit = findTriangles(ray, root)
+
+      if(hit < Infinity && hit > 0){
+        //var color = getColor(root, triIdx);
+        //console.log(color)
+        ctx.fillStyle = "#FF0000";//"rgb("+color[0]+","+color[1]+","+color[2]+")";
+      } else {
+        ctx.fillStyle = "#111111";
+      }
+      ctx.fillRect( i, j, 1, 1 );
+      ctx.fill()
+    }
+  }
+}
+
+function findTriangles(ray, root){
+  if(root.leaf){
+    return rayTriangleIntersect(ray, root.triangles[0])
+  }
+  var tLeft = rayBoxIntersect(ray, root.left.boundingBox);
+  var tRight = rayBoxIntersect(ray, root.right.boundingBox);
+  var closest = Infinity;
+  if(tLeft < tRight){
+    closest = findTriangles(ray, root.left)
+    if(closest == Infinity){
+      closest = findTriangles(ray, root.right)
+    }
+  }
+  if(tRight < tLeft){
+    closest = findTriangles(ray, root.right)
+    if(closest == Infinity){
+      closest = findTriangles(ray, root.left)
+    }
+  }
+  return closest;
+}
+
+function getColor(root, i){
+  var tri = root.triangles[i];
+  var norm = normalize(cross(sub(tri.v2, tri.v1), sub(tri.v3, tri.v1)));
+  var shade = dot([-.707, -.707, -.707], norm);
+  var c = scale([255,0,0], shade);
+  //console.log(c);
+  return c.map(Math.floor)
 }
 
 function magnitude(v){
@@ -70,9 +140,34 @@ function Ray(origin, dir){
   this.dir = dir
 }
 
+function rayBoxIntersect(ray, bbox){
+  var invDir = inverse(ray.dir),
+      tmin = -Infinity,
+      tmax = Infinity,
+      box = bbox.getBounds(),
+      tx1 = (box[0] - ray.origin[0]) * invDir[0],
+      tx2 = (box[1] - ray.origin[0]) * invDir[0],
+      ty1 = (box[2] - ray.origin[1]) * invDir[1],
+      ty2 = (box[3] - ray.origin[1]) * invDir[1],
+      tz1 = (box[4] - ray.origin[2]) * invDir[2],
+      tz2 = (box[5] - ray.origin[2]) * invDir[2];
+
+  tmin = Math.max(tmin, Math.min(tx1, tx2));
+  tmax = Math.min(tmax, Math.max(tx1, tx2));
+  tmin = Math.max(tmin, Math.min(ty1, ty2));
+  tmax = Math.min(tmax, Math.max(ty1, ty2));
+  tmin = Math.max(tmin, Math.min(tz1, tz2));
+  tmax = Math.min(tmax, Math.max(tz1, tz2));
+
+  if (tmax >= tmin){
+    return tmin;
+  } else {
+    return Infinity;
+  }
+}
+
 function rayTriangleIntersect(ray, tri){
-  var epsilon = 0.00001;
-  //debugger;
+  var epsilon = 0.0000001;
   var e1 = sub(tri.v2, tri.v1);
   var e2 = sub(tri.v3, tri.v1);
   var p = cross(ray.dir, e2);
@@ -87,7 +182,7 @@ function rayTriangleIntersect(ray, tri){
   if(v < 0 || u + v > 1){return Infinity}
   t = dot(e2, q) * invDet;
   if(t > epsilon){
-    debugger;
+    //debugger;
     return t;
   }
   return Infinity;
