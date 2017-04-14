@@ -3,7 +3,6 @@
     var triangles = parseMesh();
     var leaves = 0;
     this.root = buildTree(triangles);
-    console.log(leaves);
 
     function buildTree(triangles) {
       var root = new Node(triangles);
@@ -90,7 +89,6 @@
       return bestIndex;
     };
     this.sortOnAxis = function(axis){
-
       this.triangles.sort(function(t1, t2){
         var c1 = t1.boundingBox.getCenter(axis);
         var c2 = t2.boundingBox.getCenter(axis);
@@ -103,7 +101,6 @@
         return 0;
       });
     };
-
   }
 
   function Triangle(v1, v2, v3) {
