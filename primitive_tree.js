@@ -25,7 +25,6 @@
       var triangles = [];
       for(var i = 0; i < lines.length; i++){
         var array = lines[i].split(' ');
-        var type = array[0];
         var vals = array.slice(1,4).map(parseFloat);
         if(array[0] == 'v'){
           vertices.push(vals)

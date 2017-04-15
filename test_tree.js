@@ -1,40 +1,31 @@
 loadAll(['mesh/bunny.obj'], function(hash){
-  bvh = new BVH(hash['mesh/bunny.obj'])
+  var bvh = new BVH(hash['mesh/bunny.obj'])
   runTest(bvh.root)
   console.log(bvh)
 });
 
 function runTest(root){
   var canvas = document.getElementById('trace')
-  canvas.width = canvas.height = 400;
+  canvas.width = canvas.height = 800;
   var ctx = canvas.getContext('2d')
-  var t1 = performance.now()
-  naiveTrace(canvas, ctx, root)
-  console.log(performance.now() - t1)
-  t1 = performance.now()
-  treeTrace(canvas, ctx, root)
-  console.log(performance.now() - t1)
+  var t1;
+  // t1 = performance.now();
+  // naiveTrace(canvas, ctx, root);
+  // console.log(performance.now() - t1);
+  t1 = performance.now();
+  treeTrace(canvas, ctx, root);
+  console.log(performance.now() - t1);
 }
 
-function naiveTrace(canvas, ctx, root){
+function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var hit = Infinity;
-      var origin = [0,0,-0.2]
-      var dir = normalize(sub([(i - canvas.width/2)/1000, -(j - canvas.height/2)/1000, 0], origin));
+      var origin = [0,0,-0.2];
+      var dir = normalize(sub([(i - canvas.width/2)/(canvas.width * 2), -(j - canvas.height/2)/(canvas.height * 2), 0], origin));
       var ray = new Ray(origin, dir);
-      var triIdx
-      for(var k=0; k<root.triangles.length; k++){
-        var res = rayTriangleIntersect(ray, root.triangles[k]);
-        if(res < hit){
-          hit = res;
-          triIdx = k;
-        }
-      }
-      if(hit < Infinity && hit > 0){
-        debugger;
-        var color = getColor(root, triIdx);
-        //console.log(color)
+      var res = algorithm(ray);
+      if(res[0] < Infinity && res[0] > 0){
+        var color = getColor(res[1]);
         ctx.fillStyle = "rgb("+color[0]+","+color[1]+","+color[2]+")";
       } else {
         ctx.fillStyle = "#111111";
@@ -45,27 +36,30 @@ function naiveTrace(canvas, ctx, root){
   }
 }
 
-function treeTrace(canvas, ctx, root){
-  for(var i=0; i<canvas.width; i++){
-    for(var j=0; j<canvas.height; j++){
-      var hit = Infinity;
-      var origin = [0,0,-0.2]
-      var dir = normalize(sub([(i - canvas.width/2)/1000, -(j - canvas.height/2)/1000, 0], origin));
-      var ray = new Ray(origin, dir);
-      var triIdx;
-      hit = findTriangles(ray, root)
-
-      if(hit < Infinity && hit > 0){
-        //var color = getColor(root, triIdx);
-        //console.log(color)
-        ctx.fillStyle = "#FF0000";//"rgb("+color[0]+","+color[1]+","+color[2]+")";
-      } else {
-        ctx.fillStyle = "#111111";
+function naiveTrace(canvas, ctx, root){
+  var algorithm = function(ray){
+    var hit = Infinity,
+        tri = null;
+    for(var k=0; k<root.triangles.length; k++){
+      var res = rayTriangleIntersect(ray, root.triangles[k]);
+      if(res[0] < hit){
+        hit = res[0];
+        tri = res[1];
       }
-      ctx.fillRect( i, j, 1, 1 );
-      ctx.fill()
     }
-  }
+    return [hit, tri]
+  };
+
+  drawPixels(canvas, ctx, algorithm)
+}
+
+function treeTrace(canvas, ctx, root){
+
+  var algorithm = function(ray){
+    return findTriangles(ray, root);
+  };
+
+  drawPixels(canvas, ctx, algorithm)
 }
 
 function findTriangles(ray, root){
@@ -74,24 +68,23 @@ function findTriangles(ray, root){
   }
   var tLeft = rayBoxIntersect(ray, root.left.boundingBox);
   var tRight = rayBoxIntersect(ray, root.right.boundingBox);
-  var closest = Infinity;
+  var closest = [Infinity, null];
   if(tLeft < tRight){
-    closest = findTriangles(ray, root.left)
-    if(closest == Infinity){
-      closest = findTriangles(ray, root.right)
+    closest = findTriangles(ray, root.left);
+    if(closest[0] == Infinity){
+      closest = findTriangles(ray, root.right);
     }
   }
-  if(tRight < tLeft){
-    closest = findTriangles(ray, root.right)
-    if(closest == Infinity){
-      closest = findTriangles(ray, root.left)
+  if(tRight <= tLeft && tRight != Infinity){
+    closest = findTriangles(ray, root.right);
+    if(closest[0] == Infinity){
+      closest = findTriangles(ray, root.left);
     }
   }
   return closest;
 }
 
-function getColor(root, i){
-  var tri = root.triangles[i];
+function getColor(tri){
   var norm = normalize(cross(sub(tri.v2, tri.v1), sub(tri.v3, tri.v1)));
   var shade = dot([-.707, -.707, -.707], norm);
   var c = scale([255,0,0], shade);
@@ -172,18 +165,18 @@ function rayTriangleIntersect(ray, tri){
   var e2 = sub(tri.v3, tri.v1);
   var p = cross(ray.dir, e2);
   var det = dot(e1, p);
-  if(det > -epsilon && det < epsilon){return Infinity}
+  if(det > -epsilon && det < epsilon){return [Infinity, null]}
   var invDet = 1.0 / det;
   var t = sub(ray.origin, tri.v1);
   var u = dot(t, p) * invDet;
-  if(u < 0 || u > 1){return Infinity}
+  if(u < 0 || u > 1){return [Infinity, null]}
   var q = cross(t, e1);
   var v = dot(ray.dir, q) * invDet;
-  if(v < 0 || u + v > 1){return Infinity}
+  if(v < 0 || u + v > 1){return [Infinity, null]}
   t = dot(e2, q) * invDet;
   if(t > epsilon){
     //debugger;
-    return t;
+    return [t, tri];
   }
-  return Infinity;
+  return [Infinity, null];
 }
