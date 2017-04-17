@@ -1,5 +1,5 @@
-loadAll(['mesh/bunny.obj'], function(hash){
-  var bvh = new BVH(hash['mesh/bunny.obj'])
+loadAll(['mesh/dragon.obj'], function(hash){
+  var bvh = new BVH(hash['mesh/dragon.obj'])
   runTest(bvh.root)
   console.log(bvh)
 });
@@ -20,15 +20,20 @@ function runTest(root){
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var origin = [0,0,-0.2];
-      var dir = normalize(sub([(i - canvas.width/2)/(canvas.width * 2), -(j - canvas.height/2)/(canvas.height * 2), 0], origin));
+      var origin = [0,5,10];
+      var light = [-10,0,10]
+      var dir = normalize(sub([(i - canvas.width/2)/30, -(j - canvas.height/2)/30, 0], origin));
       var ray = new Ray(origin, dir);
       var res = algorithm(ray);
       if(res[0] < Infinity && res[0] > 0){
-        var color = getColor(res[1]);
+        origin = add(origin, scale(dir, res[0]))
+        dir = normalize(sub(light, origin))
+        ray = new Ray(origin, dir);
+        var shadow = algorithm(ray)
+        var color = getColor(res[1], shadow, dir);
         ctx.fillStyle = "rgb("+color[0]+","+color[1]+","+color[2]+")";
       } else {
-        ctx.fillStyle = "#111111";
+        ctx.fillStyle = "#ffffff";
       }
       ctx.fillRect( i, j, 1, 1 );
       ctx.fill()
@@ -62,32 +67,41 @@ function treeTrace(canvas, ctx, root){
   drawPixels(canvas, ctx, algorithm)
 }
 
+function closestNode(ray, root){
+  var tLeft = rayBoxIntersect(ray, root.left.boundingBox);
+  var tRight = rayBoxIntersect(ray, root.right.boundingBox);
+  var left = tLeft < Infinity ? root.left : null;
+  var right = tRight < Infinity ? root.right : null;
+  if(tLeft < tRight){
+    return [left, right, tLeft, tRight]
+  }
+  return [right, left, tRight, tLeft]
+}
+
 function findTriangles(ray, root){
   if(root.leaf){
     return rayTriangleIntersect(ray, root.triangles[0])
   }
-  var tLeft = rayBoxIntersect(ray, root.left.boundingBox);
-  var tRight = rayBoxIntersect(ray, root.right.boundingBox);
+  var ord = closestNode(ray, root)
   var closest = [Infinity, null];
-  if(tLeft < tRight){
-    closest = findTriangles(ray, root.left);
-    if(closest[0] == Infinity){
-      closest = findTriangles(ray, root.right);
-    }
-  }
-  if(tRight <= tLeft && tRight != Infinity){
-    closest = findTriangles(ray, root.right);
-    if(closest[0] == Infinity){
-      closest = findTriangles(ray, root.left);
+  for(var i=0 ; i<ord.length; i++){
+    if(ord[i] && ord[i+2] < closest[0]){
+      var res = findTriangles(ray, ord[i]);
+      if(res[0] < closest[0]){
+        closest = res;
+      }
     }
   }
   return closest;
 }
 
-function getColor(tri){
+function getColor(tri, shadow, dir){
   var norm = normalize(cross(sub(tri.v2, tri.v1), sub(tri.v3, tri.v1)));
-  var shade = dot([-.707, -.707, -.707], norm);
-  var c = scale([255,0,0], shade);
+  var shade = Math.max(dot(dir, norm),0.1);
+  if(shadow[0] < Infinity){
+    shade = 0.1;
+  }
+  var c = scale([0,255,255], shade);
   //console.log(c);
   return c.map(Math.floor)
 }
