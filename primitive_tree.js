@@ -1,5 +1,5 @@
 (function(exports){
-  exports.BVH = function(objText) {
+  exports.BVH = function(objText, maxTris) {
     var triangles = parseMesh();
     var leaves = 0;
     this.root = buildTree(triangles);
@@ -8,7 +8,7 @@
       var root = new Node(triangles);
       var split = root.getSplittingAxis();
       root.sortOnAxis(split);
-      if(root.triangles.length < 2){
+      if(root.triangles.length <= maxTris){
         leaves++;
         root.leaf = true;
         return root;
@@ -23,21 +23,37 @@
       var lines = objText.split('\n');
       var vertices = [];
       var triangles = [];
-      for(var i = 0; i < lines.length; i++){
+      for(var i = 0; i < lines.length; i++) {
         var array = lines[i].split(/[ ]+/);
-        var vals = array.slice(1,4).map(parseFloat);
-        if(array[0] == 'v'){
+        var vals = array.slice(1, 4).map(parseFloat);
+        if (array[0] == 'v') {
           vertices.push(vals)
         } else if (array[0] == 'f') {
-          var tri = new Triangle (
-            vertices[vals[0]-1],
-            vertices[vals[1]-1],
-            vertices[vals[2]-1]
+          var tri = new Triangle(
+            vertices[vals[0] - 1],
+            vertices[vals[1] - 1],
+            vertices[vals[2] - 1]
           );
           triangles.push(tri);
         }
       }
       return triangles;
+    }
+    this.serializeTree = function(){
+      var nodes = [],
+          tris = [];
+      function traverseTree(root, prev){
+        var parent = nodes.length;
+        nodes.push([root, prev]);
+        if(root.leaf){
+          return
+        }
+        traverseTree(root.left, parent);
+        traverseTree(root.right, parent);
+
+      }
+      traverseTree(this.root, -1);
+      return nodes;
     }
   };
 
@@ -108,5 +124,4 @@
     this.v3 = v3;
     this.boundingBox = new BoundingBox(this)
   }
-
 })(this);
