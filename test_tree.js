@@ -1,5 +1,8 @@
-loadAll(['mesh/dragon.obj'], function(hash){
-  var bvh = new BVH(hash['mesh/dragon.obj'])
+loadAll(['mesh/huge.obj'], function(hash){
+  var t1 = performance.now();
+  var bvh = new BVH(hash['mesh/huge.obj'], 4)
+  console.log(performance.now() - t1);
+
   runTest(bvh.root)
   console.log(bvh)
 });
@@ -20,9 +23,11 @@ function runTest(root){
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var origin = [0,5,10];
-      var light = [-10,0,10]
-      var dir = normalize(sub([(i - canvas.width/2)/30, -(j - canvas.height/2)/30, 0], origin));
+      var shift = [0, 0.1, 0]
+      var origin = [0, 0, 1];
+      var light = [0, 10, 1]
+      var dir = normalize(sub([(i - canvas.width/2)/3000, -(j - canvas.height/2)/3000, 0], origin));
+      origin = add(origin, shift);
       var ray = new Ray(origin, dir);
       var res = algorithm(ray);
       if(res[0] < Infinity && res[0] > 0){
@@ -80,7 +85,14 @@ function closestNode(ray, root){
 
 function findTriangles(ray, root){
   if(root.leaf){
-    return rayTriangleIntersect(ray, root.triangles[0])
+    var res = [Infinity, null]
+    for(var i=0; i<root.triangles.length; i++){
+      var tmp = rayTriangleIntersect(ray, root.triangles[i])
+      if(tmp[0] < res[0]){
+        res = tmp;
+      }
+    }
+    return res;
   }
   var ord = closestNode(ray, root)
   var closest = [Infinity, null];
@@ -101,7 +113,7 @@ function getColor(tri, shadow, dir){
   if(shadow[0] < Infinity){
     shade = 0.1;
   }
-  var c = scale([0,255,255], shade);
+  var c = scale([255,255,255], shade);
   //console.log(c);
   return c.map(Math.floor)
 }
@@ -174,7 +186,7 @@ function rayBoxIntersect(ray, bbox){
 }
 
 function rayTriangleIntersect(ray, tri){
-  var epsilon = 0.0000001;
+  var epsilon = 0.000000000001;
   var e1 = sub(tri.v2, tri.v1);
   var e2 = sub(tri.v3, tri.v1);
   var p = cross(ray.dir, e2);
