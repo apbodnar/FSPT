@@ -1,7 +1,6 @@
-loadAll(['mesh/huge.obj', 'mesh/bunny.obj'], function(hash){
+loadAll(['mesh/sibenik.obj'], function(hash){
   var t1 = performance.now();
-  var triangles = parseMesh(hash['mesh/huge.obj']);
-  addTriangles(triangles)
+  var triangles = parseMesh(hash['mesh/sibenik.obj']);
   //triangles = triangles.concat(parseMesh(hash['mesh/bunny.obj']));
   var bvh = new BVH(triangles, 4);
   console.log(performance.now() - t1);
@@ -12,7 +11,7 @@ loadAll(['mesh/huge.obj', 'mesh/bunny.obj'], function(hash){
 
 function runTest(root){
   var canvas = document.getElementById('trace');
-  canvas.width = canvas.height = 800;
+  canvas.width = canvas.height = 200;
   var ctx = canvas.getContext('2d');
   var t1;
   // t1 = performance.now();
@@ -23,26 +22,15 @@ function runTest(root){
   console.log(performance.now() - t1);
 }
 
-function addTriangles(triangles) {
-  triangles.push(new Triangle(
-    [0.55,0.0527,0.55],
-    [-0.55,0.0527,-0.55],
-    [-0.55,0.0527,0.55])
-  );
-  triangles.push(new Triangle(
-    [0.55,0.0527,0.55],
-    [0.55,0.0527,-0.55],
-    [-0.55,0.0527,-0.55])
-  );
-}
-
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var shift = [0, 0.1, 0];
-      var origin = [0, 0, 1];
-      var light = [0, 10, 1];
-      var dir = normalize(sub([(i - canvas.width/2)/3000, -(j - canvas.height/2)/3000, 0], origin));
+      var shift = [0, -4, -1];
+      var origin = [0, 0, -1];
+      var halfWidth = canvas.width/2;
+      var halfHeight = canvas.height/2;
+      var light = [0, 3, 0];
+      var dir = normalize(sub([ (i/halfWidth-1), -(j/halfHeight - 1), 0], origin));
       origin = add(origin, shift);
       var ray = new Ray(origin, dir);
       var res = algorithm(ray);
@@ -51,7 +39,7 @@ function drawPixels(canvas, ctx, algorithm){
         dir = normalize(sub(light, origin));
         ray = new Ray(origin, dir);
         var shadow = algorithm(ray);
-        var color = getColor(res[1], shadow, dir);
+        var color = getColor(res[1], shadow, dir, light, origin);
         ctx.fillStyle = "rgb("+color[0]+","+color[1]+","+color[2]+")";
       } else {
         ctx.fillStyle = "#ffffff";
@@ -123,51 +111,15 @@ function findTriangles(ray, root){
   return closest;
 }
 
-function getColor(tri, shadow, dir){
+function getColor(tri, shadow, dir, light, origin){
   var norm = normalize(cross(sub(tri.v2, tri.v1), sub(tri.v3, tri.v1)));
-  var shade = Math.max(dot(dir, norm),0.1);
-  if(shadow[0] < Infinity){
-    shade = 0.1;
+  var shade = Math.max(dot(dir, norm),0.2);
+  if(shadow[0] < magnitude(sub(light, origin))){
+    shade = 0.2;
   }
   var c = scale([255,255,255], shade);
   //console.log(c);
   return c.map(Math.floor)
-}
-
-function magnitude(v){
-  return Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
-}
-
-function normalize(v){
-  var m = magnitude(v)
-  return scale(v, 1/m);
-}
-
-function scale(v, s){
-  return [v[0]*s, v[1]*s, v[2]*s]
-}
-
-function add(v1, v2){
-  return [v1[0]+v2[0],v1[1]+v2[1],v1[2]+v2[2]]
-}
-
-function sub(v1, v2){
-  return [v1[0]-v2[0],v1[1]-v2[1],v1[2]-v2[2]]
-}
-
-function inverse(v){
-  return [1.0/v[0], 1.0/v[1], 1.0/v[2]]
-}
-
-function dot(v1, v2){
-  return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2]
-}
-
-function cross(v1, v2){
-  var x = v1[1] * v2[2] - v1[2] * v2[1],
-      y = -(v1[0] * v2[2] - v1[2] * v2[0]),
-      z = v1[0] * v2[1] - v1[1] * v2[0];
-  return [x, y, z]
 }
 
 function Ray(origin, dir){
@@ -217,7 +169,6 @@ function rayTriangleIntersect(ray, tri){
   if(v < 0 || u + v > 1){return [Infinity, null]}
   t = dot(e2, q) * invDet;
   if(t > epsilon){
-    //debugger;
     return [t, tri];
   }
   return [Infinity, null];

@@ -13,8 +13,9 @@
         return root;
       }
       var l = root.triangles.length;
-      root.left = buildTree(root.triangles.slice(0, l/2));
-      root.right = buildTree(root.triangles.slice(l/2, l));
+      var i = root.getSplittingIndex(split);
+      root.left = buildTree(root.triangles.slice(0, i));
+      root.right = buildTree(root.triangles.slice(i, l));
       return root;
     }
 
@@ -83,6 +84,16 @@
       }
       return bestIndex;
     };
+    this.getSplittingIndex = function(axis){
+      var median = this.boundingBox.getCenter(axis);
+      for(var i=0; i<this.triangles.length; i++){
+        var point = this.triangles[i].boundingBox.getCenter(axis)
+        if(point > median){
+          return i;
+        }
+      }
+      return this.triangles.length/2;
+    };
     this.sortOnAxis = function(axis){
       this.triangles.sort(function(t1, t2){
         var c1 = t1.boundingBox.getCenter(axis);
@@ -105,6 +116,37 @@
     this.boundingBox = new BoundingBox(this)
   }
 
+  function splitTriangle(triangle, threshold){
+    var bb = triangle.boundingBox.getBounds();
+    var span = 0;
+    for(var i = 0; i< bb.length/2; i++){
+      span = Math.max(bb[i*2+1] - bb[i*2], span)
+    }
+    if(span < threshold){
+      return [triangle]
+    }
+
+    var verts = [triangle.v1, triangle.v2, triangle.v3];
+    var idx;
+    var scalar = 1;
+    for(var i=0; i<verts.length; i++){
+      var left = verts[(i+2) % verts.length];
+      var right = verts[(i+1) % verts.length];
+      var e1 = normalize(sub(left, verts[i]));
+      var e2 = normalize(sub(right, verts[i]));
+      var tempScalar = dot(e1, e2);
+      if(tempScalar < scalar){
+        idx = i;
+        scalar = tempScalar;
+      }
+    }
+
+    var opposite = scale(add(verts[(idx+2) % verts.length], verts[(idx+1) % verts.length]),0.5);
+    var t1 = new Triangle(verts[idx],verts[(idx+1) % verts.length], opposite);
+    var t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length]);
+    return splitTriangle(t1, threshold).concat(splitTriangle(t2, threshold));
+  }
+
   exports.parseMesh = function(objText) {
     var lines = objText.split('\n');
     var vertices = [];
@@ -123,6 +165,20 @@
         triangles.push(tri);
       }
     }
+    var bb = new BoundingBox(triangles).getBounds();
+    var span = 0;
+    for(var i = 0; i< bb.length/2; i++){
+      span = Math.max(bb[i*2+1] - bb[i*2], span)
+    }
+    console.log(triangles.length)
+    for(var i = 0; i < triangles.length; i++) {
+      var subTriangles = splitTriangle(triangles[i], span/16);
+      if(subTriangles.length > 1){
+        triangles.splice(i,1)
+        triangles = subTriangles.concat(triangles)
+      }
+    }
+    console.log(triangles.length)
     return triangles;
   }
 
