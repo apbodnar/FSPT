@@ -1,6 +1,5 @@
 (function(exports){
   exports.BVH = function(triangles, maxTris) {
-    var leaves = 0;
     this.root = buildTree(triangles);
 
     function buildTree(triangles) {
@@ -8,32 +7,33 @@
       var split = root.getSplittingAxis();
       root.sortOnAxis(split);
       if(root.triangles.length <= maxTris){
-        leaves++;
         root.leaf = true;
         return root;
       }
       var l = root.triangles.length;
       var i = root.getSplittingIndex(split);
-      root.left = buildTree(root.triangles.slice(0, i));
-      root.right = buildTree(root.triangles.slice(i, l));
+      root.left = buildTree(triangles.slice(0, i));
+      root.right = buildTree(triangles.slice(i, l));
+      root.triangles = null;
       return root;
     }
 
 
     this.serializeTree = function(){
       var nodes = [],
-          tris = [];
+          tris = [],
+          i = -1;
       function traverseTree(root, prev){
-        var parent = nodes.length;
-        nodes.push([root, prev]);
-        if(root.leaf){
-          return
+        var parent = ++i;
+        var node = {box: root.boundingBox, parent: prev}
+        nodes.push(node);
+        if(!root.leaf){
+          node.left = traverseTree(root.left, parent);
+          node.right = traverseTree(root.right, parent);
         }
-        traverseTree(root.left, parent);
-        traverseTree(root.right, parent);
-
+        return parent
       }
-      traverseTree(this.root, -1);
+      traverseTree(this.root, i);
       return nodes;
     }
   };
@@ -172,7 +172,7 @@
     }
     console.log(triangles.length)
     for(var i = 0; i < triangles.length; i++) {
-      var subTriangles = splitTriangle(triangles[i], span/16);
+      var subTriangles = splitTriangle(triangles[i], span/32);
       if(subTriangles.length > 1){
         triangles.splice(i,1)
         triangles = subTriangles.concat(triangles)
