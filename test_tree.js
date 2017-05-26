@@ -1,8 +1,9 @@
-loadAll(['mesh/sibenik.obj'], function(hash){
+loadAll(['mesh/bunny.obj'], function(hash){
   var t1 = performance.now();
-  var triangles = parseMesh(hash['mesh/sibenik.obj']);
+  var triangles = parseMesh(hash['mesh/bunny.obj']);
   //triangles = triangles.concat(parseMesh(hash['mesh/bunny.obj']));
   var bvh = new BVH(triangles, 4);
+  console.log(bvh.serializeTree());
   console.log(performance.now() - t1);
 
   runTest(bvh.root);
@@ -11,7 +12,7 @@ loadAll(['mesh/sibenik.obj'], function(hash){
 
 function runTest(root){
   var canvas = document.getElementById('trace');
-  canvas.width = canvas.height = 200;
+  canvas.width = canvas.height = 400;
   var ctx = canvas.getContext('2d');
   var t1;
   // t1 = performance.now();
@@ -25,11 +26,11 @@ function runTest(root){
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var shift = [0, -4, -1];
+      var shift = [0, 0, 0.75];
       var origin = [0, 0, -1];
       var halfWidth = canvas.width/2;
       var halfHeight = canvas.height/2;
-      var light = [0, 3, 0];
+      var light = [0, 5, -5];
       var dir = normalize(sub([ (i/halfWidth-1), -(j/halfHeight - 1), 0], origin));
       origin = add(origin, shift);
       var ray = new Ray(origin, dir);
@@ -118,7 +119,6 @@ function getColor(tri, shadow, dir, light, origin){
     shade = 0.2;
   }
   var c = scale([255,255,255], shade);
-  //console.log(c);
   return c.map(Math.floor)
 }
 
