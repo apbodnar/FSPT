@@ -11,9 +11,9 @@
           if(counter === 0){
             callback.apply(null,[resHash]);
           }
-        }
+        };
         img.src = url;
-      } else{
+      } else {
         var req = new XMLHttpRequest();
         req.addEventListener("load", function(res){
           counter--;

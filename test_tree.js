@@ -6,11 +6,11 @@ loadAll(['mesh/bunny.obj'], function(hash){
   console.log(bvh.serializeTree());
   console.log(performance.now() - t1);
 
-  runTest(bvh.root);
+  runTest(bvh);
   console.log(bvh)
 });
 
-function runTest(root){
+function runTest(bvh){
   var canvas = document.getElementById('trace');
   canvas.width = canvas.height = 400;
   var ctx = canvas.getContext('2d');
@@ -19,14 +19,15 @@ function runTest(root){
   // naiveTrace(canvas, ctx, root);
   // console.log(performance.now() - t1);
   t1 = performance.now();
-  treeTrace(canvas, ctx, root);
+  //treeTrace(canvas, ctx, bvh.root);
+  arrayTreeTrace(canvas, ctx, bvh.serializeTree());
   console.log(performance.now() - t1);
 }
 
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var shift = [0, 0, 0.75];
+      var shift = [0, 0.25, 0.75];
       var origin = [0, 0, -1];
       var halfWidth = canvas.width/2;
       var halfHeight = canvas.height/2;
@@ -51,6 +52,57 @@ function drawPixels(canvas, ctx, algorithm){
   }
 }
 
+function stacklessTreeTrace(canvas, ctx, array){
+  var fromSibling = 0,
+      fromChild = 1,
+      fromParent = 2;
+  var rootIdx = 0;
+  var res = [Infinity, null];
+
+  function orderedChildren(ray, split, rootIdx){
+    var root = array[rootIdx].node,
+        left = root.left,
+        right = root.right;
+
+    if(ray.dir[split] > 0){
+      return {near: left, far: right}
+    } else {
+      return {near: right, far: left}
+    }
+  }
+
+  function traverse(ray){
+    var state = fromParent;
+    var current = orderedChildren(ray, array[rootNode].node.split, rootIdx).near;
+    while(true){
+      var node = array[current].node;
+      var ordered = orderedChildren(ray, node.split, current);
+      switch(state){
+        case fromChild:
+          if(current == rootNode){
+            return res;
+          }
+          var parentOrdered =
+          if(current == array[ordered.near]){
+
+          }
+          break;
+        case fromSibling:
+          break;
+        case fromParent:
+          break;
+      }
+    }
+  }
+}
+
+function arrayTreeTrace(canvas, ctx, array){
+  var algorithm = function (ray) {
+    return findTrianglesFlat(ray, array, 0)
+  };
+  drawPixels(canvas, ctx, algorithm)
+}
+
 function naiveTrace(canvas, ctx, root){
   var algorithm = function(ray){
     var hit = Infinity,
@@ -69,26 +121,25 @@ function naiveTrace(canvas, ctx, root){
 }
 
 function treeTrace(canvas, ctx, root){
-
   var algorithm = function(ray){
     return findTriangles(ray, root);
   };
-
   drawPixels(canvas, ctx, algorithm)
 }
 
-function closestNode(ray, root){
-  var tLeft = rayBoxIntersect(ray, root.left.boundingBox);
-  var tRight = rayBoxIntersect(ray, root.right.boundingBox);
-  var left = tLeft < Infinity ? root.left : null;
-  var right = tRight < Infinity ? root.right : null;
+function closestNode(ray, nLeft, nRight){
+  var tLeft = rayBoxIntersect(ray, nLeft.boundingBox);
+  var tRight = rayBoxIntersect(ray, nRight.boundingBox);
+  var left = tLeft < Infinity ? nLeft : null;
+  var right = tRight < Infinity ? nRight : null;
   if(tLeft < tRight){
     return [left, right, tLeft, tRight]
   }
   return [right, left, tRight, tLeft]
 }
 
-function findTriangles(ray, root){
+function findTrianglesFlat(ray, array, i){
+  var root = array[i].node;
   if(root.leaf){
     var res = [Infinity, null]
     for(var i=0; i<root.triangles.length; i++){
@@ -99,7 +150,28 @@ function findTriangles(ray, root){
     }
     return res;
   }
-  var ord = closestNode(ray, root)
+  var left = array[array[i].left].node;
+  var right = array[array[i].right].node;
+  left.idx = array[i].left;
+  right.idx = array[i].right;
+  var ord = closestNode(ray, left, right);
+  var closest = [Infinity, null];
+  for(var i=0 ; i<ord.length; i++){
+    if(ord[i] && ord[i+2] < closest[0]){
+      var res = findTrianglesFlat(ray, array, ord[i].idx);
+      if(res[0] < closest[0]){
+        closest = res;
+      }
+    }
+  }
+  return closest;
+}
+
+function findTriangles(ray, root){
+  if(root.leaf){
+    return processLeaf(ray, root);
+  }
+  var ord = closestNode(ray, root.left, root.right);
   var closest = [Infinity, null];
   for(var i=0 ; i<ord.length; i++){
     if(ord[i] && ord[i+2] < closest[0]){
@@ -151,6 +223,17 @@ function rayBoxIntersect(ray, bbox){
   } else {
     return Infinity;
   }
+}
+
+function processLeaf(ray, root){
+  var res = [Infinity, null];
+  for(var i=0; i<root.triangles.length; i++){
+    var tmp = rayTriangleIntersect(ray, root.triangles[i])
+    if(tmp[0] < res[0]){
+      res = tmp;
+    }
+  }
+  return res;
 }
 
 function rayTriangleIntersect(ray, tri){
