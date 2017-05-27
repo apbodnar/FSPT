@@ -18,18 +18,19 @@
       return root;
     }
 
-
     this.serializeTree = function(){
       var nodes = [],
           tris = [],
           i = -1;
       function traverseTree(root, prev){
         var parent = ++i;
-        var node = {box: root.boundingBox, parent: prev}
+        var node = {node: root, parent: prev};
         nodes.push(node);
         if(!root.leaf){
           node.left = traverseTree(root.left, parent);
           node.right = traverseTree(root.right, parent);
+          nodes[node.left].sibling = node.right;
+          nodes[node.right].sibling = node.left;
         }
         return parent
       }
@@ -71,6 +72,7 @@
     this.leaf = false;
     this.left = null;
     this.right = null;
+    this.split = null;
     this.getSplittingAxis = function(){
       var box = this.boundingBox.getBounds();
       var bestIndex = 0;
@@ -95,6 +97,7 @@
       return this.triangles.length/2;
     };
     this.sortOnAxis = function(axis){
+      this.split = axis;
       this.triangles.sort(function(t1, t2){
         var c1 = t1.boundingBox.getCenter(axis);
         var c2 = t2.boundingBox.getCenter(axis);
