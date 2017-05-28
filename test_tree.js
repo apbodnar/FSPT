@@ -20,7 +20,8 @@ function runTest(bvh){
   // console.log(performance.now() - t1);
   t1 = performance.now();
   //treeTrace(canvas, ctx, bvh.root);
-  arrayTreeTrace(canvas, ctx, bvh.serializeTree());
+  //arrayTreeTrace(canvas, ctx, bvh.serializeTree());
+  stacklessTreeTrace(canvas, ctx, bvh.serializeTree());
   console.log(performance.now() - t1);
 }
 
@@ -59,12 +60,12 @@ function stacklessTreeTrace(canvas, ctx, array){
   var rootIdx = 0;
   var res = [Infinity, null];
 
-  function orderedChildren(ray, split, rootIdx){
-    var root = array[rootIdx].node,
-        left = root.left,
-        right = root.right;
+  function orderedChildren(ray, nodeIdx){
+    var node = array[nodeIdx].node,
+        left = array[nodeIdx].left,
+        right = array[nodeIdx].right;
 
-    if(ray.dir[split] > 0){
+    if(ray.dir[node.split] > 0){
       return {near: left, far: right}
     } else {
       return {near: right, far: left}
@@ -72,28 +73,65 @@ function stacklessTreeTrace(canvas, ctx, array){
   }
 
   function traverse(ray){
+    var res = [Infinity, null];
     var state = fromParent;
-    var current = orderedChildren(ray, array[rootNode].node.split, rootIdx).near;
+    var current = orderedChildren(ray, rootIdx).near;
     while(true){
-      var node = array[current].node;
-      var ordered = orderedChildren(ray, node.split, current);
+      var fromArray = array[current]
+      var node = fromArray.node;
+      var ordered = orderedChildren(ray, current);
       switch(state){
         case fromChild:
-          if(current == rootNode){
+          if(current == rootIdx){
             return res;
           }
-          var parentOrdered =
-          if(current == array[ordered.near]){
-
+          var parentOrdered = orderedChildren(ray, fromArray.parent)
+          if(current == parentOrdered.near){
+            current = fromArray.sibling;
+            state = fromSibling;
+          } else {
+            current = fromArray.parent
+            state = fromChild;
           }
           break;
         case fromSibling:
+          var test = rayBoxIntersect(ray, node.boundingBox)
+          if(test == Infinity){
+            current = fromArray.parent;
+            state = fromChild;
+          } else if (node.leaf) {
+            processed = processLeaf(ray, node);
+            if(processed[0] < res[0]){
+              res = processed;
+            }
+            current = fromArray.parent;
+            state = fromChild;
+          } else {
+            current = ordered.near
+            state = fromParent;
+          }
           break;
         case fromParent:
+          var test = rayBoxIntersect(ray, node.boundingBox)
+          if(test == Infinity){
+            current = fromArray.sibling;
+            state = fromSibling;
+          } else if(node.leaf){
+            processed = processLeaf(ray, node);
+            if(processed[0] < res[0]){
+              res = processed;
+            }
+            current = fromArray.sibling;
+            state = fromSibling;
+          } else {
+            current = ordered.near;
+            state = fromParent;
+          }
           break;
       }
     }
   }
+  drawPixels(canvas, ctx, traverse)
 }
 
 function arrayTreeTrace(canvas, ctx, array){
