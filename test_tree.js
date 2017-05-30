@@ -256,11 +256,7 @@ function rayBoxIntersect(ray, bbox){
   tmin = Math.max(tmin, Math.min(tz1, tz2));
   tmax = Math.min(tmax, Math.max(tz1, tz2));
 
-  if (tmax >= tmin){
-    return tmin;
-  } else {
-    return Infinity;
-  }
+  return tmax >= tmin ? tmin : Infinity;
 }
 
 function processLeaf(ray, root){
