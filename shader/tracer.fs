@@ -16,18 +16,13 @@ out vec4 fragColor;
 
 uniform int tick;
 uniform vec3 eye;
-uniform vec3 spherePositions[sphereCount];
-uniform vec3 sphereAttrs[sphereCount];
-uniform vec3 sphereMats[sphereCount];
-uniform vec3 sphereColors[sphereCount];
 uniform sampler2D fbTex;
 
-struct Sphere {
-  vec3 origin;
-  vec3 attrs;
-  vec3 color;
-  vec3 material;
-};
+struct Triangle{
+  vec3 v1;
+  vec3 v2;
+  vec3 v3;
+}
 
 struct Ray{
   vec3 origin;
@@ -77,11 +72,8 @@ vec3 randomVec(vec3 normal, vec3 origin, float exp){
   return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
 }
 
-float checkSphereCollision(Ray ray,Sphere s){
-  float scalar = dot(ray.dir,ray.origin - s.origin);
-  float dist = distance(ray.origin, s.origin);
-  float squared = (scalar * scalar) - (dist * dist) + (s.attrs.r * s.attrs.r);
-  return squared < 0.0 ? max_t : -scalar - sqrt(squared);
+float checkTriangleCollision(Ray ray, Triangle t){
+
 }
 
 vec2 getDOF(){
