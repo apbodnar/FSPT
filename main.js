@@ -6,17 +6,13 @@ function PathTracer(){
   var textures = []
   var noiseTex;
   var framebuffers = [];
-  var numSpheres = 5;
-  var spheres = [];
-  var spherePositions = [];
-  var sphereAttrs = [];
-  var colors = [];
-  var materials = [];
   var eye = new Float32Array([0,0.0,-2.1]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
   var assets;
+  var triangles;
+  var BVHtexture;
 
   var paths = [
     "shader/tracer.vs",
@@ -48,6 +44,10 @@ function PathTracer(){
     return shader;
   }
 
+  function indexToCoords(i, res){
+
+  }
+
   function initProgram(path, uniforms, attributes) {
     var fs = getShader(gl, assets[path+".fs"],"FRAGMENT_SHADER");
     var vs = getShader(gl, assets[path+".vs"],"VERTEX_SHADER");
@@ -71,7 +71,7 @@ function PathTracer(){
   function initPrograms(){
     programs.tracer = initProgram(
       "shader/tracer",
-      ["tick","dims","eye","fbTex", "triTex"],
+      ["tick","dims","eye","fbTex", "triTex", "bvhTex"],
       ["corner"]
     );
     programs.draw = initProgram(
@@ -81,14 +81,44 @@ function PathTracer(){
     );
   }
 
+  function initBVH(){
+    BVHtexture = createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
+    var buffer = [
+      0,0,0, 0,1,0,
+      0,2,0, 0,3,0
+    ]
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGUI, 2, 2, 0, gl.RG, gl.UNSIGNED_INT, new Uint32Array(buffer));
+  }
+
   function initPrimitives(){
+    triangles = createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, triangles);
+    var buffer = [
+      1.0,  1.0,  2.0,
+     -1.5,  1.0,  2.0,
+      1.5, -1.0,  2.0,
+        0,    0,    0,
+      1.0,  2.0,  3.0,
+     -1.5,  2.0,  3.0,
+      1.5, -0.0,  3.0,
+        0,    0,    0,
+      2.0,  1.0,  4.0,
+     -0.5,  1.0,  4.0,
+      2.5, -1.0,  4.0,
+        0,    0,    0,
+    -0.5,  -0.5,  3.0,
+     0.5,  -0.5,  3.0,
+    -0.5,   0.0,  3.0,
+        0,    0,    0
+    ];
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, 4, 4, 0, gl.RGB, gl.FLOAT, new Float32Array(buffer));
 
   }
 
   function createTexture() {
     var t = gl.createTexture () ;
     gl.getExtension('EXT_color_buffer_float');
-    //gl.getExtension('OES_texture_float_linear');
     gl.bindTexture(gl.TEXTURE_2D, t);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -150,13 +180,16 @@ function PathTracer(){
     var t = max_t;
     var index = -1;
     element.addEventListener("mousedown", function(e){
-
+      mode = 1
     }, false);
     element.addEventListener("mousemove", function(e){
-
+      if(mode){
+        eye = rotateY(eye, 0.1);
+        pingpong = 0;
+      }
     }, false);
     element.addEventListener("mouseup", function(){
-
+      mode = 0;
     }, false);
   }
 
@@ -167,10 +200,15 @@ function PathTracer(){
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
     gl.uniform1i(program.uniforms.fbTex, 0);
+    gl.uniform1i(program.uniforms.triTex, 1);
+    gl.uniform1i(program.uniforms.bvhTex, 2);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3f(program.uniforms.eye, eye[0],eye[1],eye[2]);
-	//bind geometry tex here
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, triangles);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures[(i+1)%2]);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i%2]);
@@ -206,6 +244,7 @@ function PathTracer(){
     var canvas = document.getElementById("trace");
     initGL(canvas);
     initPrograms();
+    initBVH();
     initPrimitives();
     initBuffers();
     initEvents();
