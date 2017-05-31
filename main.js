@@ -11,8 +11,8 @@ function PathTracer(){
   var clear = 0;
   var max_t = 1000000;
   var assets;
-  var triangles;
-  var BVHtexture;
+  var triangleTexture;
+  var bvhTexture;
 
   var paths = [
     "shader/tracer.vs",
@@ -42,10 +42,6 @@ function PathTracer(){
       return null;
     }
     return shader;
-  }
-
-  function indexToCoords(i, res){
-
   }
 
   function initProgram(path, uniforms, attributes) {
@@ -81,39 +77,56 @@ function PathTracer(){
     );
   }
 
-  function initBVH(){
-    BVHtexture = createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
-    var buffer = [
-      0,0,0, 0,1,0,
-      0,2,0, 0,3,0
-    ]
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGUI, 2, 2, 0, gl.RG, gl.UNSIGNED_INT, new Uint32Array(buffer));
+  function requiredRes(num_elements, per_element){
+    var root = Math.sqrt(num_elements * per_element);
+    var width = Math.ceil(root/per_element) * per_element;
+    var height = Math.ceil(num_elements * per_element / width);
+    return [width, height]
   }
 
-  function initPrimitives(){
-    triangles = createTexture()
-    gl.bindTexture(gl.TEXTURE_2D, triangles);
-    var buffer = [
-      1.0,  1.0,  2.0,
-     -1.5,  1.0,  2.0,
-      1.5, -1.0,  2.0,
-        0,    0,    0,
-      1.0,  2.0,  3.0,
-     -1.5,  2.0,  3.0,
-      1.5, -0.0,  3.0,
-        0,    0,    0,
-      2.0,  1.0,  4.0,
-     -0.5,  1.0,  4.0,
-      2.5, -1.0,  4.0,
-        0,    0,    0,
-    -0.5,  -0.5,  3.0,
-     0.5,  -0.5,  3.0,
-    -0.5,   0.0,  3.0,
-        0,    0,    0
-    ];
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, 4, 4, 0, gl.RGB, gl.FLOAT, new Float32Array(buffer));
+  function padBuffer(buffer, width, height){
+    var numToPad = width * height - buffer.length;
+    console.assert(numToPad >= 0);
+    for(var i=0; i< numToPad; i++){
+      buffer.push(-1);
+    }
+  }
 
+  function initBVH(){
+    var geometry = parseMesh(assets['mesh/bunny.obj']);
+    var bvhArray = new BVH(geometry, 4).serializeTree();
+    var bvhBuffer = [];
+    var trianglesBuffer = [];
+    for(var i=0; i< bvhArray.length; i++){
+      var e = bvhArray[i];
+      var node = e.node;
+      var box = node.boundingBox;
+      var triIndex = node.leaf ? trianglesBuffer.length/3 : -1;
+      // 4 pixels
+      var reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
+      var bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
+      if(node.leaf){
+        var tris = node.triangles;
+        for(var j=0; j<tris.length; j++){
+          trianglesBuffer = trianglesBuffer.concat(tris[j].v1, tris[j].v2, tris[j].v3)
+        }
+      }
+      for(var j=0; j<bufferNode.length; j++){
+        bvhBuffer.push(bufferNode[j])
+      }
+    }
+
+    bvhTexture = createTexture();
+    var res = requiredRes(bvhBuffer.length, 4);
+    padBuffer(bvhBuffer, res[0], res[1]);
+    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
+
+    triangleTexture = createTexture();
+    res = requiredRes(trianglesBuffer.length, 3);
+    padBuffer(trianglesBuffer, res[0], res[1]);
+    gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
   }
 
   function createTexture() {
@@ -206,9 +219,9 @@ function PathTracer(){
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3f(program.uniforms.eye, eye[0],eye[1],eye[2]);
     gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
+    gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, triangles);
+    gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures[(i+1)%2]);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i%2]);
