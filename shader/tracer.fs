@@ -32,14 +32,14 @@ struct Ray {
 };
 
 struct Node {
-    vec3 boxMin;
-    vec3 boxMax;
-    uint split;
-    vec2 parent;
-    vec2 sibling;
-    vec2 left;
-    vec2 right;
-    vec2 triangles;
+  float parent;
+  float sibling;
+  uint split;
+  float left;
+  float right;
+  float triangles;
+  vec3 boxMin;
+  vec3 boxMax;
 };
 
 struct Hit {
@@ -112,9 +112,9 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getDOF(){
-    float theta = rand(coords) * M_PI * 2.0;
-    float sqrt_r = sqrt(rand(coords.yx));
-    return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
+  float theta = rand(coords) * M_PI * 2.0;
+  float sqrt_r = sqrt(rand(coords.yx));
+  return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
 // Hit getSpecular(int i, float t, Ray ray, Sphere s){
@@ -183,7 +183,17 @@ vec2 getDOF(){
 //   return result;
 // }
 
+Node createNode(float index){
+  vec2 nodeCoords = indexToCoords(bvhTex, index, 4);
+  vec3 first = texelFetch(bvhTex, nodeCoords, 0);
+  vec3 second = texelFetch(bvhTex, nodeCoords + vec2(1,0), 0);
+  vec3 bbMin = texelFetch(bvhTex, nodeCoords + vec2(2,0), 0);
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + vec2(3,0), 0)
+  return Node(first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
+}
+
 void main(void) {
+  Node root =
   vec3 origin = vec3(coords.x, coords.y, 0);
   vec3 dof = vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
   Ray ray = Ray(origin, normalize(origin - eye) + dof );

@@ -119,7 +119,7 @@ function PathTracer(){
     bvhTexture = createTexture();
     var res = requiredRes(bvhBuffer.length, 4);
     padBuffer(bvhBuffer, res[0], res[1]);
-    gl.bindTexture(gl.TEXTURE_2D, BVHtexture);
+    gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
 
     triangleTexture = createTexture();
@@ -258,7 +258,6 @@ function PathTracer(){
     initGL(canvas);
     initPrograms();
     initBVH();
-    initPrimitives();
     initBuffers();
     initEvents();
 
