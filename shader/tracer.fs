@@ -31,6 +31,17 @@ struct Ray {
   vec3 dir;
 };
 
+struct Node {
+    vec3 boxMin;
+    vec3 boxMax;
+    uint split;
+    vec2 parent;
+    vec2 sibling;
+    vec2 left;
+    vec2 right;
+    vec2 triangles;
+};
+
 struct Hit {
   Ray ray;
   vec3 emmittance;
@@ -60,6 +71,11 @@ mat3 rotationMatrix(vec3 axis, float angle){
   return mat3(oc * axis.x * axis.x + c,    oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
         oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c,          oc * axis.y * axis.z - axis.x * s,
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
+}
+
+ivec2 indexToCoords(sampler2D tex, float index, uint perElement){
+    ivec2 dims = textureSize(tex, 0);
+    return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
 }
 
 vec3 randomVec(vec3 normal, vec3 origin, float exp){
@@ -173,7 +189,7 @@ void main(void) {
   Ray ray = Ray(origin, normalize(origin - eye) + dof );
   float dist = max_t;
   ivec2 bvhc = ivec2(texelFetch(bvhTex,ivec2(0,0),0).rg);
-  for(int i=0; i< 1; i++){
+  for(int i=0; i< 1; i++) {
     vec3 v2 = texelFetch(triTex, bvhc + ivec2(0,i), 0).rgb;
     vec3 v1 = texelFetch(triTex, bvhc + ivec2(1,i), 0).rgb;
     vec3 v3 = texelFetch(triTex, bvhc + ivec2(2,i), 0).rgb;
@@ -181,7 +197,7 @@ void main(void) {
     dist = min(dist, rayTriangleIntersect(ray, tri));
   }
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 color = dist < max_t ? vec3(bvhc,0) : vec3(0);
+  vec3 color = dist < max_t ? vec3(0,1,0) : vec3(0);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 
