@@ -11,6 +11,10 @@ const float M_PI = 3.1415926535897932384626433832795;
 const float epsilon = 0.00001; //not really epsilon
 const float gamma = 1.0/2.2;
 
+const uint FROM_PARENT = 0;
+const uint FROM_SIBLING = 1;
+const uint FROM_CHILD = 2;
+
 in vec2 coords;
 out vec4 fragColor;
 
@@ -183,8 +187,13 @@ vec2 getDOF(){
 //   return result;
 // }
 
-Node createTriangle(float index){
-    vec2 triCoords = indexToCoords(triTex, index, 3);
+Triangle createTriangle(float index){
+    ivec2 triCoords = indexToCoords(triTex, index, 3);
+    return Triangle(
+      texelFetch(triTex, indexToCoords(triTex, index, 3), 0),
+      texelFetch(triTex, indexToCoords(triTex, index + 1, 3), 0),
+      texelFetch(triTex, indexToCoords(triTex, index + 2, 3)iCoords, 0)
+    );
 }
 
 Node createNode(float index){
@@ -196,7 +205,23 @@ Node createNode(float index){
   return Node(first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
 }
 
-Node nearChild(Node node){
+Node nearChild(Node node, Ray ray){
+  uint axis = uint(node.split);
+  float index = ray.dir[axis] > 0 ? node.left : node.right;
+  return createNode(index);
+}
+
+bool rayBoxIntersect(Node node, Ray ray){
+  vec3 inverse = 1.0 / ray.dir;
+  vec3 t1 = (node.boxMin - ray.origin) * inverse;
+  vec3 t2 = (node.boxMax - ray.origin) * inverse;
+  vec3 maxT = min(vec3(1000000.0), max(t1, t2));
+  vec3 minT = max(vec3(-1000000.0), min(t1, t2));
+
+  return max(max(maxT.x, maxT.y),maxT.z) >= min(min(minT.x, minT.y),minT.z);
+}
+
+Hit traverseTree(Ray ray){
 
 }
 
