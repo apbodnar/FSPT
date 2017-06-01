@@ -34,7 +34,7 @@ struct Ray {
 struct Node {
   float parent;
   float sibling;
-  uint split;
+  float split;
   float left;
   float right;
   float triangles;
@@ -183,17 +183,25 @@ vec2 getDOF(){
 //   return result;
 // }
 
+Node createTriangle(float index){
+    vec2 triCoords = indexToCoords(triTex, index, 3);
+}
+
 Node createNode(float index){
   vec2 nodeCoords = indexToCoords(bvhTex, index, 4);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0);
   vec3 second = texelFetch(bvhTex, nodeCoords + vec2(1,0), 0);
   vec3 bbMin = texelFetch(bvhTex, nodeCoords + vec2(2,0), 0);
-  vec3 bbMax = texelFetch(bvhTex, nodeCoords + vec2(3,0), 0)
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + vec2(3,0), 0);
   return Node(first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
 }
 
+Node nearChild(Node node){
+
+}
+
 void main(void) {
-  Node root =
+  Node root = createNode(0.0);
   vec3 origin = vec3(coords.x, coords.y, 0);
   vec3 dof = vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
   Ray ray = Ray(origin, normalize(origin - eye) + dof );
