@@ -11,9 +11,9 @@ const float M_PI = 3.1415926535897932384626433832795;
 const float epsilon = 0.00001; //not really epsilon
 const float gamma = 1.0/2.2;
 
-const uint FROM_PARENT = 0;
-const uint FROM_SIBLING = 1;
-const uint FROM_CHILD = 2;
+const uint FROM_PARENT = uint(0);
+const uint FROM_SIBLING = uint(1);
+const uint FROM_CHILD = uint(2);
 
 in vec2 coords;
 out vec4 fragColor;
@@ -77,7 +77,7 @@ mat3 rotationMatrix(vec3 axis, float angle){
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
-ivec2 indexToCoords(sampler2D tex, float index, uint perElement){
+ivec2 indexToCoords(sampler2D tex, float index, float perElement){
     ivec2 dims = textureSize(tex, 0);
     return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
 }
@@ -188,26 +188,25 @@ vec2 getDOF(){
 // }
 
 Triangle createTriangle(float index){
-    ivec2 triCoords = indexToCoords(triTex, index, 3);
     return Triangle(
-      texelFetch(triTex, indexToCoords(triTex, index, 3), 0),
-      texelFetch(triTex, indexToCoords(triTex, index + 1, 3), 0),
-      texelFetch(triTex, indexToCoords(triTex, index + 2, 3)iCoords, 0)
+      texelFetch(triTex, indexToCoords(triTex, index, 3.0), 0).rgb,
+      texelFetch(triTex, indexToCoords(triTex, index + 1.0, 3.0), 0).rgb,
+      texelFetch(triTex, indexToCoords(triTex, index + 2.0, 3.0), 0).rgb
     );
 }
 
 Node createNode(float index){
-  vec2 nodeCoords = indexToCoords(bvhTex, index, 4);
-  vec3 first = texelFetch(bvhTex, nodeCoords, 0);
-  vec3 second = texelFetch(bvhTex, nodeCoords + vec2(1,0), 0);
-  vec3 bbMin = texelFetch(bvhTex, nodeCoords + vec2(2,0), 0);
-  vec3 bbMax = texelFetch(bvhTex, nodeCoords + vec2(3,0), 0);
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4.0);
+  vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
+  vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
+  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
   return Node(first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
 }
 
 Node nearChild(Node node, Ray ray){
   uint axis = uint(node.split);
-  float index = ray.dir[axis] > 0 ? node.left : node.right;
+  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
   return createNode(index);
 }
 
@@ -217,30 +216,29 @@ bool rayBoxIntersect(Node node, Ray ray){
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
   vec3 maxT = min(vec3(1000000.0), max(t1, t2));
   vec3 minT = max(vec3(-1000000.0), min(t1, t2));
-
   return max(max(maxT.x, maxT.y),maxT.z) >= min(min(minT.x, minT.y),minT.z);
 }
 
-Hit traverseTree(Ray ray){
-
-}
+//Hit traverseTree(Ray ray){
+//    return Hit();
+//}
 
 void main(void) {
   Node root = createNode(0.0);
   vec3 origin = vec3(coords.x, coords.y, 0);
   vec3 dof = vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
   Ray ray = Ray(origin, normalize(origin - eye) + dof );
-  float dist = max_t;
-  ivec2 bvhc = ivec2(texelFetch(bvhTex,ivec2(0,0),0).rg);
-  for(int i=0; i< 1; i++) {
-    vec3 v2 = texelFetch(triTex, bvhc + ivec2(0,i), 0).rgb;
-    vec3 v1 = texelFetch(triTex, bvhc + ivec2(1,i), 0).rgb;
-    vec3 v3 = texelFetch(triTex, bvhc + ivec2(2,i), 0).rgb;
-    Triangle tri = Triangle(v1,v2,v3);
-    dist = min(dist, rayTriangleIntersect(ray, tri));
-  }
+//  float dist = max_t;
+//  ivec2 bvhc = ivec2(texelFetch(bvhTex,ivec2(0,0),0).rg);
+//  for(int i=0; i< 1; i++) {
+//    vec3 v2 = texelFetch(triTex, bvhc + ivec2(0,i), 0).rgb;
+//    vec3 v1 = texelFetch(triTex, bvhc + ivec2(1,i), 0).rgb;
+//    vec3 v3 = texelFetch(triTex, bvhc + ivec2(2,i), 0).rgb;
+//    Triangle tri = Triangle(v1,v2,v3);
+//    dist = min(dist, rayTriangleIntersect(ray, tri));
+//  }
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 color = dist < max_t ? vec3(0,1,0) : vec3(0);
+  vec3 color = rayBoxIntersect(root, ray) ? vec3(0,1,0) : vec3(0);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 

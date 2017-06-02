@@ -38,7 +38,7 @@ function PathTracer(){
     gl.shaderSource(shader, str);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      alert(id + gl.getShaderInfoLog(shader));
+      console.log(id + gl.getShaderInfoLog(shader));
       return null;
     }
     return shader;
@@ -77,10 +77,10 @@ function PathTracer(){
     );
   }
 
-  function requiredRes(num_elements, per_element){
+  function requiredRes(num_elements, per_element, per_pixel){
     var root = Math.sqrt(num_elements * per_element);
     var width = Math.ceil(root/per_element) * per_element;
-    var height = Math.ceil(num_elements * per_element / width);
+    var height = Math.ceil(num_elements / width);
     return [width, height]
   }
 
@@ -108,7 +108,8 @@ function PathTracer(){
       if(node.leaf){
         var tris = node.triangles;
         for(var j=0; j<tris.length; j++){
-          trianglesBuffer = trianglesBuffer.concat(tris[j].v1, tris[j].v2, tris[j].v3)
+          var subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
+          subBuffer.forEach(function(e){trianglesBuffer.push(e)})
         }
       }
       for(var j=0; j<bufferNode.length; j++){
@@ -117,13 +118,14 @@ function PathTracer(){
     }
 
     bvhTexture = createTexture();
-    var res = requiredRes(bvhBuffer.length, 4);
+    var res = requiredRes(bvhBuffer.length, 4, 3);
     padBuffer(bvhBuffer, res[0], res[1]);
+    console.log(bvhBuffer.length, res[0] * res[1] * 3, res);
     gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
 
     triangleTexture = createTexture();
-    res = requiredRes(trianglesBuffer.length, 3);
+    res = requiredRes(trianglesBuffer.length, 3, 3);
     padBuffer(trianglesBuffer, res[0], res[1]);
     gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
@@ -260,6 +262,8 @@ function PathTracer(){
     initBVH();
     initBuffers();
     initEvents();
+
+    console.log("initialized");
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
