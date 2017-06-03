@@ -6,7 +6,7 @@ function PathTracer(){
   var textures = []
   var noiseTex;
   var framebuffers = [];
-  var eye = new Float32Array([0,0,0]);
+  var eye = new Float32Array([0,0,-2]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
@@ -19,7 +19,8 @@ function PathTracer(){
     "shader/tracer.fs",
     "shader/draw.vs",
     "shader/draw.fs",
-    "mesh/bunny.obj"
+    "mesh/bunny.obj",
+	"mesh/huge.obj"
   ];
 
   var staticCount;
@@ -122,15 +123,15 @@ function PathTracer(){
     bvhTexture = createTexture();
     var res = requiredRes(bvhBuffer.length, 4, 3);
     padBuffer(bvhBuffer, res[0], res[1], 3);
-    console.log(bvhBuffer, res, bvh);
     gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
 
     triangleTexture = createTexture();
-    //res = requiredRes(trianglesBuffer.length, 3, 3);
-    //padBuffer(trianglesBuffer, res[0], res[1], 3);
-    //gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
-    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
+    res = requiredRes(trianglesBuffer.length, 3, 3);
+    padBuffer(trianglesBuffer, res[0], res[1], 3);
+	console.log(trianglesBuffer, res, bvh);
+    gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
   }
 
   function createTexture() {
@@ -201,7 +202,7 @@ function PathTracer(){
     }, false);
     element.addEventListener("mousemove", function(e){
       if(mode){
-        eye = rotateY(eye, 0.1);
+        eye = rotateY(eye, 0.01);
         pingpong = 0;
       }
     }, false);

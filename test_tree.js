@@ -239,8 +239,6 @@ function Ray(origin, dir){
 
 function rayBoxIntersect(ray, bbox){
   var invDir = inverse(ray.dir),
-      tmin = -Infinity,
-      tmax = Infinity,
       box = bbox.getBounds(),
       tx1 = (box[0] - ray.origin[0]) * invDir[0],
       tx2 = (box[1] - ray.origin[0]) * invDir[0],
@@ -249,8 +247,8 @@ function rayBoxIntersect(ray, bbox){
       tz1 = (box[4] - ray.origin[2]) * invDir[2],
       tz2 = (box[5] - ray.origin[2]) * invDir[2];
 
-  tmin = Math.max(tmin, Math.min(tx1, tx2));
-  tmax = Math.min(tmax, Math.max(tx1, tx2));
+  var tmin = Math.min(tx1, tx2);
+  var tmax = Math.max(tx1, tx2);
   tmin = Math.max(tmin, Math.min(ty1, ty2));
   tmax = Math.min(tmax, Math.max(ty1, ty2));
   tmin = Math.max(tmin, Math.min(tz1, tz2));
