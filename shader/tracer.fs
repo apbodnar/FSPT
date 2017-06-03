@@ -47,10 +47,8 @@ struct Node {
 };
 
 struct Hit {
-  Ray ray;
-  vec3 emmittance;
-  vec3 reflectance;
-  int index;
+  float t;
+  float index;
 };
 
 float rand(vec2 co){
@@ -187,10 +185,11 @@ ivec2 indexToCoords(sampler2D tex, float index, float perElement){
 }
 
 Triangle createTriangle(float index){
+	ivec2 base = indexToCoords(triTex, index, 3.0);
     return Triangle(
-      texelFetch(triTex, indexToCoords(triTex, index, 3.0), 0).rgb,
-      texelFetch(triTex, indexToCoords(triTex, index + 1.0, 3.0), 0).rgb,
-      texelFetch(triTex, indexToCoords(triTex, index + 2.0, 3.0), 0).rgb
+      texelFetch(triTex, base, 0).rgb,
+      texelFetch(triTex, base + ivec2(1,0), 0).rgb,
+      texelFetch(triTex, base + ivec2(2,0), 0).rgb
     );
 }
 
@@ -209,6 +208,26 @@ Node nearChild(Node node, Ray ray){
   return createNode(index);
 }
 
+float nearChildIndex(Node node, Ray ray){
+  uint axis = uint(node.split);
+  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
+  return index;
+}
+
+Hit processLeaf(Node leaf, Ray ray){
+	float t = max_t;
+	float index = -1.0;
+	for(int i=0; i<4; i++){
+		Triangle tri = createTriangle(leaf.triangles + float(i));
+		float res = rayTriangleIntersect(ray, tri);
+		if(res < t){
+			t = res;
+			index = leaf.triangles + float(i);
+		}
+	}
+	return Hit(t, index);
+}
+
 Node siblingNode(Node node){
   return createNode(node.sibling);
 }
@@ -221,52 +240,67 @@ bool rayBoxIntersect(Node node, Ray ray){
   vec3 maxT = max(t1, t2);
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
-  return tMax >= tMin && tMax > 0.0 && tMax != 1.0/0.0;
+  return tMax >= tMin && tMax > 0.0;
 }
 
-//Hit traverseTree(Ray ray){
-//    return Hit();
-//}
+float traverseTree(Ray ray){
+	Node root = createNode(0.0);
+    uint state = FROM_PARENT;
+    Node current = nearChild(root, ray);
+	bool test = false;
+	float t = max_t;
+    while(true){
+		if(state == FROM_CHILD){
+			if(current.parent == -1.0){
+				return t;
+			}
+			Node parentNear = nearChild(createNode(current.parent), ray);
+			if(current.sibling == parentNear.sibling){
+				current = createNode(current.sibling);
+				state = FROM_SIBLING;
+			} else {
+				current = createNode(current.parent);
+				state = FROM_CHILD;
+			}
+		} else if (state == FROM_SIBLING){
+			test = rayBoxIntersect(current, ray);
+			if(!test){
+				current = createNode(current.parent);
+				state = FROM_CHILD;
+			} else if (current.triangles != -1.0) {
+				t = min(t, processLeaf(current, ray).t);
+				current = createNode(current.parent);
+				state = FROM_CHILD;
+			} else {
+				current = nearChild(current, ray);
+				state = FROM_PARENT;
+			}
+		} else if (state == FROM_PARENT){
+			test = rayBoxIntersect(current, ray);
+			if(!test){
+				current = createNode(current.sibling);
+				state = FROM_SIBLING;
+			} else if(current.triangles != -1.0){
+				t = min(t, processLeaf(current, ray).t);
+				current = createNode(current.sibling);
+				state = FROM_SIBLING;
+			} else {
+				current = nearChild(current, ray);
+				state = FROM_PARENT;
+			}
+		}
+    }
+}
 
 void main(void) {
-  vec3 origin = vec3(coords.x, coords.y, 0);
+  vec3 origin = vec3(coords.x/4.0, coords.y/4.0, 0);
   vec3 dof = vec3(0);//vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
-  Ray ray = Ray(origin, normalize(origin - eye) + dof );
-  Node root = createNode(0.0);
-  Node near = nearChild(root, ray);
-  Node far = siblingNode(near);
-//  float dist = max_t;
-//  ivec2 bvhc = ivec2(texelFetch(bvhTex,ivec2(0,0),0).rg);
-//  for(int i=0; i< 1; i++) {
-//    vec3 v2 = texelFetch(triTex, bvhc + ivec2(0,i), 0).rgb;
-//    vec3 v1 = texelFetch(triTex, bvhc + ivec2(1,i), 0).rgb;
-//    vec3 v3 = texelFetch(triTex, bvhc + ivec2(2,i), 0).rgb;
-//    Triangle tri = Triangle(v1,v2,v3);
-//    dist = min(dist, rayTriangleIntersect(ray, tri));
-//  }
+  Ray ray = Ray(eye, normalize(origin - eye) + dof );
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 color = rayBoxIntersect(far, ray) ? vec3(1) : vec3(0);
+  //Triangle tri = createTriangle(600.0);
+  //float res = rayTriangleIntersect(ray, tri);
+  float res = traverseTree(ray);
+  vec3 color = res < max_t ? vec3(1) : vec3(0);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 
-// void main(void) {
-//   vec2 size = vec2(textureSize(fbTex, 0));
-//   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-//   vec3 dof = 15.0 * vec3(getDOF(), 0.0) / size.x;
-//   vec3 origin = vec3(coords.x, coords.y, 0) + dof * 1.5;
-//   //No recursion in GLSL
-//   vec3 emmittance[NUM_BOUNCES];
-//   vec3 reflectance[NUM_BOUNCES];
-//   Hit current = Hit(Ray(origin, normalize(origin - (eye + 4.0 * dof))), vec3(0), vec3(0), -1);
-//   for(int i=0; i < NUM_BOUNCES; i++){
-//     current = getCollision(current.ray, current.index);
-//     emmittance[i] = current.emmittance;
-//     reflectance[i] = current.reflectance;
-//   }
-//   vec3 color = vec3(0);
-//   for(int i=NUM_BOUNCES-1; i>=0; i--){
-//     color = reflectance[i]*color + emmittance[i];
-//   }
-//   color = pow(color,vec3(gamma));
-//   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
-// }
