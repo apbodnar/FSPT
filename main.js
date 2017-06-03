@@ -6,7 +6,7 @@ function PathTracer(){
   var textures = []
   var noiseTex;
   var framebuffers = [];
-  var eye = new Float32Array([0,0.0,-2.1]);
+  var eye = new Float32Array([0,0,0]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
@@ -78,14 +78,15 @@ function PathTracer(){
   }
 
   function requiredRes(num_elements, per_element, per_pixel){
-    var root = Math.sqrt(num_elements * per_element);
+    var num_pixels = num_elements / per_pixel;
+    var root = Math.sqrt(num_pixels);
     var width = Math.ceil(root/per_element) * per_element;
-    var height = Math.ceil(num_elements / width);
+    var height = Math.ceil(num_pixels / width);
     return [width, height]
   }
 
-  function padBuffer(buffer, width, height){
-    var numToPad = width * height - buffer.length;
+  function padBuffer(buffer, width, height, channels){
+    var numToPad = channels * width * height - buffer.length;
     console.assert(numToPad >= 0);
     for(var i=0; i< numToPad; i++){
       buffer.push(-1);
@@ -94,13 +95,14 @@ function PathTracer(){
 
   function initBVH(){
     var geometry = parseMesh(assets['mesh/bunny.obj']);
-    var bvhArray = new BVH(geometry, 4).serializeTree();
+    var bvh = new BVH(geometry, 4);
+    var bvhArray = bvh.serializeTree();
     var bvhBuffer = [];
     var trianglesBuffer = [];
     for(var i=0; i< bvhArray.length; i++){
       var e = bvhArray[i];
       var node = e.node;
-      var box = node.boundingBox;
+      var box = node.boundingBox.getBounds();
       var triIndex = node.leaf ? trianglesBuffer.length/3 : -1;
       // 4 pixels
       var reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
@@ -109,26 +111,26 @@ function PathTracer(){
         var tris = node.triangles;
         for(var j=0; j<tris.length; j++){
           var subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
-          subBuffer.forEach(function(e){trianglesBuffer.push(e)})
+          subBuffer.forEach(function(e){trianglesBuffer.push(e)});
         }
       }
       for(var j=0; j<bufferNode.length; j++){
-        bvhBuffer.push(bufferNode[j])
+        bvhBuffer.push(bufferNode[j]);
       }
     }
 
     bvhTexture = createTexture();
     var res = requiredRes(bvhBuffer.length, 4, 3);
-    padBuffer(bvhBuffer, res[0], res[1]);
-    console.log(bvhBuffer.length, res[0] * res[1] * 3, res);
+    padBuffer(bvhBuffer, res[0], res[1], 3);
+    console.log(bvhBuffer, res, bvh);
     gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
 
     triangleTexture = createTexture();
-    res = requiredRes(trianglesBuffer.length, 3, 3);
-    padBuffer(trianglesBuffer, res[0], res[1]);
-    gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
+    //res = requiredRes(trianglesBuffer.length, 3, 3);
+    //padBuffer(trianglesBuffer, res[0], res[1], 3);
+    //gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
+    //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
   }
 
   function createTexture() {

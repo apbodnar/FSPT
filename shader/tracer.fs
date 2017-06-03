@@ -77,11 +77,6 @@ mat3 rotationMatrix(vec3 axis, float angle){
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
-ivec2 indexToCoords(sampler2D tex, float index, float perElement){
-    ivec2 dims = textureSize(tex, 0);
-    return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
-}
-
 vec3 randomVec(vec3 normal, vec3 origin, float exp){
   float r2 = rand(origin.xz);
   float r1 = rand(origin.xy)-epsilon;
@@ -186,6 +181,10 @@ vec2 getDOF(){
 //   }
 //   return result;
 // }
+ivec2 indexToCoords(sampler2D tex, float index, float perElement){
+    ivec2 dims = textureSize(tex, 0);
+    return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
+}
 
 Triangle createTriangle(float index){
     return Triangle(
@@ -210,13 +209,19 @@ Node nearChild(Node node, Ray ray){
   return createNode(index);
 }
 
+Node siblingNode(Node node){
+  return createNode(node.sibling);
+}
+
 bool rayBoxIntersect(Node node, Ray ray){
   vec3 inverse = 1.0 / ray.dir;
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
-  vec3 maxT = min(vec3(1000000.0), max(t1, t2));
-  vec3 minT = max(vec3(-1000000.0), min(t1, t2));
-  return max(max(maxT.x, maxT.y),maxT.z) >= min(min(minT.x, minT.y),minT.z);
+  vec3 minT = min(t1, t2);
+  vec3 maxT = max(t1, t2);
+  float tMax = min(min(maxT.x, maxT.y),maxT.z);
+  float tMin = max(max(minT.x, minT.y),minT.z);
+  return tMax >= tMin && tMax > 0.0 && tMax != 1.0/0.0;
 }
 
 //Hit traverseTree(Ray ray){
@@ -224,10 +229,12 @@ bool rayBoxIntersect(Node node, Ray ray){
 //}
 
 void main(void) {
-  Node root = createNode(0.0);
   vec3 origin = vec3(coords.x, coords.y, 0);
-  vec3 dof = vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
+  vec3 dof = vec3(0);//vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
   Ray ray = Ray(origin, normalize(origin - eye) + dof );
+  Node root = createNode(0.0);
+  Node near = nearChild(root, ray);
+  Node far = siblingNode(near);
 //  float dist = max_t;
 //  ivec2 bvhc = ivec2(texelFetch(bvhTex,ivec2(0,0),0).rg);
 //  for(int i=0; i< 1; i++) {
@@ -238,7 +245,7 @@ void main(void) {
 //    dist = min(dist, rayTriangleIntersect(ray, tri));
 //  }
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 color = rayBoxIntersect(root, ray) ? vec3(0,1,0) : vec3(0);
+  vec3 color = rayBoxIntersect(far, ray) ? vec3(1) : vec3(0);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 
