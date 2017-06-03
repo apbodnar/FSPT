@@ -32,7 +32,7 @@ function drawPixels(canvas, ctx, algorithm){
       var origin = [0, 0, -1];
       var halfWidth = canvas.width/2;
       var halfHeight = canvas.height/2;
-      var light = [0, 5, -5];
+      var light = [0, 1, -1];
       var dir = normalize(sub([ (i/halfWidth-1), -(j/halfHeight - 1), 0], origin));
       origin = add(origin, shift);
       var ray = new Ray(origin, dir);
@@ -256,7 +256,7 @@ function rayBoxIntersect(ray, bbox){
   tmin = Math.max(tmin, Math.min(tz1, tz2));
   tmax = Math.min(tmax, Math.max(tz1, tz2));
 
-  return tmax >= tmin ? tmin : Infinity;
+  return tmax >= tmin && tmax >= 0 ? tmin : Infinity;
 }
 
 function processLeaf(ray, root){

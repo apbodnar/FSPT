@@ -177,8 +177,9 @@
     for(var i = 0; i < triangles.length; i++) {
       var subTriangles = splitTriangle(triangles[i], span/32);
       if(subTriangles.length > 1){
+
         triangles.splice(i,1)
-        triangles = subTriangles.concat(triangles)
+        subTriangles.forEach(function(e){triangles.push(e)});
       }
     }
     console.log(triangles.length)
