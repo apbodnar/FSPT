@@ -1,6 +1,6 @@
-loadAll(['mesh/bunny.obj'], function(hash){
+loadAll(['mesh/cube.obj'], function(hash){
   var t1 = performance.now();
-  var triangles = parseMesh(hash['mesh/bunny.obj']);
+  var triangles = parseMesh(hash['mesh/cube.obj']);
   //triangles = triangles.concat(parseMesh(hash['mesh/bunny.obj']));
   var bvh = new BVH(triangles, 4);
   console.log(bvh.serializeTree());
@@ -28,8 +28,8 @@ function runTest(bvh){
 function drawPixels(canvas, ctx, algorithm){
   for(var i=0; i<canvas.width; i++){
     for(var j=0; j<canvas.height; j++){
-      var shift = [0, 0.25, 0.75];
-      var origin = [0, 0, -1];
+      var shift = [0, 0, 0];
+      var origin = [0, 0, -2];
       var halfWidth = canvas.width/2;
       var halfHeight = canvas.height/2;
       var light = [0, 1, -1];

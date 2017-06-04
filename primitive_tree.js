@@ -175,7 +175,7 @@
     }
     console.log(triangles.length)
     for(var i = 0; i < triangles.length; i++) {
-      var subTriangles = splitTriangle(triangles[i], span/32);
+      var subTriangles = splitTriangle(triangles[i], span/16);
       if(subTriangles.length > 1){
 
         triangles.splice(i,1)
