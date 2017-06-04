@@ -6,7 +6,9 @@ function PathTracer(){
   var textures = []
   var noiseTex;
   var framebuffers = [];
-  var eye = new Float32Array([0,0,-2]);
+  var scale = 0.25;
+  var corners = {max: [1,1,0],min: [-1,-1,0]};
+  var eye = new Float32Array([0,0,-scale * 4]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
@@ -20,7 +22,7 @@ function PathTracer(){
     "shader/draw.vs",
     "shader/draw.fs",
     "mesh/bunny.obj",
-	"mesh/huge.obj"
+	"mesh/ob.obj"
   ];
 
   var staticCount;
@@ -68,7 +70,7 @@ function PathTracer(){
   function initPrograms(){
     programs.tracer = initProgram(
       "shader/tracer",
-      ["tick","dims","eye","fbTex", "triTex", "bvhTex"],
+      ["tick","dims","eye","fbTex", "triTex", "bvhTex", "scale", "maxCorner", "minCorner"],
       ["corner"]
     );
     programs.draw = initProgram(
@@ -104,11 +106,12 @@ function PathTracer(){
       var e = bvhArray[i];
       var node = e.node;
       var box = node.boundingBox.getBounds();
-      var triIndex = node.leaf ? trianglesBuffer.length/3 : -1;
+      var triIndex = node.leaf ? trianglesBuffer.length/3/3 : -1;
       // 4 pixels
       var reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
       var bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
       if(node.leaf){
+		  
         var tris = node.triangles;
         for(var j=0; j<tris.length; j++){
           var subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
@@ -217,12 +220,15 @@ function PathTracer(){
     gl.useProgram(program);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
+	gl.uniform1f(program.uniforms.scale, scale);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.uniform1i(program.uniforms.triTex, 1);
     gl.uniform1i(program.uniforms.bvhTex, 2);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3f(program.uniforms.eye, eye[0],eye[1],eye[2]);
+	gl.uniform3f(program.uniforms.maxCorner, corners.max[0], corners.max[1], corners.max[2]);
+	gl.uniform3f(program.uniforms.minCorner, corners.min[0], corners.min[1], corners.min[2]);
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.activeTexture(gl.TEXTURE1);
@@ -247,7 +253,7 @@ function PathTracer(){
 
   function tick() {
     requestAnimationFrame(tick);
-    for (var i = 0; i < 4; i++){
+    for (var i = 0; i < 1; i++){
       pingpong++;
       drawTracer(pingpong);
     }
@@ -272,13 +278,6 @@ function PathTracer(){
     gl.disable(gl.BLEND);
 
     tick();
-  }
-
-  function Sphere(pos,attrs,color,mat){
-    this.pos = pos;
-    this.attrs = attrs;
-    this.color = color;
-    this.mat = mat;
   }
 
   loadAll(paths,start);

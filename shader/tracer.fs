@@ -1,14 +1,14 @@
 #version 300 es
 precision highp float;
 const int sphereCount = 14;
-const int NUM_BOUNCES = 7;
+const int NUM_BOUNCES = 5;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
+const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
 const float M_PI = 3.1415926535897932384626433832795;
-const float epsilon = 0.00001; //not really epsilon
 const float gamma = 1.0/2.2;
 
 const uint FROM_PARENT = uint(0);
@@ -18,8 +18,11 @@ const uint FROM_CHILD = uint(2);
 in vec2 coords;
 out vec4 fragColor;
 
+uniform float scale;
 uniform int tick;
 uniform vec3 eye;
+uniform vec3 maxCorner;
+uniform vec3 minCorner;
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
@@ -77,7 +80,7 @@ mat3 rotationMatrix(vec3 axis, float angle){
 
 vec3 randomVec(vec3 normal, vec3 origin, float exp){
   float r2 = rand(origin.xz);
-  float r1 = rand(origin.xy)-epsilon;
+  float r1 = rand(origin.xy)-EPSILON;
   float r = pow(r1,exp);
   float theta = 2.0 * M_PI * r2;
   float x = r * cos(theta);
@@ -88,12 +91,11 @@ vec3 randomVec(vec3 normal, vec3 origin, float exp){
 }
 
 float rayTriangleIntersect(Ray ray, Triangle tri){
-  float epsilon = 0.000000000001;
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
   float det = dot(e1, p);
-  if(det > -epsilon && det < epsilon){return max_t;}
+  if(abs(det) < EPSILON){return max_t;}
   float invDet = 1.0 / det;
   vec3 t = ray.origin - tri.v1;
   float u = dot(t, p) * invDet;
@@ -102,7 +104,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   float v = dot(ray.dir, q) * invDet;
   if(v < 0.0 || u + v > 1.0){return max_t;}
   float dist = dot(e2, q) * invDet;
-  if(dist > epsilon){
+  if(dist > EPSILON){
     return dist;
   }
   return max_t;
@@ -114,71 +116,7 @@ vec2 getDOF(){
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
-// Hit getSpecular(int i, float t, Ray ray, Sphere s){
-//   Hit result;
-//   result.ray.origin = ray.dir*t + ray.origin;
-//   vec3 normal = normalize(result.ray.origin - s.origin);
-//   result.index = i;
-//   normal = randomVec(normal, result.ray.origin, s.material.y);
-//   result.ray.dir = reflect(ray.dir,normal);
-//   result.reflectance = vec3(1);
-//   if(dot(result.ray.dir,normal) < 0.0){
-//     result.ray.dir = -result.ray.dir;
-//   }
-//   return result;
-// }
-//
-// Hit getLambertian(int i, float t, Ray ray, Sphere s){
-//   Hit result;
-//   result.ray.origin = ray.dir*t + ray.origin;
-//   vec3 normal = normalize(result.ray.origin - s.origin);
-//   result.emmittance = s.attrs.z * s.color;
-//   result.index = i;
-//   result.ray.dir = randomVec(normal, result.ray.origin, 0.5);
-//   result.reflectance = s.color;
-//   return result;
-// }
-//
-// Hit getTransmissive(int i, float t, Ray ray, Sphere s){
-//   Hit result;
-//   result.ray.origin = ray.dir*t + ray.origin;
-//   vec3 normal = normalize(result.ray.origin - s.origin);
-//   result.index = i;
-//   float dh = 1.0 - dot(-ray.dir,normal);
-//   float re = r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
-//   if(rand(result.ray.origin.xy) < re){
-//     result.ray.dir = reflect(ray.dir, normal);
-//   }else{
-//     float c = dot(ray.dir,-normal);
-//     vec3 ref = normalize(sr*ray.dir + (sr*c - sqrt(1.0 - sr*sr*(1.0 - c*c)))*normal);
-//     result.ray.origin = ref*dot(ref,-normal)*s.attrs.r*2.0 + result.ray.origin;
-//     result.ray.dir = reflect(-ray.dir,ref);
-//   }
-//   result.reflectance = vec3(1);
-//   return result;
-// }
-//
-// Hit getCollision(Ray ray, int current){
-//   float t = max_t;
-//   int mat = -1;
-//   Hit result;
-//   for(int i=0; i<sphereCount; i++){
-//     Sphere s = Sphere(spherePositions[i],sphereAttrs[i],sphereColors[i],sphereMats[i]);
-//     float nt = checkSphereCollision(ray,s);
-//     if(nt < t && nt > 0.0 && current != i){
-//       t = nt;
-//       mat = int(s.material.z);
-//       if( int(s.material.z) == 0 ){ //diffuse
-//         result = getLambertian(i, t, ray,s);
-//       } else if( int(s.material.z) == 1 ){ //specular
-//         result = getSpecular(i, t, ray,s);
-//       } else if( int(s.material.z) == 2 ){ //transmissive
-//         result = getTransmissive(i, t, ray, s);
-//       }
-//     }
-//   }
-//   return result;
-// }
+
 ivec2 indexToCoords(sampler2D tex, float index, float perElement){
     ivec2 dims = textureSize(tex, 0);
     return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
@@ -232,27 +170,32 @@ Node siblingNode(Node node){
   return createNode(node.sibling);
 }
 
+vec3 normal(Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  return normalize(cross(e1, e2));
+}
+
 bool rayBoxIntersect(Node node, Ray ray){
   vec3 inverse = 1.0 / ray.dir;
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
   vec3 minT = min(t1, t2);
   vec3 maxT = max(t1, t2);
-  float tMax = min(min(maxT.x, maxT.y),maxT.z);
+  float tMax = min(min(maxT.x, maxT.y),maxT.z) + EPSILON;
   float tMin = max(max(minT.x, minT.y),minT.z);
   return tMax >= tMin && tMax > 0.0;
 }
 
-float traverseTree(Ray ray){
-	Node root = createNode(0.0);
+Hit traverseTree(Ray ray){
     uint state = FROM_PARENT;
-    Node current = nearChild(root, ray);
-	bool test = false;
-	float t = max_t;
+	Hit result = Hit(max_t, -1.0);
+	Hit temp;
+    Node current = nearChild(createNode(0.0), ray);
     while(true){
 		if(state == FROM_CHILD){
 			if(current.parent == -1.0){
-				return t;
+				return result;
 			}
 			Node parentNear = nearChild(createNode(current.parent), ray);
 			if(current.sibling == parentNear.sibling){
@@ -263,12 +206,14 @@ float traverseTree(Ray ray){
 				state = FROM_CHILD;
 			}
 		} else if (state == FROM_SIBLING){
-			test = rayBoxIntersect(current, ray);
-			if(!test){
+			if(!rayBoxIntersect(current, ray)){
 				current = createNode(current.parent);
 				state = FROM_CHILD;
-			} else if (current.triangles != -1.0) {
-				t = min(t, processLeaf(current, ray).t);
+			} else if (current.triangles > -1.0) {
+				temp = processLeaf(current, ray);
+				if (temp.t < max_t){
+					result = temp;
+				}
 				current = createNode(current.parent);
 				state = FROM_CHILD;
 			} else {
@@ -276,12 +221,14 @@ float traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		} else if (state == FROM_PARENT){
-			test = rayBoxIntersect(current, ray);
-			if(!test){
+			if(!rayBoxIntersect(current, ray)){
 				current = createNode(current.sibling);
 				state = FROM_SIBLING;
-			} else if(current.triangles != -1.0){
-				t = min(t, processLeaf(current, ray).t);
+			} else if(current.triangles > -1.0){
+				temp = processLeaf(current, ray);
+				if (temp.t < max_t){
+					result = temp;
+				}
 				current = createNode(current.sibling);
 				state = FROM_SIBLING;
 			} else {
@@ -292,15 +239,45 @@ float traverseTree(Ray ray){
     }
 }
 
+// vec3 getScreen(){
+	// vec2 size = vec2(textureSize(fbTex, 0));
+	// vec2 pct = gl_FragCoord / size;
+	
+// }
+
+vec3 getEmmittance(vec3 dir){
+	if(dot(dir, vec3(0,1,0)) > 0.99){
+		return vec3(0,0,50.0);
+	} else if(dot(dir, vec3(1,0,0)) > 0.99) {
+		return vec3(0,50.0,0);
+	} else if(dot(dir, vec3(-1,0,0)) > 0.99) {
+		return vec3(50.0,0,0);
+	}
+	return vec3(0);
+}
+
 void main(void) {
-  vec3 origin = vec3(coords.x/4.0, coords.y/4.0, 0);
-  vec3 dof = vec3(0);//vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x;
-  Ray ray = Ray(eye, normalize(origin - eye) + dof );
+  vec3 screen = vec3(coords, 0) * scale;
+  //vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
+  Ray ray = Ray(eye, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  //Triangle tri = createTriangle(600.0);
-  //float res = rayTriangleIntersect(ray, tri);
-  float res = traverseTree(ray);
-  vec3 color = res < max_t ? vec3(1) : vec3(0);
+  vec3 emmittance[NUM_BOUNCES];
+  vec3 reflectance[NUM_BOUNCES];
+  Hit result = Hit(max_t, -1.0);
+  vec3 color = vec3(0);
+  for(int i=0; i < NUM_BOUNCES; i++){
+	result = traverseTree(ray);
+	vec3 origin = ray.origin + ray.dir * result.t;
+    emmittance[i] = result.t == max_t ? getEmmittance(ray.dir) : vec3(0);
+    reflectance[i] = vec3(1);
+	
+	vec3 dir = randomVec(normal(createTriangle(result.index)), origin , 0.5);
+	ray = Ray(origin + EPSILON * dir, dir);
+  }
+  for(int i=NUM_BOUNCES-1; i>=0; i--){
+    color = reflectance[i]*color + emmittance[i];
+  }
+  Hit res = traverseTree(ray);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 
