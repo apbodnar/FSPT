@@ -6,7 +6,7 @@ function PathTracer(){
   var textures = []
   var noiseTex;
   var framebuffers = [];
-  var scale = 0.25;
+  var scale = 10;
   var corners = {max: [1,1,0],min: [-1,-1,0]};
   var eye = new Float32Array([0,0,-scale * 4]);
   var pingpong = 0;
@@ -22,7 +22,7 @@ function PathTracer(){
     "shader/draw.vs",
     "shader/draw.fs",
     "mesh/bunny.obj",
-	"mesh/ob.obj"
+	"mesh/dragon.obj"
   ];
 
   var staticCount;
@@ -97,7 +97,7 @@ function PathTracer(){
   }
 
   function initBVH(){
-    var geometry = parseMesh(assets['mesh/bunny.obj']);
+    var geometry = parseMesh(assets['mesh/dragon.obj']);
     var bvh = new BVH(geometry, 4);
     var bvhArray = bvh.serializeTree();
     var bvhBuffer = [];
