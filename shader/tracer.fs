@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 const int sphereCount = 14;
-const int NUM_BOUNCES = 5;
+const int NUM_BOUNCES = 10;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -246,20 +246,13 @@ Hit traverseTree(Ray ray){
 // }
 
 vec3 getEmmittance(vec3 dir){
-	if(dot(dir, vec3(0,1,0)) > 0.99){
-		return vec3(0,0,50.0);
-	} else if(dot(dir, vec3(1,0,0)) > 0.99) {
-		return vec3(0,50.0,0);
-	} else if(dot(dir, vec3(-1,0,0)) > 0.99) {
-		return vec3(50.0,0,0);
-	}
-	return vec3(0);
+	return dot(dir, vec3(0, -0.894, 0.447)) > 0.99 ? vec3(50.0,50.0,50.0) : vec3(0);
 }
 
 void main(void) {
   vec3 screen = vec3(coords, 0) * scale;
-  //vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
-  Ray ray = Ray(eye, normalize(screen - eye));
+  vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
+  Ray ray = Ray(eye + dof, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   vec3 emmittance[NUM_BOUNCES];
   vec3 reflectance[NUM_BOUNCES];
