@@ -28,12 +28,17 @@ uniform vec3 leftMin;
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
-uniform sampler2D randTex;
+uniform sampler2D matTex;
 
 struct Triangle {
   vec3 v1;
   vec3 v2;
   vec3 v3;
+};
+
+struct Material {
+  vec3 reflectance;
+  vec3 emittance;
 };
 
 struct Ray {
@@ -126,13 +131,23 @@ ivec2 indexToCoords(sampler2D tex, float index, float perElement){
     return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
 }
 
+Material createMaterial(float index){
+	ivec2 base = indexToCoords(matTex, index, 2.0);
+	vec3 emittance = index > -1.0 ? texelFetch(matTex, base, 0).rgb : vec3(0);
+	vec3 reflectance = index > -1.0 ? texelFetch(matTex, base + ivec2(1,0), 0).rgb : vec3(0);
+  return Material(
+    reflectance,
+    emittance
+  );
+}
+
 Triangle createTriangle(float index){
 	ivec2 base = indexToCoords(triTex, index, 3.0);
-    return Triangle(
-      texelFetch(triTex, base, 0).rgb,
-      texelFetch(triTex, base + ivec2(1,0), 0).rgb,
-      texelFetch(triTex, base + ivec2(2,0), 0).rgb
-    );
+  return Triangle(
+    texelFetch(triTex, base, 0).rgb,
+    texelFetch(triTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(triTex, base + ivec2(2,0), 0).rgb
+  );
 }
 
 Node createNode(float index){
@@ -181,7 +196,7 @@ vec3 normal(Triangle tri){
   return normalize(cross(e1, e2));
 }
 
-bool rayBoxIntersect(Node node, Ray ray){
+float rayBoxIntersect(Node node, Ray ray){
   vec3 inverse = 1.0 / ray.dir;//1.0 / (max(abs(ray.dir), vec3(0.0001)) * sign(ray.dir));
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
@@ -189,48 +204,48 @@ bool rayBoxIntersect(Node node, Ray ray){
   vec3 maxT = max(t1, t2);
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
-  return tMax >= tMin && tMax > 0.0;
+  return tMax >= tMin && tMax > 0.0 ? tMin : max_t;
 }
 
-Hit gpuTraverseTree(Ray ray){
-	Hit result = Hit(max_t, -1.0);
-	Hit temp;
-	Node last = createNode(0.0);
-    Node current = nearChild(createNode(0.0), ray);
-    while(true){
-		Node near = nearChild(current, ray);
-		Node far = farChild(current, ray);
-		if(current.index == 0.0){
-			return result;
-		}
-		if(last.index == far.index){
-			last = current;
-			current = createNode(current.parent);
-			continue;
-		}
-		float tryChild = last.index == current.parent ? near.index : far.index;
-		if(rayBoxIntersect(current, ray)){
-			last = current;
-			current = createNode(tryChild);
-		} else {
-			if(current.triangles > -1.0){
-				temp = processLeaf(current, ray);
-				if (temp.t < result.t){
-					result = temp;
-				}
-			}
-			if(tryChild == near.index){
-				last = near;
-			} else {
-				last = current;
-				current = createNode(current.parent);
-			}
-		}
-    }
-}
+//Hit gpuTraverseTree(Ray ray){
+//	Hit result = Hit(max_t, -1.0);
+//	Hit temp;
+//	Node last = createNode(0.0);
+//    Node current = nearChild(createNode(0.0), ray);
+//    while(true){
+//		Node near = nearChild(current, ray);
+//		Node far = farChild(current, ray);
+//		if(current.index == 0.0){
+//			return result;
+//		}
+//		if(last.index == far.index){
+//			last = current;
+//			current = createNode(current.parent);
+//			continue;
+//		}
+//		float tryChild = last.index == current.parent ? near.index : far.index;
+//		if(rayBoxIntersect(current, ray)){
+//			last = current;
+//			current = createNode(tryChild);
+//		} else {
+//			if(current.triangles > -1.0){
+//				temp = processLeaf(current, ray);
+//				if (temp.t < result.t){
+//					result = temp;
+//				}
+//			}
+//			if(tryChild == near.index){
+//				last = near;
+//			} else {
+//				last = current;
+//				current = createNode(current.parent);
+//			}
+//		}
+//  }
+//}
 
 Hit traverseTree(Ray ray){
-    uint state = FROM_PARENT;
+  uint state = FROM_PARENT;
 	Hit result = Hit(max_t, -1.0);
 	Hit temp;
     Node current = nearChild(createNode(0.0), ray);
@@ -248,7 +263,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_CHILD;
 			}
 		} else if (state == FROM_SIBLING){
-			if(!rayBoxIntersect(current, ray)){
+			if(rayBoxIntersect(current, ray) == max_t){
 				current = createNode(current.parent);
 				state = FROM_CHILD;
 			} else if (current.triangles > -1.0) {
@@ -263,7 +278,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		} else if (state == FROM_PARENT){
-			if(!rayBoxIntersect(current, ray)){
+			if(rayBoxIntersect(current, ray) == max_t){
 				current = createNode(current.sibling);
 				state = FROM_SIBLING;
 			} else if(current.triangles > -1.0){
@@ -278,7 +293,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		}
-    }
+   }
 }
 
 vec3 getScreen(){
@@ -287,34 +302,31 @@ vec3 getScreen(){
 	vec3 top =  pct.x * (rightMax - leftMax) + leftMax;
 	vec3 bottom =  pct.x * (rightMin - leftMin) + leftMin;
 	return pct.y * (top - bottom) + bottom;
-	
 }
 
-vec3 getEmmittance(vec3 dir){
-	return dot(dir, normalize(vec3(-1, 1, 1))) > 0.99 ? vec3(50.0) : vec3(0);
-}
 
 void main(void) {
   vec3 screen = getScreen() * scale ;
   vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
   Ray ray = Ray(eye + dof, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 emmittance[NUM_BOUNCES];
+  vec3 emittance[NUM_BOUNCES];
   vec3 reflectance[NUM_BOUNCES];
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   for(int i=0; i < NUM_BOUNCES; i++){
-	result = traverseTree(ray);
-	vec3 origin = ray.origin + ray.dir * result.t;
-    emmittance[i] = result.t == max_t ? getEmmittance(ray.dir) : vec3(0);
-    reflectance[i] = result.t == max_t ? vec3(0) : vec3(1);
-	
-	vec3 dir = randomVec(normal(createTriangle(result.index)), origin , 0.5);
-	ray = Ray(origin + EPSILON * dir, dir);
+    result = traverseTree(ray);
+    vec3 origin = ray.origin + ray.dir * result.t;
+    Material mat = createMaterial(result.index);
+    emittance[i] = mat.emittance;
+    reflectance[i] = mat.reflectance;
+    vec3 dir = randomVec(normal(createTriangle(result.index)), origin , 0.5);
+    ray = Ray(origin + EPSILON * dir, dir);
   }
   for(int i=NUM_BOUNCES-1; i>=0; i--){
-    color = reflectance[i]*color + emmittance[i];
+    color = reflectance[i]*color + emittance[i];
   }
+  color = pow(color,vec3(gamma));
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 

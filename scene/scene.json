@@ -1,28 +1,36 @@
 {
-	"props": [
-		{
-			"path": "mesh/bunny",
-			"scale": 4,
-			"rotate": 0.0,
-			"translate": [0,0,0],
-			"reflectance": [1,1,1],
-			"transmittance": [0,0,0]
-		},
-		{
-			"path": "mesh/cube",
-			"scale": 0.25,
-			"rotate": 0.0,
-			"translate": [0,0,0],
-			"reflectance": [0,0,0],
-			"transmittance": [10,0,0]
-		},
-		{
-			"path": "mesh/cube",
-			"scale": 0.25,
-			"rotate": 0.0,
-			"translate": [0,0,0],
-			"reflectance": [0,0,0],
-			"transmittance": [0,1,0]
-		}
-	]
+  "props": [
+    {
+      "path": "mesh/bunny.obj",
+      "scale": 4,
+      "rotate": 0.0,
+      "translate": [0,-0.2,0],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0]
+    },
+    {
+      "path": "mesh/cube.obj",
+      "scale": 0.5,
+      "rotate": 0.0,
+      "translate": [0,-0.6,0],
+      "reflectance": [1,1,1],
+      "emittance": [0.1,0.1,1]
+    },
+    {
+      "path": "mesh/cube.obj",
+      "scale": 0.5,
+      "rotate": 0.0,
+      "translate": [-0.5,-0.6,0],
+      "reflectance": [1,1,1],
+      "emittance": [0.1,1,0.1]
+    },
+    {
+      "path": "mesh/octohedron.obj",
+      "scale": 0.25,
+      "rotate": 0.0,
+      "translate": [0,0.8,0],
+      "reflectance": [1,1,1],
+      "emittance": [5,0.1,0.1]
+    }
+  ]
 }

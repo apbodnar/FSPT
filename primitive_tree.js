@@ -112,11 +112,12 @@
     };
   }
 
-  function Triangle(v1, v2, v3) {
+  function Triangle(v1, v2, v3, transforms) {
     this.v1 = v1;
     this.v2 = v2;
     this.v3 = v3;
-    this.boundingBox = new BoundingBox(this)
+    this.boundingBox = new BoundingBox(this);
+    this.transforms = transforms;
   }
 
   function splitTriangle(triangle, threshold){
@@ -145,15 +146,18 @@
     }
 
     var opposite = scale(add(verts[(idx+2) % verts.length], verts[(idx+1) % verts.length]),0.5);
-    var t1 = new Triangle(verts[idx],verts[(idx+1) % verts.length], opposite);
-    var t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length]);
+    var t1 = new Triangle(verts[idx],verts[(idx+1) % verts.length], opposite, triangle.transforms);
+    var t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length], triangle.transforms);
     return splitTriangle(t1, threshold).concat(splitTriangle(t2, threshold));
   }
 
-  exports.parseMesh = function(objText) {
+  exports.parseMesh = function(objText, transforms) {
     var lines = objText.split('\n');
     var vertices = [];
     var triangles = [];
+    function applyTransforms(vert){
+      return add(scale(vert, transforms.scale), transforms.translate);
+    }
     for(var i = 0; i < lines.length; i++) {
       var array = lines[i].split(/[ ]+/);
       var vals = array.slice(1, 4).map(parseFloat);
@@ -161,9 +165,10 @@
         vertices.push(vals)
       } else if (array[0] == 'f') {
         var tri = new Triangle(
-          vertices[vals[0] - 1],
-          vertices[vals[1] - 1],
-          vertices[vals[2] - 1]
+          applyTransforms(vertices[vals[0] - 1]),
+          applyTransforms(vertices[vals[1] - 1]),
+          applyTransforms(vertices[vals[2] - 1]),
+          transforms
         );
         triangles.push(tri);
       }
@@ -173,16 +178,16 @@
     for(var i = 0; i< bb.length/2; i++){
       span = Math.max(bb[i*2+1] - bb[i*2], span)
     }
-    console.log(triangles.length)
+    var original = triangles.length;
     for(var i = 0; i < triangles.length; i++) {
-      var subTriangles = splitTriangle(triangles[i], span/1);
+      var subTriangles = splitTriangle(triangles[i], span/2);
       if(subTriangles.length > 1){
 
         triangles.splice(i,1)
         subTriangles.forEach(function(e){triangles.push(e)});
       }
     }
-    console.log(triangles.length)
+    console.log(transforms.path, "original:", original,"split:", triangles.length);
     return triangles;
   }
 
