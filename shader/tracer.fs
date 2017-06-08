@@ -8,7 +8,7 @@ const float n2 = 1.458;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
-const float M_PI = 3.1415926535897932384626433832795;
+const float M_PI = 3.14159265;
 const float gamma = 1.0/2.2;
 
 const uint FROM_PARENT = uint(0);
@@ -21,11 +21,14 @@ out vec4 fragColor;
 uniform float scale;
 uniform int tick;
 uniform vec3 eye;
-uniform vec3 maxCorner;
-uniform vec3 minCorner;
+uniform vec3 rightMax;
+uniform vec3 rightMin;
+uniform vec3 leftMax;
+uniform vec3 leftMin;
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
+uniform sampler2D randTex;
 
 struct Triangle {
   vec3 v1;
@@ -39,6 +42,7 @@ struct Ray {
 };
 
 struct Node {
+  float index;
   float parent;
   float sibling;
   float split;
@@ -137,7 +141,7 @@ Node createNode(float index){
   vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
   vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
   vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
-  return Node(first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
+  return Node(index, first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
 }
 
 Node nearChild(Node node, Ray ray){
@@ -146,11 +150,12 @@ Node nearChild(Node node, Ray ray){
   return createNode(index);
 }
 
-float nearChildIndex(Node node, Ray ray){
+Node farChild(Node node, Ray ray){
   uint axis = uint(node.split);
-  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
-  return index;
+  float index = ray.dir[axis] <= 0.0 ? node.left : node.right;
+  return createNode(index);
 }
+
 
 Hit processLeaf(Node leaf, Ray ray){
 	float t = max_t;
@@ -177,14 +182,51 @@ vec3 normal(Triangle tri){
 }
 
 bool rayBoxIntersect(Node node, Ray ray){
-  vec3 inverse = 1.0 / ray.dir;
+  vec3 inverse = 1.0 / ray.dir;//1.0 / (max(abs(ray.dir), vec3(0.0001)) * sign(ray.dir));
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
   vec3 minT = min(t1, t2);
   vec3 maxT = max(t1, t2);
-  float tMax = min(min(maxT.x, maxT.y),maxT.z) + EPSILON;
+  float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
   return tMax >= tMin && tMax > 0.0;
+}
+
+Hit gpuTraverseTree(Ray ray){
+	Hit result = Hit(max_t, -1.0);
+	Hit temp;
+	Node last = createNode(0.0);
+    Node current = nearChild(createNode(0.0), ray);
+    while(true){
+		Node near = nearChild(current, ray);
+		Node far = farChild(current, ray);
+		if(current.index == 0.0){
+			return result;
+		}
+		if(last.index == far.index){
+			last = current;
+			current = createNode(current.parent);
+			continue;
+		}
+		float tryChild = last.index == current.parent ? near.index : far.index;
+		if(rayBoxIntersect(current, ray)){
+			last = current;
+			current = createNode(tryChild);
+		} else {
+			if(current.triangles > -1.0){
+				temp = processLeaf(current, ray);
+				if (temp.t < result.t){
+					result = temp;
+				}
+			}
+			if(tryChild == near.index){
+				last = near;
+			} else {
+				last = current;
+				current = createNode(current.parent);
+			}
+		}
+    }
 }
 
 Hit traverseTree(Ray ray){
@@ -194,11 +236,11 @@ Hit traverseTree(Ray ray){
     Node current = nearChild(createNode(0.0), ray);
     while(true){
 		if(state == FROM_CHILD){
-			if(current.parent == -1.0){
+			if(current.index == 0.0){
 				return result;
 			}
 			Node parentNear = nearChild(createNode(current.parent), ray);
-			if(current.sibling == parentNear.sibling){
+			if(current.index == parentNear.index){
 				current = createNode(current.sibling);
 				state = FROM_SIBLING;
 			} else {
@@ -211,7 +253,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_CHILD;
 			} else if (current.triangles > -1.0) {
 				temp = processLeaf(current, ray);
-				if (temp.t < max_t){
+				if (temp.t < result.t){
 					result = temp;
 				}
 				current = createNode(current.parent);
@@ -226,7 +268,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_SIBLING;
 			} else if(current.triangles > -1.0){
 				temp = processLeaf(current, ray);
-				if (temp.t < max_t){
+				if (temp.t < result.t){
 					result = temp;
 				}
 				current = createNode(current.sibling);
@@ -239,18 +281,21 @@ Hit traverseTree(Ray ray){
     }
 }
 
-// vec3 getScreen(){
-	// vec2 size = vec2(textureSize(fbTex, 0));
-	// vec2 pct = gl_FragCoord / size;
+vec3 getScreen(){
+	vec2 size = vec2(textureSize(fbTex, 0));
+	vec2 pct = gl_FragCoord.xy / size;
+	vec3 top =  pct.x * (rightMax - leftMax) + leftMax;
+	vec3 bottom =  pct.x * (rightMin - leftMin) + leftMin;
+	return pct.y * (top - bottom) + bottom;
 	
-// }
+}
 
 vec3 getEmmittance(vec3 dir){
-	return dot(dir, vec3(0, -0.894, 0.447)) > 0.99 ? vec3(50.0,50.0,50.0) : vec3(0);
+	return dot(dir, normalize(vec3(-1, 1, 1))) > 0.99 ? vec3(50.0) : vec3(0);
 }
 
 void main(void) {
-  vec3 screen = vec3(coords, 0) * scale;
+  vec3 screen = getScreen() * scale ;
   vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
   Ray ray = Ray(eye + dof, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
@@ -262,7 +307,7 @@ void main(void) {
 	result = traverseTree(ray);
 	vec3 origin = ray.origin + ray.dir * result.t;
     emmittance[i] = result.t == max_t ? getEmmittance(ray.dir) : vec3(0);
-    reflectance[i] = vec3(1);
+    reflectance[i] = result.t == max_t ? vec3(0) : vec3(1);
 	
 	vec3 dir = randomVec(normal(createTriangle(result.index)), origin , 0.5);
 	ray = Ray(origin + EPSILON * dir, dir);
@@ -270,7 +315,6 @@ void main(void) {
   for(int i=NUM_BOUNCES-1; i>=0; i--){
     color = reflectance[i]*color + emmittance[i];
   }
-  Hit res = traverseTree(ray);
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
 
