@@ -1,4 +1,4 @@
-#Fragment Shader Path Tracer
+# Fragment Shader Path Tracer
 
 I made this to explore photo-realistic rendering in web browsers.
  
