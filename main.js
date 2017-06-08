@@ -278,11 +278,8 @@ function PathTracer(){
     initGL(canvas);
     initPrograms(res);
     initBVH(res);
-    //initNoise();
     initBuffers();
     initEvents();
-
-    console.log("initialized");
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
