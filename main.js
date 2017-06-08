@@ -7,14 +7,15 @@ function PathTracer(){
   var noiseTex;
   var framebuffers = [];
   var scale = 10;
-  var corners = {max: [1,1,0],min: [-1,-1,0]};
-  var eye = new Float32Array([0,0,-scale * 4]);
+  var corners = {rightMax: [1,1,0],leftMin: [-1,-1,0], leftMax: [-1,1,0],rightMin: [1,-1,0]};
+  var eye = new Float32Array([0,0,scale * 4]);
   var pingpong = 0;
   var clear = 0;
   var max_t = 1000000;
   var assets;
   var triangleTexture;
   var bvhTexture;
+  var randTexture;
 
   var paths = [
     "shader/tracer.vs",
@@ -22,7 +23,9 @@ function PathTracer(){
     "shader/draw.vs",
     "shader/draw.fs",
     "mesh/bunny.obj",
-	"mesh/dragon.obj"
+	"mesh/bunny_big.obj",
+	"mesh/dragon.obj",
+	"mesh/cube.obj"
   ];
 
   var staticCount;
@@ -70,7 +73,7 @@ function PathTracer(){
   function initPrograms(){
     programs.tracer = initProgram(
       "shader/tracer",
-      ["tick","dims","eye","fbTex", "triTex", "bvhTex", "scale", "maxCorner", "minCorner"],
+      ["tick","dims","eye","fbTex", "triTex", "bvhTex", "randTex", "scale", "rightMax", "rightMin", "leftMax", "leftMin"],
       ["corner"]
     );
     programs.draw = initProgram(
@@ -135,6 +138,16 @@ function PathTracer(){
 	console.log(trianglesBuffer, res, bvh);
     gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
+  }
+  
+  function initNoise(){
+	var randBuffer = [];
+	for(var i=0; i<512 * 512 * 2; i++){
+		randBuffer.push(Math.random());
+	}
+	randTexture = createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, randTexture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, 512, 512, 0, gl.RG, gl.FLOAT, new Float32Array(randBuffer));
   }
 
   function createTexture() {
@@ -202,16 +215,35 @@ function PathTracer(){
     var index = -1;
     element.addEventListener("mousedown", function(e){
       mode = 1
+	  xi = e.layerX;
+      yi = e.layerY;
     }, false);
     element.addEventListener("mousemove", function(e){
       if(mode){
-        eye = rotateY(eye, 0.01);
+		var rx = (e.layerX - xi) / 180.0;
+		var ry = -(e.layerY - yi) / 180.0;
+        eye = rotateY(eye, rx);
+		corners.rightMax = rotateY(corners.rightMax, rx);
+		corners.rightMin = rotateY(corners.rightMin, rx);
+		corners.leftMax = rotateY(corners.leftMax, rx);
+		corners.leftMin = rotateY(corners.leftMin, rx);
+		eye = rotateX(eye, ry);
+		corners.rightMax = rotateX(corners.rightMax, ry);
+		corners.rightMin = rotateX(corners.rightMin, ry);
+		corners.leftMax = rotateX(corners.leftMax, ry);
+		corners.leftMin = rotateX(corners.leftMin, ry);
+		xi = e.layerX;
+		yi = e.layerY;
         pingpong = 0;
       }
     }, false);
     element.addEventListener("mouseup", function(){
       mode = 0;
     }, false);
+	element.addEventListener('mousewheel', function(e) {
+		scale -= e.wheelDelta / 1200 * scale;
+		pingpong = 0;
+	}, false)
   }
 
   function drawTracer(i){
@@ -224,12 +256,17 @@ function PathTracer(){
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.uniform1i(program.uniforms.triTex, 1);
     gl.uniform1i(program.uniforms.bvhTex, 2);
+	gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3f(program.uniforms.eye, eye[0],eye[1],eye[2]);
-	gl.uniform3f(program.uniforms.maxCorner, corners.max[0], corners.max[1], corners.max[2]);
-	gl.uniform3f(program.uniforms.minCorner, corners.min[0], corners.min[1], corners.min[2]);
-    gl.activeTexture(gl.TEXTURE2);
+	gl.uniform3f(program.uniforms.rightMax, corners.rightMax[0], corners.rightMax[1], corners.rightMax[2]);
+	gl.uniform3f(program.uniforms.leftMin, corners.leftMin[0], corners.leftMin[1], corners.leftMin[2]);
+	gl.uniform3f(program.uniforms.leftMax, corners.leftMax[0], corners.leftMax[1], corners.leftMax[2]);
+	gl.uniform3f(program.uniforms.rightMin, corners.rightMin[0], corners.rightMin[1], corners.rightMin[2]);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, randTexture);
+	gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, bvhTexture);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
@@ -269,6 +306,7 @@ function PathTracer(){
     initGL(canvas);
     initPrograms();
     initBVH();
+	initNoise();
     initBuffers();
     initEvents();
 
