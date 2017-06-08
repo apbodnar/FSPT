@@ -18,6 +18,7 @@ function PathTracer(){
   var randTexture;
 
   var paths = [
+    "scene/scene.json",
     "shader/tracer.vs",
     "shader/tracer.fs",
     "shader/draw.vs",
@@ -100,7 +101,8 @@ function PathTracer(){
   }
 
   function initBVH(){
-    var geometry = parseMesh(assets['mesh/dragon.obj']);
+	console.log(JSON.parse(assets['scene/scene.json']));
+    var geometry = parseMesh(assets['mesh/bunny.obj']);
     var bvh = new BVH(geometry, 4);
     var bvhArray = bvh.serializeTree();
     var bvhBuffer = [];
@@ -135,7 +137,6 @@ function PathTracer(){
     triangleTexture = createTexture();
     res = requiredRes(trianglesBuffer.length, 3, 3);
     padBuffer(trianglesBuffer, res[0], res[1], 3);
-	console.log(trianglesBuffer, res, bvh);
     gl.bindTexture(gl.TEXTURE_2D, triangleTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
   }
