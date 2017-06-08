@@ -31,6 +31,39 @@ function dot(v1, v2){
   return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
 }
 
+function rotateX(v, a){
+  var x = v[0],
+    y = v[1],
+    z = v[2] - 1;
+  var x1 = x,
+    y1 = z*Math.sin(a) + y*Math.cos(a),
+    z1 = z*Math.cos(a) - y*Math.sin(a) + 1;
+  return [x1,y1,z1];
+}
+
+function rotateY(v, a){
+  var x = v[0],
+    y = v[1],
+    z = v[2] - 1;
+  var y1 = y,
+    x1 = z*Math.sin(a) + x*Math.cos(a),
+    z1 = z*Math.cos(a) - x*Math.sin(a) + 1;
+  return [x1,y1,z1];
+}
+
+function rotateArbitrary(v, axis, angle){
+
+}
+
+function matVecMultiply(vec, mat){
+  var res = [];
+  for(var i=0; i<3; i++){
+    var row = [mat[3*i], mat[3*i+1], mat[3*i+2]];
+    res.push(dot(row, vec));
+  }
+  return res;
+}
+
 function cross(v1, v2){
   var x = v1[1] * v2[2] - v1[2] * v2[1],
     y = -(v1[0] * v2[2] - v1[2] * v2[0]),

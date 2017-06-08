@@ -28,4 +28,14 @@
       }
     });
   }
+
+  exports.getText = function(path, callback){
+    var req = new XMLHttpRequest();
+    req.addEventListener("load", function(res){
+      callback.apply(null,[res.target.responseText]);
+    });
+    req.addEventListener("error", function(){ counter = -1; });
+    req.open("GET", path, true);
+    req.send();
+  }
 })(this);
