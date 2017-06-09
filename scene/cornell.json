@@ -3,50 +3,66 @@
     {
       "path": "mesh/bunny.obj",
       "scale": 3,
-      "rotate": 0.0,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0.1,-0.6,-0.5],
       "reflectance": [1,1,1],
       "emittance": [0,0,0]
     },
-    {
+	{
       "path": "mesh/cube.obj",
-      "scale": 1,
-      "rotate": 0,
-      "translate": [-0.5,0.5,-1],
+      "scale": 0.25,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [-0.125,0.375,-0.5],
       "reflectance": [1,1,1],
-      "emittance": [1,1,1]
+      "emittance": [100,100,100]
+    },
+	{
+      "path": "mesh/octohedron.obj",
+      "scale": 0.10,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [-0.3,-0.4,-0.25],
+      "reflectance": [0.02,0.02,1],
+      "emittance": [0.5,0.5,100]
     },
     {
-      "path": "mesh/cube.obj",
+      "path": "mesh/top.obj",
       "scale": 1,
-      "rotate": 0,
-      "translate": [-0.5,-1.5,-1],
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,0.5,-0.5],
       "reflectance": [1,1,1],
       "emittance": [0,0,0]
     },
     {
-      "path": "mesh/cube.obj",
+      "path": "mesh/top.obj",
       "scale": 1,
-      "rotate": 0,
-      "translate": [-1.5,-0.5,-1],
+      "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
+      "translate": [0,0.5,-0.5],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0]
+    },
+    {
+      "path": "mesh/left.obj",
+      "scale": 1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [-0.5,0,-0.5],
       "reflectance": [1,0.1,0.1],
       "emittance": [0,0,0]
     },
     {
-      "path": "mesh/cube.obj",
+      "path": "mesh/left.obj",
       "scale": 1,
-      "rotate": 0,
-      "translate": [0.5,-0.5,-1],
+      "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
+      "translate": [-0.5,0,-0.5],
       "reflectance": [0.1,1,0.1],
       "emittance": [0,0,0]
     },
     {
-      "path": "mesh/back.obj",
+      "path": "mesh/left.obj",
       "scale": 1,
-      "rotate": 0,
-      "translate": [0,0,-1],
+      "rotate": {"angle": -1.570796, "axis": [0,1,0]},
+      "translate": [-1,0,0],
       "reflectance": [1,1,1],
-      "emittance": [0,0,0.1]
+      "emittance": [0,0,0]
     }
   ]
 }

@@ -7,7 +7,7 @@ function PathTracer(scenePath){
   var framebuffers = [];
   var scale = 1;
   var corners = {rightMax: [1,1,0],leftMin: [-1,-1,0], leftMax: [-1,1,0],rightMin: [1,-1,0]};
-  var eye = new Float32Array([0,0,scale * 4]);
+  var eye = new Float32Array([0,0,2* scale]);
   var pingpong = 0;
 
   function initGL(canvas) {
@@ -184,10 +184,11 @@ function PathTracer(scenePath){
   function initEvents(){
     var element = document.getElementById("trace");
     var xi, yi;
-    var mode = 0;
+    var mode = false;
     element.addEventListener("mousedown", function(e){
-      mode = 1;
-	    xi = e.layerX;
+		console.log(e);
+      mode == e.which == 1;
+	  xi = e.layerX;
       yi = e.layerY;
     }, false);
     element.addEventListener("mousemove", function(e){
@@ -210,10 +211,10 @@ function PathTracer(scenePath){
       }
     }, false);
     element.addEventListener("mouseup", function(){
-      mode = 0;
+      mode = false;
     }, false);
     element.addEventListener('mousewheel', function(e) {
-      scale -= e.wheelDelta / 1200 * scale;
+      scale -= e.wheelDelta / 2400 * scale;
       pingpong = 0;
     }, false)
   }
@@ -280,7 +281,7 @@ function PathTracer(scenePath){
     initBVH(res);
     initBuffers();
     initEvents();
-
+	
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
 

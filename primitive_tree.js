@@ -156,7 +156,7 @@
     var vertices = [];
     var triangles = [];
     function applyTransforms(vert){
-      return rotateZ(add(scale(vert, transforms.scale), transforms.translate), transforms.rotate);
+      return rotateArbitrary(add(scale(vert, transforms.scale), transforms.translate),transforms.rotate.axis, transforms.rotate.angle);
     }
     for(var i = 0; i < lines.length; i++) {
       var array = lines[i].split(/[ ]+/);
