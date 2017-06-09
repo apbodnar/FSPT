@@ -156,7 +156,7 @@
     var vertices = [];
     var triangles = [];
     function applyTransforms(vert){
-      return add(scale(vert, transforms.scale), transforms.translate);
+      return rotateZ(add(scale(vert, transforms.scale), transforms.translate), transforms.rotate);
     }
     for(var i = 0; i < lines.length; i++) {
       var array = lines[i].split(/[ ]+/);
@@ -180,7 +180,7 @@
     }
     var original = triangles.length;
     for(var i = 0; i < triangles.length; i++) {
-      var subTriangles = splitTriangle(triangles[i], span/2);
+      var subTriangles = splitTriangle(triangles[i], span/1);
       if(subTriangles.length > 1){
 
         triangles.splice(i,1)
