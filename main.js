@@ -1,4 +1,4 @@
-function PathTracer(){
+function PathTracer(scenePath){
   "use strict";
   var gl;
   var programs = {};
@@ -80,7 +80,7 @@ function PathTracer(){
   }
 
   function initBVH(assets){
-	  var scene = JSON.parse(assets['scene/scene.json']);
+	  var scene = JSON.parse(assets[scenePath]);
     var geometry = [];
     for(var i=0; i<scene.props.length; i++){
       var prop = scene.props[i];
@@ -287,14 +287,14 @@ function PathTracer(){
     tick();
   }
 
-  getText('scene/scene.json', function (res) {
+  getText(scenePath, function (res) {
     var paths = {
-      "scene/scene.json":true,
       "shader/tracer.vs":true,
       "shader/tracer.fs":true,
       "shader/draw.vs":true,
       "shader/draw.fs":true
     };
+    paths[scenePath] = true;
     var scene = JSON.parse(res);
     scene.props.forEach(function(e){
       paths[e.path] = true;
@@ -303,4 +303,4 @@ function PathTracer(){
   });
 }
 
-new PathTracer();
+new PathTracer('scene/cornell.json');

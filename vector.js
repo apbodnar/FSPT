@@ -34,20 +34,30 @@ function dot(v1, v2){
 function rotateX(v, a){
   var x = v[0],
     y = v[1],
-    z = v[2] - 1;
+    z = v[2];
   var x1 = x,
     y1 = z*Math.sin(a) + y*Math.cos(a),
-    z1 = z*Math.cos(a) - y*Math.sin(a) + 1;
+    z1 = z*Math.cos(a) - y*Math.sin(a);
   return [x1,y1,z1];
 }
 
 function rotateY(v, a){
   var x = v[0],
     y = v[1],
-    z = v[2] - 1;
+    z = v[2];
   var y1 = y,
     x1 = z*Math.sin(a) + x*Math.cos(a),
-    z1 = z*Math.cos(a) - x*Math.sin(a) + 1;
+    z1 = z*Math.cos(a) - x*Math.sin(a);
+  return [x1,y1,z1];
+}
+
+function rotateZ(v, a){
+  var x = v[0],
+    y = v[1],
+    z = v[2];
+  var z1 = z,
+    x1 = y*Math.sin(a) + x*Math.cos(a),
+    y1 = y*Math.cos(a) - x*Math.sin(a);
   return [x1,y1,z1];
 }
 
