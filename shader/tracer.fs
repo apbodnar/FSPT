@@ -1,6 +1,5 @@
 #version 300 es
 precision highp float;
-const int sphereCount = 14;
 const int NUM_BOUNCES = 10;
 const float max_t = 100000.0;
 const float n1 = 1.0;
