@@ -9,6 +9,7 @@ function PathTracer(scenePath){
   var corners = {rightMax: [1,1,0],leftMin: [-1,-1,0], leftMax: [-1,1,0],rightMin: [1,-1,0]};
   var eye = new Float32Array([0,0,2* scale]);
   var pingpong = 0;
+  var clear = false;
 
   function initGL(canvas) {
     gl = canvas.getContext("webgl2");
@@ -186,36 +187,39 @@ function PathTracer(scenePath){
     var xi, yi;
     var mode = false;
     element.addEventListener("mousedown", function(e){
-		console.log(e);
-      mode == e.which == 1;
-	  xi = e.layerX;
+      mode = e.which == 1;
+      xi = e.layerX;
       yi = e.layerY;
     }, false);
     element.addEventListener("mousemove", function(e){
       if(mode){
 		    var rx = (e.layerX - xi) / 180.0;
-		    var ry = -(e.layerY - yi) / 180.0;
+		    var ry = (e.layerY - yi) / 180.0;
         eye = rotateY(eye, rx);
         corners.rightMax = rotateY(corners.rightMax, rx);
         corners.rightMin = rotateY(corners.rightMin, rx);
         corners.leftMax = rotateY(corners.leftMax, rx);
         corners.leftMin = rotateY(corners.leftMin, rx);
-        eye = rotateX(eye, ry);
-        corners.rightMax = rotateX(corners.rightMax, ry);
-        corners.rightMin = rotateX(corners.rightMin, ry);
-        corners.leftMax = rotateX(corners.leftMax, ry);
-        corners.leftMin = rotateX(corners.leftMin, ry);
+        var axis = normalize(sub( corners.leftMax, corners.rightMax));
+        eye = rotateArbitrary(eye, axis, ry);
+        corners.rightMax = rotateArbitrary(corners.rightMax, axis, ry);
+        corners.rightMin = rotateArbitrary(corners.rightMin, axis, ry);
+        corners.leftMax = rotateArbitrary(corners.leftMax, axis, ry);
+        corners.leftMin = rotateArbitrary(corners.leftMin, axis, ry);
         xi = e.layerX;
         yi = e.layerY;
         pingpong = 0;
+        clear = true;
       }
     }, false);
     element.addEventListener("mouseup", function(){
       mode = false;
+      clear = false;
     }, false);
     element.addEventListener('mousewheel', function(e) {
       scale -= e.wheelDelta / 2400 * scale;
       pingpong = 0;
+      clear = true;
     }, false)
   }
 
@@ -304,4 +308,4 @@ function PathTracer(scenePath){
   });
 }
 
-new PathTracer('scene/cornell.json');
+new PathTracer('scene/dragon.json');

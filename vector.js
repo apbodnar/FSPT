@@ -61,15 +61,16 @@ function rotateZ(v, a){
   return [x1,y1,z1];
 }
 
-function rotateArbitrary(v, axisArray, angle){
-  
-  var axis = {x: axisArray[0], y: axisArray[1], z: axisArray[2]}
+function rotateArbitrary(v, axis, angle){
+  var x = axis[0],
+      y = axis[1],
+      z = axis[2];
   var s = Math.sin(angle);
   var c = Math.cos(angle);
   var oc = 1.0 - c;
-  var mat = [oc * axis.x * axis.x + c,    oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
-        oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c,          oc * axis.y * axis.z - axis.x * s,
-        oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c];
+  var mat = [oc * x * x + c, oc * x * y - z * s, oc * z * x + y * s,
+        oc * x * y + z * s, oc * y * y + c, oc * y * z - x * s,
+        oc * z * x - y * s, oc * y * z + x * s, oc * z * z + c];
   return matVecMultiply(v, mat);
 }
 
