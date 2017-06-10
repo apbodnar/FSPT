@@ -243,6 +243,39 @@ float rayBoxIntersect(Node node, Ray ray){
 //  }
 //}
 
+//Hit traverse(Ray ray){
+//  Hit result = Hit(max_t, -1.0);
+//  Node last = createNode(-1.0);
+//  Node current = createNode(1.0);
+//  while(true){
+//    Node near = farChild(current);
+//    Node far = siblingNode(near);
+//    if(last.index == far.index){
+//      last = current;
+//      current = createNode(current.parent);
+//      continue;
+//    }
+//    float tryChild = last.index == current.parent ? near.index : far.index;
+//    if(rayBoxIntersect(current, ray) < result.t){
+//      last = current;
+//      current = createNode(tryChild);
+//    } else {
+//      if(current.triangles > -1.0){
+//        temp = processLeaf(current, ray);
+//        if (temp.t < result.t){
+//          result = temp;
+//        }
+//      }
+//      if(tryChild == near.index){
+//        last = near;
+//      } else {
+//        last = current;
+//        current = createNode(current.parent);
+//      }
+//    }
+//  }
+//}
+
 Hit traverseTree(Ray ray){
   uint state = FROM_PARENT;
 	Hit result = Hit(max_t, -1.0);
@@ -262,7 +295,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_CHILD;
 			}
 		} else if (state == FROM_SIBLING){
-			if(rayBoxIntersect(current, ray) == max_t){
+			if(rayBoxIntersect(current, ray) >= result.t){
 				current = createNode(current.parent);
 				state = FROM_CHILD;
 			} else if (current.triangles > -1.0) {
@@ -277,7 +310,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		} else if (state == FROM_PARENT){
-			if(rayBoxIntersect(current, ray) == max_t){
+			if(rayBoxIntersect(current, ray) >= result.t){
 				current = createNode(current.sibling);
 				state = FROM_SIBLING;
 			} else if(current.triangles > -1.0){
@@ -292,7 +325,7 @@ Hit traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		}
-   }
+  }
 }
 
 vec3 getScreen(){
