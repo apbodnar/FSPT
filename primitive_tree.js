@@ -165,11 +165,11 @@
     }
     function getNormal(tri){
       var e1 = sub(tri.v2, tri.v1);
-      var e1 = sub(tri.v3, tri.v1);
-      return normaliz(cross(e1, e2));
+      var e2 = sub(tri.v3, tri.v1);
+      return normalize(cross(e1, e2));
     }
     function averageNormals(normArray){
-      var total;
+      var total = [0,0,0];
       for(var i=0; i<normArray.lenght; i++){
         total = add(total,normArray[i]);
       }
@@ -192,7 +192,10 @@
         tri.normals = [normal, normal, normal];
         triangles.push(tri);
         for(var j=0; j<vals.length; j++){
-          vertNormals[vals[j] - 1] = (vertNormals[vals[j]] || []).push(normal);
+		  if(!vertNormals[vals[j] - 1]){
+			vertNormals[vals[j] - 1] = [];
+		  }
+          vertNormals[vals[j] - 1].push(normal);
         }
       }
     }
@@ -203,10 +206,11 @@
     }
     var original = triangles.length;
     if(transforms.normals == "smooth"){
+	  console.log(vertNormals);
       for(var i=0; i<triangles.length; i++){
-        triangles[i].normal[0] = averageNormals(normArray[triangles[i].i1])
-        triangles[i].normal[1] = averageNormals(normArray[triangles[i].i2])
-        triangles[i].normal[2] = averageNormals(normArray[triangles[i].i3])
+        triangles[i].normals[0] = averageNormals(vertNormals[triangles[i].i1])
+        triangles[i].normals[1] = averageNormals(vertNormals[triangles[i].i2])
+        triangles[i].normals[2] = averageNormals(vertNormals[triangles[i].i3])
       }
     }
     // for(var i = 0; i < triangles.length; i++) {
