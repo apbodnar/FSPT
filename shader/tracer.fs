@@ -28,6 +28,7 @@ uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
 uniform sampler2D matTex;
+uniform sampler2D normTex;
 
 struct Triangle {
   vec3 v1;
@@ -119,7 +120,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   return max_t;
 }
 
-vec2 getDOF(){
+vec2 getAA(){
   float theta = rand(coords) * M_PI * 2.0;
   float sqrt_r = sqrt(rand(coords.yx));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
@@ -137,7 +138,7 @@ Material createMaterial(float index){
   return Material(
     texelFetch(matTex, base + ivec2(1,0), 0).rgb,
     texelFetch(matTex, base, 0).rgb,
-	texelFetch(matTex, base + ivec2(2,0), 0).r
+	  texelFetch(matTex, base + ivec2(2,0), 0).r
   );
 }
 
@@ -340,8 +341,8 @@ vec3 getScreen(){
 
 void main(void) {
   vec3 screen = getScreen() * scale ;
-  vec3 dof = (vec3(getDOF(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
-  Ray ray = Ray(eye + dof, normalize(screen - eye));
+  vec3 aa = (vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
+  Ray ray = Ray(eye + aa, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   vec3 emittance[NUM_BOUNCES];
   vec3 reflectance[NUM_BOUNCES];
@@ -352,7 +353,7 @@ void main(void) {
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
 	if(result.index < 0.0){break;}
-	bounces++;
+	 bounces++;
     Material mat = createMaterial(result.index);
     emittance[i] = mat.emittance;
     reflectance[i] = mat.reflectance;
@@ -365,4 +366,3 @@ void main(void) {
   color = pow(color,vec3(gamma));
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
-
