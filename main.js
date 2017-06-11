@@ -51,7 +51,10 @@ function PathTracer(scenePath){
   function initPrograms(assets){
     programs.tracer = initProgram(
       "shader/tracer",
-      ["tick","dims","eye","fbTex", "triTex", "bvhTex", "matTex", "scale", "rightMax", "rightMin", "leftMax", "leftMin"],
+      [
+        "tick","dims","eye",
+        "fbTex", "triTex", "bvhTex", "matTex", "normTex",
+        "scale", "rightMax", "rightMin", "leftMax", "leftMin"],
       ["corner"],
       assets
     );
@@ -91,6 +94,7 @@ function PathTracer(scenePath){
     var bvhBuffer = [];
     var trianglesBuffer = [];
     var materialBuffer = [];
+    var normalBuffer = [];
     for(var i=0; i< bvhArray.length; i++){
       var e = bvhArray[i];
       var node = e.node;
@@ -106,9 +110,16 @@ function PathTracer(scenePath){
           subBuffer.forEach(function(el){trianglesBuffer.push(el)});
         }
         for(var j=0; j<tris.length; j++){
-		  var transforms = tris[j].transforms;
+          var transforms = tris[j].transforms;
           var subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
           subBuffer.forEach(function(el){materialBuffer.push(el)});
+        }
+        for(var j=0; j<tris.length; j++){
+          var subBuffer = [];
+          for(var k=0; k<3; k++){
+            subBuffer = subBuffer.concat(tris[i].normals[k])
+          }
+          subBuffer.forEach(function(el){normalBuffer.push(el)});
         }
       }
       for(var j=0; j<bufferNode.length; j++){
@@ -133,8 +144,14 @@ function PathTracer(scenePath){
     padBuffer(trianglesBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.triangles);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
+
+    textures.normals = createTexture();
+    res = requiredRes(normalBuffer.length, 3, 3);
+    padBuffer(trianglesBuffer, res[0], res[1], 3);
+    gl.bindTexture(gl.TEXTURE_2D, textures.normals);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(normalBuffer));
   }
-  
+
   // function initNoise(){
   //   var randBuffer = [];
   //   for(var i=0; i<512 * 512 * 2; i++){
@@ -234,6 +251,7 @@ function PathTracer(scenePath){
     gl.uniform1i(program.uniforms.triTex, 1);
     gl.uniform1i(program.uniforms.bvhTex, 2);
     gl.uniform1i(program.uniforms.matTex, 3);
+    gl.uniform1i(program.uniforms.normTex, 4);
     //gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
@@ -242,6 +260,8 @@ function PathTracer(scenePath){
     gl.uniform3f(program.uniforms.leftMin, corners.leftMin[0], corners.leftMin[1], corners.leftMin[2]);
     gl.uniform3f(program.uniforms.leftMax, corners.leftMax[0], corners.leftMax[1], corners.leftMax[2]);
     gl.uniform3f(program.uniforms.rightMin, corners.rightMin[0], corners.rightMin[1], corners.rightMin[2]);
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, textures.materials);
     gl.activeTexture(gl.TEXTURE2);
@@ -285,7 +305,7 @@ function PathTracer(scenePath){
     initBVH(res);
     initBuffers();
     initEvents();
-	
+
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
 

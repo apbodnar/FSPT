@@ -112,10 +112,14 @@
     };
   }
 
-  function Triangle(v1, v2, v3, transforms) {
+  function Triangle(v1, v2, v3, i1, i2, i3, transforms) {
     this.v1 = v1;
     this.v2 = v2;
     this.v3 = v3;
+    this.i1 = i1;
+    this.i2 = i2;
+    this.i3 = i3;
+    this.normals = null;
     this.boundingBox = new BoundingBox(this);
     this.transforms = transforms;
   }
@@ -155,8 +159,21 @@
     var lines = objText.split('\n');
     var vertices = [];
     var triangles = [];
+    var vertNormals = [];
     function applyTransforms(vert){
       return rotateArbitrary(add(scale(vert, transforms.scale), transforms.translate),transforms.rotate.axis, transforms.rotate.angle);
+    }
+    function getNormal(tri){
+      var e1 = sub(tri.v2, tri.v1);
+      var e1 = sub(tri.v3, tri.v1);
+      return normaliz(cross(e1, e2));
+    }
+    function averageNormals(normArray){
+      var total;
+      for(var i=0; i<normArray.lenght; i++){
+        total = add(total,normArray[i]);
+      }
+      return scale(total, 1.0/normArray.length);
     }
     for(var i = 0; i < lines.length; i++) {
       var array = lines[i].split(/[ ]+/);
@@ -164,15 +181,19 @@
       if (array[0] == 'v') {
         vertices.push(vals)
       } else if (array[0] == 'f') {
-		var i1 = transforms.invert_faces ? 1 : 0;
-		var i2 = transforms.invert_faces ? 0 : 1;
         var tri = new Triangle(
-          applyTransforms(vertices[vals[i1] - 1]),
-          applyTransforms(vertices[vals[i2] - 1]),
+          applyTransforms(vertices[vals[0] - 1]),
+          applyTransforms(vertices[vals[1] - 1]),
           applyTransforms(vertices[vals[2] - 1]),
+          vals[0] - 1, vals[1] - 1, vals[2] - 1,
           transforms
         );
+        var normal = getNormal(tri);
+        tri.normals = [normal, normal, normal];
         triangles.push(tri);
+        for(var j=0; j<vals.length; j++){
+          vertNormals[vals[j] - 1] = (vertNormals[vals[j]] || []).push(normal);
+        }
       }
     }
     var bb = new BoundingBox(triangles).getBounds();
@@ -181,13 +202,20 @@
       span = Math.max(bb[i*2+1] - bb[i*2], span)
     }
     var original = triangles.length;
+    if(transforms.normals == "smooth"){
+      for(var i=0; i<triangles.length; i++){
+        triangles[i].normal[0] = averageNormals(normArray[triangles[i].i1])
+        triangles[i].normal[1] = averageNormals(normArray[triangles[i].i2])
+        triangles[i].normal[2] = averageNormals(normArray[triangles[i].i3])
+      }
+    }
     // for(var i = 0; i < triangles.length; i++) {
-      // var subTriangles = splitTriangle(triangles[i], span/5);
-      // if(subTriangles.length > 1){
-
-        // triangles.splice(i,1)
-        // subTriangles.forEach(function(e){triangles.push(e)});
-      // }
+    //   var subTriangles = splitTriangle(triangles[i], span/1);
+    //   if(subTriangles.length > 1){
+    //
+    //     triangles.splice(i,1)
+    //     subTriangles.forEach(function(e){triangles.push(e)});
+    //   }
     // }
     console.log(transforms.path, "original:", original,"split:", triangles.length);
     return triangles;
