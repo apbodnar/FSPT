@@ -1,55 +1,32 @@
 {
   "props": [
     {
-      "path": "mesh/dragon.obj",
-      "scale": 0.05,
+      "path": "mesh/teapot.obj",
+      "scale": 0.004,
       "rotate": {"angle": 0, "axis": [0,1,0]},
       "translate": [0,-0.2,-0.75],
-      "reflectance": [0.5426,0.4574,0.001],
-      "emittance": [0,0,0],
-	  "specular": 10,
-	  "normals": "smooth"
-    },
-	{
-      "path": "mesh/bunny.obj",
-      "scale": 2,
-      "rotate": {"angle": 0.1, "axis": [0,1,0]},
-      "translate": [-0.2,-0.57,-0.5],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "smooth"
-    },
-	{
-      "path": "mesh/teapot.obj",
-      "scale": 0.002,
-      "rotate": {"angle": 0.1, "axis": [0,1,0]},
-      "translate": [0.3,-0.4,-0.5],
-      "reflectance": [0.8,0.1,0.1],
-      "emittance": [0,0,0],
-	  "specular": 1,
-	  "invert_faces": true,
-	  "normals": "smooth"
+	  "specular": 10000,
+	  "invert_faces": true
     },
 	{
       "path": "mesh/top.obj",
       "scale": 0.25,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,0.495,-0.5],
+      "translate": [0,0.499,-0.5],
       "reflectance": [0,0,0],
       "emittance": [1000,1000,1000],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     },
 	{
       "path": "mesh/octohedron.obj",
-      "scale": 0.08,
+      "scale": 0.10,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0.01,-0.4,-0.25],
+      "translate": [0.2,-0.4,-0.25],
       "reflectance": [0.1,0.1,0.8],
-      "emittance": [0,0.5,100],
-	  "specular": 0.5,
-	  "normals": "flat"
+      "emittance": [0.5,0.5,100],
+	  "specular": 0.5
     },
     {
       "path": "mesh/top.obj",
@@ -58,8 +35,7 @@
       "translate": [0,0.5,-0.5],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     },
     {
       "path": "mesh/top.obj",
@@ -68,8 +44,7 @@
       "translate": [0,0.5,-0.5],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     },
     {
       "path": "mesh/left.obj",
@@ -78,8 +53,7 @@
       "translate": [-0.5,0,-0.5],
       "reflectance": [0.8,0.1,0.1],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     },
     {
       "path": "mesh/left.obj",
@@ -88,8 +62,7 @@
       "translate": [-0.5,0,-0.5],
       "reflectance": [0.1,0.8,0.1],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     },
     {
       "path": "mesh/left.obj",
@@ -98,8 +71,7 @@
       "translate": [-1,0,0],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
+	  "specular": 0.5
     }
   ]
 }

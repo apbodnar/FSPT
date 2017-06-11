@@ -2,7 +2,6 @@ function PathTracer(scenePath){
   "use strict";
   var gl;
   var programs = {};
-  var squareBuffer;
   var textures = {};
   var framebuffers = [];
   var scale = 1;
@@ -107,7 +106,8 @@ function PathTracer(scenePath){
           subBuffer.forEach(function(el){trianglesBuffer.push(el)});
         }
         for(var j=0; j<tris.length; j++){
-          var subBuffer = [].concat(tris[j].transforms.emittance, tris[j].transforms.reflectance);
+		  var transforms = tris[j].transforms;
+          var subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
           subBuffer.forEach(function(el){materialBuffer.push(el)});
         }
       }
@@ -117,7 +117,7 @@ function PathTracer(scenePath){
     }
 
     textures.materials = createTexture();
-    var res = requiredRes(materialBuffer.length, 2, 3);
+    var res = requiredRes(materialBuffer.length, 3, 3);
     padBuffer(materialBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.materials);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(materialBuffer));
@@ -165,7 +165,7 @@ function PathTracer(scenePath){
   }
 
   function initBuffers(){
-    squareBuffer = gl.createBuffer();
+    var squareBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, squareBuffer);
     var vertices = [
       1.0,  1.0,  0.0,
@@ -308,4 +308,4 @@ function PathTracer(scenePath){
   });
 }
 
-new PathTracer('scene/dragon.json');
+new PathTracer('scene/cornell.json');

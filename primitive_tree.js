@@ -164,9 +164,11 @@
       if (array[0] == 'v') {
         vertices.push(vals)
       } else if (array[0] == 'f') {
+		var i1 = transforms.invert_faces ? 1 : 0;
+		var i2 = transforms.invert_faces ? 0 : 1;
         var tri = new Triangle(
-          applyTransforms(vertices[vals[0] - 1]),
-          applyTransforms(vertices[vals[1] - 1]),
+          applyTransforms(vertices[vals[i1] - 1]),
+          applyTransforms(vertices[vals[i2] - 1]),
           applyTransforms(vertices[vals[2] - 1]),
           transforms
         );
@@ -179,14 +181,14 @@
       span = Math.max(bb[i*2+1] - bb[i*2], span)
     }
     var original = triangles.length;
-    for(var i = 0; i < triangles.length; i++) {
-      var subTriangles = splitTriangle(triangles[i], span/1);
-      if(subTriangles.length > 1){
+    // for(var i = 0; i < triangles.length; i++) {
+      // var subTriangles = splitTriangle(triangles[i], span/5);
+      // if(subTriangles.length > 1){
 
-        triangles.splice(i,1)
-        subTriangles.forEach(function(e){triangles.push(e)});
-      }
-    }
+        // triangles.splice(i,1)
+        // subTriangles.forEach(function(e){triangles.push(e)});
+      // }
+    // }
     console.log(transforms.path, "original:", original,"split:", triangles.length);
     return triangles;
   }

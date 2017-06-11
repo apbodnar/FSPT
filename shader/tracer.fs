@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 10;
+const int NUM_BOUNCES = 5;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -38,6 +38,7 @@ struct Triangle {
 struct Material {
   vec3 reflectance;
   vec3 emittance;
+  float specular;
 };
 
 struct Ray {
@@ -127,16 +128,16 @@ vec2 getDOF(){
 
 ivec2 indexToCoords(sampler2D tex, float index, float perElement){
     ivec2 dims = textureSize(tex, 0);
-    return ivec2(mod(index * perElement, float(dims.x)), floor((index * perElement)/ float(dims.x)));
+	float compensated = (index+0.1); // Hack to handle floaty errors
+    return ivec2(mod(compensated * perElement, float(dims.x)), floor((compensated * perElement)/ float(dims.x)));
 }
 
 Material createMaterial(float index){
-	ivec2 base = indexToCoords(matTex, index, 2.0);
-	vec3 emittance = index > -1.0 ? texelFetch(matTex, base, 0).rgb : vec3(0);
-	vec3 reflectance = index > -1.0 ? texelFetch(matTex, base + ivec2(1,0), 0).rgb : vec3(0);
+	ivec2 base = indexToCoords(matTex, index, 3.0);
   return Material(
-    reflectance,
-    emittance
+    texelFetch(matTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(matTex, base, 0).rgb,
+	texelFetch(matTex, base + ivec2(2,0), 0).r
   );
 }
 
@@ -346,16 +347,19 @@ void main(void) {
   vec3 reflectance[NUM_BOUNCES];
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
+  int bounces = 0;
   for(int i=0; i < NUM_BOUNCES; i++){
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
+	if(result.index < 0.0){break;}
+	bounces++;
     Material mat = createMaterial(result.index);
     emittance[i] = mat.emittance;
     reflectance[i] = mat.reflectance;
-    vec3 dir = randomVec(normal(createTriangle(result.index)), origin , 0.5);
+    vec3 dir = randomVec(normal(createTriangle(result.index)), origin , mat.specular);
     ray = Ray(origin + EPSILON * dir, dir);
   }
-  for(int i=NUM_BOUNCES-1; i>=0; i--){
+  for(int i=bounces-1; i>=0; i--){
     color = reflectance[i]*color + emittance[i];
   }
   color = pow(color,vec3(gamma));
