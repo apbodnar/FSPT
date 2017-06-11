@@ -117,7 +117,7 @@ function PathTracer(scenePath){
         for(var j=0; j<tris.length; j++){
           var subBuffer = [];
           for(var k=0; k<3; k++){
-            subBuffer = subBuffer.concat(tris[i].normals[k])
+            subBuffer = subBuffer.concat(tris[j].normals[k])
           }
           subBuffer.forEach(function(el){normalBuffer.push(el)});
         }
@@ -147,7 +147,7 @@ function PathTracer(scenePath){
 
     textures.normals = createTexture();
     res = requiredRes(normalBuffer.length, 3, 3);
-    padBuffer(trianglesBuffer, res[0], res[1], 3);
+    padBuffer(normalBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(normalBuffer));
   }
