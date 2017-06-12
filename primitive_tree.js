@@ -124,36 +124,36 @@
     this.transforms = transforms;
   }
 
-  function splitTriangle(triangle, threshold){
-    var bb = triangle.boundingBox.getBounds();
-    var span = 0;
-    for(var i = 0; i< bb.length/2; i++){
-      span = Math.max(bb[i*2+1] - bb[i*2], span)
-    }
-    if(span < threshold){
-      return [triangle]
-    }
+  // function splitTriangle(triangle, threshold){
+    // var bb = triangle.boundingBox.getBounds();
+    // var span = 0;
+    // for(var i = 0; i< bb.length/2; i++){
+      // span = Math.max(bb[i*2+1] - bb[i*2], span)
+    // }
+    // if(span < threshold){
+      // return [triangle]
+    // }
 
-    var verts = [triangle.v1, triangle.v2, triangle.v3];
-    var idx;
-    var scalar = 1;
-    for(var i=0; i<verts.length; i++){
-      var left = verts[(i+2) % verts.length];
-      var right = verts[(i+1) % verts.length];
-      var e1 = normalize(sub(left, verts[i]));
-      var e2 = normalize(sub(right, verts[i]));
-      var tempScalar = dot(e1, e2);
-      if(tempScalar < scalar){
-        idx = i;
-        scalar = tempScalar;
-      }
-    }
+    // var verts = [triangle.v1, triangle.v2, triangle.v3];
+    // var idx;
+    // var scalar = 1;
+    // for(var i=0; i<verts.length; i++){
+      // var left = verts[(i+2) % verts.length];
+      // var right = verts[(i+1) % verts.length];
+      // var e1 = normalize(sub(left, verts[i]));
+      // var e2 = normalize(sub(right, verts[i]));
+      // var tempScalar = dot(e1, e2);
+      // if(tempScalar < scalar){
+        // idx = i;
+        // scalar = tempScalar;
+      // }
+    // }
 
-    var opposite = scale(add(verts[(idx+2) % verts.length], verts[(idx+1) % verts.length]),0.5);
-    var t1 = new Triangle(verts[idx],verts[(idx+1) % verts.length], opposite, triangle.transforms);
-    var t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length], triangle.transforms);
-    return splitTriangle(t1, threshold).concat(splitTriangle(t2, threshold));
-  }
+    // var opposite = scale(add(verts[(idx+2) % verts.length], verts[(idx+1) % verts.length]),0.5);
+    // var t1 = new Triangle(verts[idx],verts[(idx+1) % verts.length], opposite, triangle.transforms);
+    // var t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length], triangle.transforms);
+    // return splitTriangle(t1, threshold).concat(splitTriangle(t2, threshold));
+  // }
 
   exports.parseMesh = function(objText, transforms) {
     var lines = objText.split('\n');
@@ -170,7 +170,7 @@
     }
     function averageNormals(normArray){
       var total = [0,0,0];
-      for(var i=0; i<normArray.lenght; i++){
+      for(var i=0; i<normArray.length; i++){
         total = add(total,normArray[i]);
       }
       return scale(total, 1.0/normArray.length);
@@ -181,11 +181,13 @@
       if (array[0] == 'v') {
         vertices.push(vals)
       } else if (array[0] == 'f') {
+		var i1 = transforms.invert_faces ? 1 : 0;
+		var i2 = transforms.invert_faces ? 0 : 1;
         var tri = new Triangle(
-          applyTransforms(vertices[vals[0] - 1]),
-          applyTransforms(vertices[vals[1] - 1]),
+          applyTransforms(vertices[vals[i1] - 1]),
+          applyTransforms(vertices[vals[i2] - 1]),
           applyTransforms(vertices[vals[2] - 1]),
-          vals[0] - 1, vals[1] - 1, vals[2] - 1,
+          vals[i1] - 1, vals[i2] - 1, vals[2] - 1,
           transforms
         );
         var normal = getNormal(tri);
@@ -206,7 +208,6 @@
     }
     var original = triangles.length;
     if(transforms.normals == "smooth"){
-	  console.log(vertNormals);
       for(var i=0; i<triangles.length; i++){
         triangles[i].normals[0] = averageNormals(vertNormals[triangles[i].i1])
         triangles[i].normals[1] = averageNormals(vertNormals[triangles[i].i2])

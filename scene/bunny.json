@@ -6,7 +6,9 @@
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0.1,-0.4,0],
       "reflectance": [1,1,1],
-      "emittance": [0,0,0]
+      "emittance": [0,0,0],
+	  "specular": 0.5,
+	  "normals": "smooth"
     },
 	{
       "path": "mesh/cube.obj",
@@ -14,7 +16,9 @@
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0.125,0.75,0.2],
       "reflectance": [1,1,1],
-      "emittance": [100,100,100]
+      "emittance": [100,100,100],
+	  "specular": 0.1,
+	  "normals": "flat"
     }
   ]
 }

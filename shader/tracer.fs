@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 5;
+const int NUM_BOUNCES = 6;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -34,6 +34,12 @@ struct Triangle {
   vec3 v1;
   vec3 v2;
   vec3 v3;
+};
+
+struct Normals {
+  vec3 n1;
+  vec3 n2;
+  vec3 n3;
 };
 
 struct Material {
@@ -134,7 +140,7 @@ ivec2 indexToCoords(sampler2D tex, float index, float perElement){
 }
 
 Material createMaterial(float index){
-	ivec2 base = indexToCoords(matTex, index, 3.0);
+  ivec2 base = indexToCoords(matTex, index, 3.0);
   return Material(
     texelFetch(matTex, base + ivec2(1,0), 0).rgb,
     texelFetch(matTex, base, 0).rgb,
@@ -143,11 +149,20 @@ Material createMaterial(float index){
 }
 
 Triangle createTriangle(float index){
-	ivec2 base = indexToCoords(triTex, index, 3.0);
+  ivec2 base = indexToCoords(triTex, index, 3.0);
   return Triangle(
     texelFetch(triTex, base, 0).rgb,
     texelFetch(triTex, base + ivec2(1,0), 0).rgb,
     texelFetch(triTex, base + ivec2(2,0), 0).rgb
+  );
+}
+
+Normals createNormals(float index){
+  ivec2 base = indexToCoords(normTex, index, 3.0);
+  return Normals(
+    texelFetch(normTex, base, 0).rgb,
+    texelFetch(normTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(2,0), 0).rgb
   );
 }
 
@@ -191,10 +206,8 @@ Node siblingNode(Node node){
   return createNode(node.sibling);
 }
 
-vec3 normal(Triangle tri){
-  vec3 e1 = tri.v2 - tri.v1;
-  vec3 e2 = tri.v3 - tri.v1;
-  return normalize(cross(e1, e2));
+vec3 normal(Triangle tri, Normals normals, vec3 p){
+  return normals.n3;
 }
 
 float rayBoxIntersect(Node node, Ray ray){
@@ -245,38 +258,21 @@ float rayBoxIntersect(Node node, Ray ray){
 //  }
 //}
 
-//Hit traverse(Ray ray){
-//  Hit result = Hit(max_t, -1.0);
-//  Node last = createNode(-1.0);
-//  Node current = createNode(1.0);
-//  while(true){
-//    Node near = farChild(current);
-//    Node far = siblingNode(near);
-//    if(last.index == far.index){
-//      last = current;
-//      current = createNode(current.parent);
-//      continue;
-//    }
-//    float tryChild = last.index == current.parent ? near.index : far.index;
-//    if(rayBoxIntersect(current, ray) < result.t){
-//      last = current;
-//      current = createNode(tryChild);
-//    } else {
-//      if(current.triangles > -1.0){
-//        temp = processLeaf(current, ray);
-//        if (temp.t < result.t){
-//          result = temp;
-//        }
-//      }
-//      if(tryChild == near.index){
-//        last = near;
-//      } else {
-//        last = current;
-//        current = createNode(current.parent);
-//      }
-//    }
-//  }
-//}
+vec3 barycentricNormal(Triangle tri, Normals normals, vec3 p){
+    vec3 v0 = tri.v2 - tri.v1;
+	vec3 v1 = tri.v3 - tri.v1;
+	vec3 v2 = p - tri.v1;
+    float d00 = dot(v0, v0);
+    float d01 = dot(v0, v1);
+    float d11 = dot(v1, v1);
+    float d20 = dot(v2, v0);
+    float d21 = dot(v2, v1);
+    float invDenom = 1.0 / (d00 * d11 - d01 * d01);
+    float v = (d11 * d20 - d01 * d21) * invDenom;
+    float w = (d00 * d21 - d01 * d20) * invDenom;
+    float u = 1.0 - v - w;
+	return u * normals.n1 + v * normals.n2 + w * normals.n3;
+}
 
 Hit traverseTree(Ray ray){
   uint state = FROM_PARENT;
@@ -357,7 +353,7 @@ void main(void) {
     Material mat = createMaterial(result.index);
     emittance[i] = mat.emittance;
     reflectance[i] = mat.reflectance;
-    vec3 dir = randomVec(normal(createTriangle(result.index)), origin , mat.specular);
+    vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
     ray = Ray(origin + EPSILON * dir, dir);
   }
   for(int i=bounces-1; i>=0; i--){
