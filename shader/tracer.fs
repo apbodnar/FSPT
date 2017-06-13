@@ -259,18 +259,18 @@ float rayBoxIntersect(Node node, Ray ray){
 //}
 
 vec3 barycentricNormal(Triangle tri, Normals normals, vec3 p){
-    vec3 v0 = tri.v2 - tri.v1;
-	vec3 v1 = tri.v3 - tri.v1;
-	vec3 v2 = p - tri.v1;
-    float d00 = dot(v0, v0);
-    float d01 = dot(v0, v1);
-    float d11 = dot(v1, v1);
-    float d20 = dot(v2, v0);
-    float d21 = dot(v2, v1);
-    float invDenom = 1.0 / (d00 * d11 - d01 * d01);
-    float v = (d11 * d20 - d01 * d21) * invDenom;
-    float w = (d00 * d21 - d01 * d20) * invDenom;
-    float u = 1.0 - v - w;
+  vec3 v0 = tri.v2 - tri.v1;
+  vec3 v1 = tri.v3 - tri.v1;
+  vec3 v2 = p - tri.v1;
+  float d00 = dot(v0, v0);
+  float d01 = dot(v0, v1);
+  float d11 = dot(v1, v1);
+  float d20 = dot(v2, v0);
+  float d21 = dot(v2, v1);
+  float invDenom = 1.0 / (d00 * d11 - d01 * d01);
+  float v = (d11 * d20 - d01 * d21) * invDenom;
+  float w = (d00 * d21 - d01 * d20) * invDenom;
+  float u = 1.0 - v - w;
 	return u * normals.n1 + v * normals.n2 + w * normals.n3;
 }
 
@@ -278,8 +278,8 @@ Hit traverseTree(Ray ray){
   uint state = FROM_PARENT;
 	Hit result = Hit(max_t, -1.0);
 	Hit temp;
-    Node current = nearChild(createNode(0.0), ray);
-    while(true){
+  Node current = nearChild(createNode(0.0), ray);
+  while(true){
 		if(state == FROM_CHILD){
 			if(current.index == 0.0){
 				return result;

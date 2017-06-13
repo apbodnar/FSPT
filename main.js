@@ -329,4 +329,5 @@ function PathTracer(scenePath){
   });
 }
 
-new PathTracer('scene/plane.json');
+var scene = window.location.search.match(/[a-zA-Z_]+/);
+new PathTracer(Array.isArray(scene) ? 'scene/'+scene[0]+'.json' : 'scene/plane.json');
