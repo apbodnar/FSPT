@@ -1,10 +1,10 @@
 {
   "props": [
     {
-      "path": "mesh/dragon.obj",
-      "scale": 0.05,
+      "path": "mesh/armadillo.obj",
+      "scale": 0.005,
       "rotate": {"angle":-1.57, "axis": [0,1,0]},
-      "translate": [0,-0.5,0.6],
+      "translate": [0,0,0.6],
       "reflectance": [0.1,0.1,1],
       "emittance": [0,0,0],
 	  "specular": 0.5,
@@ -45,9 +45,9 @@
       "path": "mesh/top.obj",
       "scale": 0.5,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,1,0],
+      "translate": [0,1.3,0],
       "reflectance": [0,0,0],
-      "emittance": [2000,2000,2000],
+      "emittance": [4000,4000,4000],
 	  "specular": 0.5,
 	  "normals": "flat"
     },
@@ -56,7 +56,7 @@
       "scale": 16,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.5,-0.5],
-      "reflectance": [0.8,0.8,0.8],
+      "reflectance": [0.3,0.8,0.3],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "flat"
