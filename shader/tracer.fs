@@ -107,11 +107,12 @@ vec3 randomVec(vec3 normal, vec3 origin, float exp){
 }
 
 float rayTriangleIntersect(Ray ray, Triangle tri){
+  float epsilon= 0.00000001;
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
   float det = dot(e1, p);
-  if(abs(det) < EPSILON){return max_t;}
+  if(abs(det) < epsilon){return max_t;}
   float invDet = 1.0 / det;
   vec3 t = ray.origin - tri.v1;
   float u = dot(t, p) * invDet;
@@ -120,7 +121,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   float v = dot(ray.dir, q) * invDet;
   if(v < 0.0 || u + v > 1.0){return max_t;}
   float dist = dot(e2, q) * invDet;
-  if(dist > EPSILON){
+  if(dist > epsilon){
     return dist;
   }
   return max_t;
