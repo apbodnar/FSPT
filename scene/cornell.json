@@ -3,21 +3,21 @@
     {
       "path": "mesh/dragon.obj",
       "scale": 0.05,
-      "rotate": {"angle":3.1415, "axis": [0,1,0]},
-      "translate": [0,-0.25,0.8],
+      "rotate": {"angle":0, "axis": [0,1,0]},
+      "translate": [0,-0.25,-0.8],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "smooth"
     },
 	{
-      "path": "mesh/bunny.obj",
-      "scale": 2,
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.1,
       "rotate": {"angle": 0.6, "axis": [0,1,0]},
-      "translate": [0,-0.57,-0.5],
-      "reflectance": [0.3, 0.9, 0.5],
+      "translate": [0,-0.46,-0.5],
+      "reflectance": [0.997644, 0.823524, 0.258816],
       "emittance": [0,0,0],
-	  "specular": 1,
+	  "specular": 10,
 	  "normals": "smooth"
     },
 	{
@@ -25,9 +25,9 @@
       "scale": 0.003,
       "rotate": {"angle": 1.57, "axis": [-1,0,0]},
       "translate": [0.9,0.6,-0.6],
-      "reflectance": [0.997644, 0.823524, 0.258816],
+      "reflectance": [0.95, 0.1, 0.1],
       "emittance": [0,0,0],
-	  "specular": 5,
+	  "specular": 1,
 	  "invert_faces": false,
 	  "normals": "smooth"
     },
@@ -43,9 +43,9 @@
     },
 	{
       "path": "mesh/octohedron.obj",
-      "scale": 0.08,
+      "scale": 0.06,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0.01,-0.45,-0.25],
+      "translate": [0.01,-0.42,-0.25],
       "reflectance": [0.5,0.5,1],
       "emittance": [0.5,0.5,1000],
 	  "specular": 0.5,

@@ -37,7 +37,7 @@
       "translate": [1.65,0.8,-0.9],
       "reflectance": [1, 1, 1],
       "emittance": [0,0,0],
-	  "specular": 100,
+	  "specular": 10,
 	  "invert_faces": false,
 	  "normals": "smooth"
     },
