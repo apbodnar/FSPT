@@ -226,37 +226,26 @@ Hit gpuTraverseTree(Ray ray){
 	Hit result = Hit(max_t, -1.0);
 	Hit temp;
 	Node last= createNode(-1.0);
-  Node current = createNode(0.0);
-  while(true){
-		Node near = nearChild(current, ray);
-		Node far = siblingNode(near);
-		if(current.index < 0.0){
+	Node current = createNode(0.0);
+	while(true){
+		if(current.index == -1.0){
 			return result;
 		}
-		if(last.index == far.index){
-			last = current;
-			current = createNode(current.parent);
-			continue;
-		}
-		float tryChild = last.index == current.parent ? near.index : far.index;
+		Node near = nearChild(current, ray);
+		Node far = siblingNode(near);
 		float t = rayBoxIntersect(current, ray);
+		bool fromParent = last.index == current.parent;
 		if(t < result.t){
-//		  if(current.triangles > -1.0){
-//        temp = processLeaf(current, ray);
-        if (temp.t < result.t){
-          result = temp;
-        }
-		  //}
-			last = current;
-			current = createNode(tryChild);
-		} else {
-			if(tryChild == near.index){
-				last = near;
-			} else {
+			if(current.triangles < 0.0){
+				result.t = t;
 				last = current;
-				current = createNode(current.parent);
+				current = createNode(fromParent ? current.sibling : current.parent); 
 			}
+		} else {
+			
 		}
+
+		
   }
 }
 
@@ -325,7 +314,47 @@ Hit traverseTree(Ray ray){
 				state = FROM_PARENT;
 			}
 		}
-  }
+    }
+}
+
+Hit traverseTreeGPU(Ray ray){
+    uint state = FROM_PARENT;
+	Hit result = Hit(max_t, -1.0);
+	Hit temp;
+    Node current = nearChild(createNode(0.0), ray);
+    while(true){
+		if(state == FROM_CHILD){
+			if(current.index == 0.0){
+				return result;
+			}
+			Node parentNear = nearChild(createNode(current.parent), ray);
+			if(current.index == parentNear.index){
+				current = createNode(current.sibling);
+				state = FROM_SIBLING;
+			} else {
+				current = createNode(current.parent);
+				state = FROM_CHILD;
+			}
+		} else {
+			bool fromParent = state == FROM_PARENT;
+			uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
+			float nextIndex = fromParent ? current.sibling : current.parent;
+			if(rayBoxIntersect(current, ray) >= result.t){
+				current = createNode(nextIndex);
+				state = nextState;
+			} else if (current.triangles > -1.0) {
+				temp = processLeaf(current, ray);
+				if (temp.t < result.t){
+					result = temp;
+				}
+				current = createNode(nextIndex);
+				state = nextState;
+			} else {
+				current = nearChild(current, ray);
+				state = FROM_PARENT;
+			}
+	    }
+    }
 }
 
 vec3 getScreen(){
@@ -347,21 +376,20 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
-//  for(int i=0; i < NUM_BOUNCES; i++){
-//    result = traverseTree(ray);
-//    vec3 origin = ray.origin + ray.dir * result.t;
-//	  if(result.index < 0.0){break;}
-//	  bounces++;
-//    Material mat = createMaterial(result.index);
-//    emittance[i] = mat.emittance;
-//    reflectance[i] = mat.reflectance;
-//    vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
-//    ray = Ray(origin + EPSILON * dir, dir);
-//  }
-//  for(int i=bounces-1; i>=0; i--){
-//    color = reflectance[i]*color + emittance[i];
-//  }
-//  color = pow(color,vec3(gamma));
-  color = gpuTraverseTree(ray).t < max_t ? vec3(1) : vec3(0);
+  for(int i=0; i < NUM_BOUNCES; i++){
+    result = traverseTreeGPU(ray);
+    vec3 origin = ray.origin + ray.dir * result.t;
+	  if(result.index < 0.0){break;}
+	  bounces++;
+    Material mat = createMaterial(result.index);
+    emittance[i] = mat.emittance;
+    reflectance[i] = mat.reflectance;
+    vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
+    ray = Ray(origin + EPSILON * dir, dir);
+  }
+  for(int i=bounces-1; i>=0; i--){
+    color = reflectance[i]*color + emittance[i];
+  }
+  color = pow(color,vec3(gamma));
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
