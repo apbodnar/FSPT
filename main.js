@@ -1,14 +1,18 @@
-function PathTracer(scenePath){
+function PathTracer(scenePath) {
   "use strict";
   var gl;
   var programs = {};
   var textures = {};
   var framebuffers = [];
   var scale = 1;
-  var corners = {rightMax: [1,1,0],leftMin: [-1,-1,0], leftMax: [-1,1,0],rightMin: [1,-1,0]};
-  var eye = new Float32Array([0,0,2* scale]);
+  var corners = {rightMax: [1, 1, 0], leftMin: [-1, -1, 0], leftMax: [-1, 1, 0], rightMin: [1, -1, 0]};
+  var eye = new Float32Array([0, 0, 2 * scale]);
   var pingpong = 0;
   var clear = false;
+
+  function writeBanner(message) {
+    document.getElementById("banner").textContent = message;
+  }
 
   function initGL(canvas) {
     gl = canvas.getContext("webgl2");
@@ -29,8 +33,8 @@ function PathTracer(scenePath){
   }
 
   function initProgram(path, uniforms, attributes, assets) {
-    var fs = getShader(gl, assets[path+".fs"],"FRAGMENT_SHADER");
-    var vs = getShader(gl, assets[path+".vs"],"VERTEX_SHADER");
+    var fs = getShader(gl, assets[path + ".fs"], "FRAGMENT_SHADER");
+    var vs = getShader(gl, assets[path + ".vs"], "VERTEX_SHADER");
     var program = gl.createProgram();
     program.uniforms = {};
     program.attributes = {};
@@ -38,21 +42,21 @@ function PathTracer(scenePath){
     gl.attachShader(program, fs);
     gl.linkProgram(program);
     gl.useProgram(program);
-    uniforms.forEach(function(name){
+    uniforms.forEach(function (name) {
       program.uniforms[name] = gl.getUniformLocation(program, name);
     });
-    attributes.forEach(function(name){
+    attributes.forEach(function (name) {
       program.attributes[name] = gl.getAttribLocation(program, name);
     });
 
     return program;
   }
 
-  function initPrograms(assets){
+  function initPrograms(assets) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick","dims","eye",
+        "tick", "dims", "eye",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin"],
       ["corner"],
@@ -60,32 +64,33 @@ function PathTracer(scenePath){
     );
     programs.draw = initProgram(
       "shader/draw",
-      ["fbTex","imageTex","dims"],
+      ["fbTex", "imageTex", "dims"],
       ["corner"],
       assets
     );
   }
 
-  function requiredRes(num_elements, per_element, per_pixel){
+  function requiredRes(num_elements, per_element, per_pixel) {
     var num_pixels = num_elements / per_pixel;
     var root = Math.sqrt(num_pixels);
-    var width = Math.ceil(root/per_element) * per_element;
+    var width = Math.ceil(root / per_element) * per_element;
     var height = Math.ceil(num_pixels / width);
     return [width, height]
   }
 
-  function padBuffer(buffer, width, height, channels){
+  function padBuffer(buffer, width, height, channels) {
     var numToPad = channels * width * height - buffer.length;
     console.assert(numToPad >= 0);
-    for(var i=0; i< numToPad; i++){
+    for (var i = 0; i < numToPad; i++) {
       buffer.push(-1);
     }
   }
 
-  function initBVH(assets){
-	  var scene = JSON.parse(assets[scenePath]);
+  function initBVH(assets) {
+    var scene = JSON.parse(assets[scenePath]);
+    //writeBanner("Compiling scene");
     var geometry = [];
-    for(var i=0; i<scene.props.length; i++){
+    for (var i = 0; i < scene.props.length; i++) {
       var prop = scene.props[i];
       geometry = geometry.concat(parseMesh(assets[prop.path], prop));
     }
@@ -95,34 +100,40 @@ function PathTracer(scenePath){
     var trianglesBuffer = [];
     var materialBuffer = [];
     var normalBuffer = [];
-    for(var i=0; i< bvhArray.length; i++){
+    for (var i = 0; i < bvhArray.length; i++) {
       var e = bvhArray[i];
       var node = e.node;
       var box = node.boundingBox.getBounds();
-      var triIndex = node.leaf ? trianglesBuffer.length/3/3 : -1;
+      var triIndex = node.leaf ? trianglesBuffer.length / 3 / 3 : -1;
       // 4 pixels
       var reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
       var bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
-      if(node.leaf){
+      if (node.leaf) {
         var tris = node.triangles;
-        for(var j=0; j<tris.length; j++){
+        for (var j = 0; j < tris.length; j++) {
           var subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
-          subBuffer.forEach(function(el){trianglesBuffer.push(el)});
+          subBuffer.forEach(function (el) {
+            trianglesBuffer.push(el)
+          });
         }
-        for(var j=0; j<tris.length; j++){
+        for (var j = 0; j < tris.length; j++) {
           var transforms = tris[j].transforms;
           var subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
-          subBuffer.forEach(function(el){materialBuffer.push(el)});
+          subBuffer.forEach(function (el) {
+            materialBuffer.push(el)
+          });
         }
-        for(var j=0; j<tris.length; j++){
+        for (var j = 0; j < tris.length; j++) {
           var subBuffer = [];
-          for(var k=0; k<3; k++){
+          for (var k = 0; k < 3; k++) {
             subBuffer = subBuffer.concat(tris[j].normals[k]);
           }
-          subBuffer.forEach(function(el){normalBuffer.push(el)});
+          subBuffer.forEach(function (el) {
+            normalBuffer.push(el)
+          });
         }
       }
-      for(var j=0; j<bufferNode.length; j++){
+      for (var j = 0; j < bufferNode.length; j++) {
         bvhBuffer.push(bufferNode[j]);
       }
     }
@@ -146,11 +157,11 @@ function PathTracer(scenePath){
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(trianglesBuffer));
 
     textures.normals = createTexture();
-	//console.log(normalBuffer);
     res = requiredRes(normalBuffer.length, 3, 3);
     padBuffer(normalBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(normalBuffer));
+    writeBanner("");
   }
 
   // function initNoise(){
@@ -164,8 +175,13 @@ function PathTracer(scenePath){
   // }
 
   function createTexture() {
-    var t = gl.createTexture () ;
-    gl.getExtension('EXT_color_buffer_float');
+    var t = gl.createTexture();
+    var ext = gl.getExtension('EXT_color_buffer_float');
+    if (!ext) {
+      var message = "Sorry, your your device doesn't support 'EXT_color_buffer_float'";
+      writeBanner(message);
+      throw message;
+    }
     gl.bindTexture(gl.TEXTURE_2D, t);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -175,21 +191,21 @@ function PathTracer(scenePath){
     return t;
   }
 
-  function createFramebuffer(tex){
+  function createFramebuffer(tex) {
     var fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     return fbo;
   }
 
-  function initBuffers(){
+  function initBuffers() {
     var squareBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, squareBuffer);
     var vertices = [
-      1.0,  1.0,  0.0,
-     -1.0,  1.0,  0.0,
-      1.0, -1.0,  0.0,
-     -1.0, -1.0,  0.0
+      1.0, 1.0, 0.0,
+      -1.0, 1.0, 0.0,
+      1.0, -1.0, 0.0,
+      -1.0, -1.0, 0.0
     ];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
     gl.vertexAttribPointer(programs.tracer.corner, 3, gl.FLOAT, false, 0, 0);
@@ -200,48 +216,79 @@ function PathTracer(scenePath){
     framebuffers.push(createFramebuffer(textures.screen[1]));
   }
 
-  function initEvents(){
+  function initEvents() {
     var element = document.getElementById("trace");
     var xi, yi;
     var mode = false;
-    element.addEventListener("mousedown", function(e){
+
+    function addTranslation(shift) {
+      eye = Vec3.add(eye, shift);
+      corners.rightMax = Vec3.add(corners.rightMax, shift);
+      corners.rightMin = Vec3.add(corners.rightMin, shift);
+      corners.leftMax = Vec3.add(corners.leftMax, shift);
+      corners.leftMin = Vec3.add(corners.leftMin, shift);
+    }
+
+    element.addEventListener("mousedown", function (e) {
       mode = e.which == 1;
       xi = e.layerX;
       yi = e.layerY;
     }, false);
-    element.addEventListener("mousemove", function(e){
-      if(mode){
-		    var rx = (e.layerX - xi) / 180.0;
-		    var ry = (e.layerY - yi) / 180.0;
-        eye = rotateY(eye, rx);
-        corners.rightMax = rotateY(corners.rightMax, rx);
-        corners.rightMin = rotateY(corners.rightMin, rx);
-        corners.leftMax = rotateY(corners.leftMax, rx);
-        corners.leftMin = rotateY(corners.leftMin, rx);
-        var axis = normalize(sub( corners.leftMax, corners.rightMax));
-        eye = rotateArbitrary(eye, axis, ry);
-        corners.rightMax = rotateArbitrary(corners.rightMax, axis, ry);
-        corners.rightMin = rotateArbitrary(corners.rightMin, axis, ry);
-        corners.leftMax = rotateArbitrary(corners.leftMax, axis, ry);
-        corners.leftMin = rotateArbitrary(corners.leftMin, axis, ry);
+    element.addEventListener("mousemove", function (e) {
+      if (mode) {
+        var rx = (e.layerX - xi) / 180.0;
+        var ry = (e.layerY - yi) / 180.0;
+        eye = Vec3.rotateY(eye, rx);
+        corners.rightMax = Vec3.rotateY(corners.rightMax, rx);
+        corners.rightMin = Vec3.rotateY(corners.rightMin, rx);
+        corners.leftMax = Vec3.rotateY(corners.leftMax, rx);
+        corners.leftMin = Vec3.rotateY(corners.leftMin, rx);
+        var axis = Vec3.normalize(Vec3.sub(corners.leftMax, corners.rightMax));
+        eye = Vec3.rotateArbitrary(eye, axis, ry);
+        corners.rightMax = Vec3.rotateArbitrary(corners.rightMax, axis, ry);
+        corners.rightMin = Vec3.rotateArbitrary(corners.rightMin, axis, ry);
+        corners.leftMax = Vec3.rotateArbitrary(corners.leftMax, axis, ry);
+        corners.leftMin = Vec3.rotateArbitrary(corners.leftMin, axis, ry);
         xi = e.layerX;
         yi = e.layerY;
         pingpong = 0;
         clear = true;
       }
     }, false);
-    element.addEventListener("mouseup", function(){
+    element.addEventListener("mouseup", function () {
       mode = false;
       clear = false;
     }, false);
-    element.addEventListener('mousewheel', function(e) {
+    element.addEventListener('mousewheel', function (e) {
       scale -= e.wheelDelta / 2400 * scale;
       pingpong = 0;
       clear = true;
-    }, false)
+    }, false);
+    document.addEventListener("keypress", function (e) {
+      var dir = Vec3.normalize(Vec3.sub([0, 0, 0], eye));
+      var strafe = Vec3.normalize(Vec3.sub(corners.rightMax, corners.leftMax));
+      switch (e.key) {
+        case 'w':
+          addTranslation(Vec3.scale(dir, 0.1 * scale));
+          pingpong = 0;
+          break;
+        case 'a':
+          addTranslation(Vec3.scale(strafe, -0.1 * scale));
+          pingpong = 0;
+          break;
+        case 's':
+          addTranslation(Vec3.scale(dir, -0.1 * scale));
+          pingpong = 0;
+          break;
+        case 'd':
+          addTranslation(Vec3.scale(strafe, 0.1 * scale));
+          pingpong = 0;
+          break;
+      }
+    }, false);
   }
 
-  function drawTracer(i){
+  function drawTracer(i) {
     var program = programs.tracer;
     //console.log(program)
     gl.useProgram(program);
@@ -256,7 +303,7 @@ function PathTracer(scenePath){
     //gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
-    gl.uniform3f(program.uniforms.eye, eye[0],eye[1],eye[2]);
+    gl.uniform3f(program.uniforms.eye, eye[0], eye[1], eye[2]);
     gl.uniform3f(program.uniforms.rightMax, corners.rightMax[0], corners.rightMax[1], corners.rightMax[2]);
     gl.uniform3f(program.uniforms.leftMin, corners.leftMin[0], corners.leftMin[1], corners.leftMin[2]);
     gl.uniform3f(program.uniforms.leftMax, corners.leftMax[0], corners.leftMax[1], corners.leftMax[2]);
@@ -270,12 +317,12 @@ function PathTracer(scenePath){
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, textures.triangles);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, textures.screen[(i+1)%2]);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i%2]);
+    gl.bindTexture(gl.TEXTURE_2D, textures.screen[(i + 1) % 2]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i % 2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  function drawQuad(i){
+  function drawQuad(i) {
     var program = programs.draw;
     gl.useProgram(program);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
@@ -283,18 +330,18 @@ function PathTracer(scenePath){
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.bindTexture(gl.TEXTURE_2D, textures.screen[i%2]);
+    gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   function tick() {
     requestAnimationFrame(tick);
-    for (var i = 0; i < 1; i++){
+    for (var i = 0; i < 1; i++) {
       pingpong++;
       drawTracer(pingpong);
     }
     drawQuad(pingpong);
-    if(!(pingpong % 1000)){
+    if (!(pingpong % 1000)) {
       console.log(pingpong);
     }
   }
@@ -315,19 +362,20 @@ function PathTracer(scenePath){
 
   getText(scenePath, function (res) {
     var paths = {
-      "shader/tracer.vs":true,
-      "shader/tracer.fs":true,
-      "shader/draw.vs":true,
-      "shader/draw.fs":true
+      "shader/tracer.vs": true,
+      "shader/tracer.fs": true,
+      "shader/draw.vs": true,
+      "shader/draw.fs": true
     };
     paths[scenePath] = true;
     var scene = JSON.parse(res);
-    scene.props.forEach(function(e){
+    scene.props.forEach(function (e) {
       paths[e.path] = true;
     });
-    loadAll(Object.keys(paths),start)
+    writeBanner("Compiling scene");
+    loadAll(Object.keys(paths), start)
   });
 }
 
 var scene = window.location.search.match(/[a-zA-Z_]+/);
-new PathTracer(Array.isArray(scene) ? 'scene/'+scene[0]+'.json' : 'scene/plane.json');
+new PathTracer(Array.isArray(scene) ? 'scene/' + scene[0] + '.json' : 'scene/plane.json');
