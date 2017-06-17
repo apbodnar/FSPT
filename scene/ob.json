@@ -1,0 +1,23 @@
+{
+  "props": [
+    {
+      "path": "mesh/ob.obj",
+      "scale": 1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,0,0],
+      "reflectance": [1,1,0.4],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 8,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,3,0],
+      "reflectance": [0,0,0],
+      "emittance": [50,50,100],
+      "specular": 0.5
+    }
+  ]
+}
