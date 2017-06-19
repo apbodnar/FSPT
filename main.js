@@ -1,17 +1,23 @@
 function PathTracer(scenePath) {
   "use strict";
-  var gl;
-  var programs = {};
-  var textures = {};
-  var framebuffers = [];
-  var scale = 1;
-  var corners = {rightMax: [1, 1, 0], leftMin: [-1, -1, 0], leftMax: [-1, 1, 0], rightMin: [1, -1, 0]};
-  var eye = new Float32Array([0, 0, 2 * scale]);
-  var pingpong = 0;
-  var clear = false;
+  let gl;
+  let programs = {};
+  let textures = {};
+  let framebuffers = [];
+  let scale = 1;
+  let corners = {rightMax: [1, 1, 0], leftMin: [-1, -1, 0], leftMax: [-1, 1, 0], rightMin: [1, -1, 0]};
+  let eye = new Float32Array([0, 0, 2 * scale]);
+  let pingpong = 0;
+  let clear = false;
+  let sampleInput = document.getElementById('max-samples');
+  let sampleOutput = document.getElementById("counter");
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
+  }
+
+  function writeCounter(message) {
+    sampleOutput.value = parseInt(message);
   }
 
   function initGL(canvas) {
@@ -22,7 +28,7 @@ function PathTracer(scenePath) {
   }
 
   function getShader(gl, str, id) {
-    var shader = gl.createShader(gl[id]);
+    let shader = gl.createShader(gl[id]);
     gl.shaderSource(shader, str);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -33,9 +39,9 @@ function PathTracer(scenePath) {
   }
 
   function initProgram(path, uniforms, attributes, assets) {
-    var fs = getShader(gl, assets[path + ".fs"], "FRAGMENT_SHADER");
-    var vs = getShader(gl, assets[path + ".vs"], "VERTEX_SHADER");
-    var program = gl.createProgram();
+    let fs = getShader(gl, assets[path + ".fs"], "FRAGMENT_SHADER");
+    let vs = getShader(gl, assets[path + ".vs"], "VERTEX_SHADER");
+    let program = gl.createProgram();
     program.uniforms = {};
     program.attributes = {};
     gl.attachShader(program, vs);
@@ -71,61 +77,66 @@ function PathTracer(scenePath) {
   }
 
   function requiredRes(num_elements, per_element, per_pixel) {
-    var num_pixels = num_elements / per_pixel;
-    var root = Math.sqrt(num_pixels);
-    var width = Math.ceil(root / per_element) * per_element;
-    var height = Math.ceil(num_pixels / width);
+    let num_pixels = num_elements / per_pixel;
+    let root = Math.sqrt(num_pixels);
+    let width = Math.ceil(root / per_element) * per_element;
+    let height = Math.ceil(num_pixels / width);
     return [width, height]
   }
 
   function padBuffer(buffer, width, height, channels) {
-    var numToPad = channels * width * height - buffer.length;
+    let numToPad = channels * width * height - buffer.length;
     console.assert(numToPad >= 0);
-    for (var i = 0; i < numToPad; i++) {
+    for (let i = 0; i < numToPad; i++) {
       buffer.push(-1);
     }
   }
 
   function initBVH(assets) {
-    var scene = JSON.parse(assets[scenePath]);
+    let scene = JSON.parse(assets[scenePath]);
     //writeBanner("Compiling scene");
-    var geometry = [];
-    for (var i = 0; i < scene.props.length; i++) {
-      var prop = scene.props[i];
-      geometry = geometry.concat(parseMesh(assets[prop.path], prop));
+    let geometry = [];
+    let lights = [];
+    for (let i = 0; i < scene.props.length; i++) {
+      let prop = scene.props[i];
+      let parsed = parseMesh(assets[prop.path], prop);
+      if(Vec3.dot(prop.emittance, [1,1,1]) > 0){
+        lights.push(parsed);
+      }
+      geometry = geometry.concat(parsed);
     }
-    var bvh = new BVH(geometry, 4);
-    var bvhArray = bvh.serializeTree();
-    var bvhBuffer = [];
-    var trianglesBuffer = [];
-    var materialBuffer = [];
-    var normalBuffer = [];
-    for (var i = 0; i < bvhArray.length; i++) {
-      var e = bvhArray[i];
-      var node = e.node;
-      var box = node.boundingBox.getBounds();
-      var triIndex = node.leaf ? trianglesBuffer.length / 3 / 3 : -1;
+    let bvh = new BVH(geometry, 4);
+    let bvhArray = bvh.serializeTree();
+    let bvhBuffer = [];
+    let trianglesBuffer = [];
+    let materialBuffer = [];
+    let normalBuffer = [];
+    for (let i = 0; i < bvhArray.length; i++) {
+      let e = bvhArray[i];
+      let node = e.node;
+      let box = node.boundingBox.getBounds();
+      let triIndex = node.leaf ? trianglesBuffer.length / 3 / 3 : -1;
       // 4 pixels
-      var reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
-      var bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
+      let reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
+      let bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
       if (node.leaf) {
-        var tris = node.triangles;
-        for (var j = 0; j < tris.length; j++) {
-          var subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
+        let tris = node.triangles;
+        for (let j = 0; j < tris.length; j++) {
+          let subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
           subBuffer.forEach(function (el) {
             trianglesBuffer.push(el)
           });
         }
-        for (var j = 0; j < tris.length; j++) {
-          var transforms = tris[j].transforms;
-          var subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
+        for (let j = 0; j < tris.length; j++) {
+          let transforms = tris[j].transforms;
+          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });
         }
-        for (var j = 0; j < tris.length; j++) {
-          var subBuffer = [];
-          for (var k = 0; k < 3; k++) {
+        for (let j = 0; j < tris.length; j++) {
+          let subBuffer = [];
+          for (let k = 0; k < 3; k++) {
             subBuffer = subBuffer.concat(tris[j].normals[k]);
           }
           subBuffer.forEach(function (el) {
@@ -133,13 +144,13 @@ function PathTracer(scenePath) {
           });
         }
       }
-      for (var j = 0; j < bufferNode.length; j++) {
+      for (let j = 0; j < bufferNode.length; j++) {
         bvhBuffer.push(bufferNode[j]);
       }
     }
 
     textures.materials = createTexture();
-    var res = requiredRes(materialBuffer.length, 3, 3);
+    let res = requiredRes(materialBuffer.length, 3, 3);
     padBuffer(materialBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.materials);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(materialBuffer));
@@ -165,8 +176,8 @@ function PathTracer(scenePath) {
   }
 
   // function initNoise(){
-  //   var randBuffer = [];
-  //   for(var i=0; i<512 * 512 * 2; i++){
+  //   let randBuffer = [];
+  //   for(let i=0; i<512 * 512 * 2; i++){
   //     randBuffer.push(Math.random());
   //   }
   //   randTexture = createTexture();
@@ -175,10 +186,10 @@ function PathTracer(scenePath) {
   // }
 
   function createTexture() {
-    var t = gl.createTexture();
-    var ext = gl.getExtension('EXT_color_buffer_float');
+    let t = gl.createTexture();
+    let ext = gl.getExtension('EXT_color_buffer_float');
     if (!ext) {
-      var message = "Sorry, your your device doesn't support 'EXT_color_buffer_float'";
+      let message = "Sorry, your your device doesn't support 'EXT_color_buffer_float'";
       writeBanner(message);
       throw message;
     }
@@ -192,16 +203,16 @@ function PathTracer(scenePath) {
   }
 
   function createFramebuffer(tex) {
-    var fbo = gl.createFramebuffer();
+    let fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     return fbo;
   }
 
   function initBuffers() {
-    var squareBuffer = gl.createBuffer();
+    let squareBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, squareBuffer);
-    var vertices = [
+    let vertices = [
       1.0, 1.0, 0.0,
       -1.0, 1.0, 0.0,
       1.0, -1.0, 0.0,
@@ -217,9 +228,9 @@ function PathTracer(scenePath) {
   }
 
   function initEvents() {
-    var element = document.getElementById("trace");
-    var xi, yi;
-    var mode = false;
+    let element = document.getElementById("trace");
+    let xi, yi;
+    let mode = false;
 
     function addTranslation(shift) {
       eye = Vec3.add(eye, shift);
@@ -236,14 +247,14 @@ function PathTracer(scenePath) {
     }, false);
     element.addEventListener("mousemove", function (e) {
       if (mode) {
-        var rx = (e.layerX - xi) / 180.0;
-        var ry = (e.layerY - yi) / 180.0;
+        let rx = (e.layerX - xi) / 180.0;
+        let ry = (e.layerY - yi) / 180.0;
         eye = Vec3.rotateY(eye, rx);
         corners.rightMax = Vec3.rotateY(corners.rightMax, rx);
         corners.rightMin = Vec3.rotateY(corners.rightMin, rx);
         corners.leftMax = Vec3.rotateY(corners.leftMax, rx);
         corners.leftMin = Vec3.rotateY(corners.leftMin, rx);
-        var axis = Vec3.normalize(Vec3.sub(corners.leftMax, corners.rightMax));
+        let axis = Vec3.normalize(Vec3.sub(corners.leftMax, corners.rightMax));
         eye = Vec3.rotateArbitrary(eye, axis, ry);
         corners.rightMax = Vec3.rotateArbitrary(corners.rightMax, axis, ry);
         corners.rightMin = Vec3.rotateArbitrary(corners.rightMin, axis, ry);
@@ -265,8 +276,8 @@ function PathTracer(scenePath) {
       clear = true;
     }, false);
     document.addEventListener("keypress", function (e) {
-      var dir = Vec3.normalize(Vec3.sub([0, 0, 0], eye));
-      var strafe = Vec3.normalize(Vec3.sub(corners.rightMax, corners.leftMax));
+      let dir = Vec3.normalize(Vec3.sub([0, 0, 0], eye));
+      let strafe = Vec3.normalize(Vec3.sub(corners.rightMax, corners.leftMax));
       switch (e.key) {
         case 'w':
           addTranslation(Vec3.scale(dir, 0.1 * scale));
@@ -289,7 +300,7 @@ function PathTracer(scenePath) {
   }
 
   function drawTracer(i) {
-    var program = programs.tracer;
+    let program = programs.tracer;
     //console.log(program)
     gl.useProgram(program);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
@@ -323,7 +334,7 @@ function PathTracer(scenePath) {
   }
 
   function drawQuad(i) {
-    var program = programs.draw;
+    let program = programs.draw;
     gl.useProgram(program);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
@@ -336,23 +347,30 @@ function PathTracer(scenePath) {
 
   function tick() {
     requestAnimationFrame(tick);
-    for (var i = 0; i < 1; i++) {
-      pingpong++;
-      drawTracer(pingpong);
-    }
-    drawQuad(pingpong);
-    if (!(pingpong % 1000)) {
-      console.log(pingpong);
+    let max = parseInt(sampleInput.value);
+    if(max && pingpong < max) {
+      for (let i = 0; i < 1; i++) {
+        drawTracer(pingpong);
+        pingpong++;
+        writeCounter(pingpong)
+      }
+      drawQuad(pingpong);
+      if (!(pingpong % 1000)) {
+        console.log(pingpong);
+      }
     }
   }
 
   function start(res) {
-    var canvas = document.getElementById("trace");
+    let canvas = document.getElementById("trace");
     initGL(canvas);
     initPrograms(res);
     initBVH(res);
     initBuffers();
     initEvents();
+    // setInterval(function () {
+    //   writeCounter(pingpong);
+    // },1000);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
@@ -361,21 +379,22 @@ function PathTracer(scenePath) {
   }
 
   getText(scenePath, function (res) {
-    var paths = {
-      "shader/tracer.vs": true,
-      "shader/tracer.fs": true,
-      "shader/draw.vs": true,
-      "shader/draw.fs": true
-    };
-    paths[scenePath] = true;
-    var scene = JSON.parse(res);
+    // Use a set to prevent multiple requests
+    let pathSet = new Set([
+      "shader/tracer.vs",
+      "shader/tracer.fs",
+      "shader/draw.vs",
+      "shader/draw.fs",
+      scenePath
+    ]);
+    let scene = JSON.parse(res);
     scene.props.forEach(function (e) {
-      paths[e.path] = true;
+      pathSet.add(e.path);
     });
     writeBanner("Compiling scene");
-    loadAll(Object.keys(paths), start)
+    loadAll(Array.from(pathSet), start)
   });
 }
 
-var scene = window.location.search.match(/[a-zA-Z_]+/);
+let scene = window.location.search.match(/[a-zA-Z_]+/);
 new PathTracer(Array.isArray(scene) ? 'scene/' + scene[0] + '.json' : 'scene/plane.json');

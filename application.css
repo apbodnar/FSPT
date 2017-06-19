@@ -1,0 +1,32 @@
+body {
+    text-align: center;
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    color: white;
+}
+
+form {
+    position: fixed;
+    top: 24px;
+    text-align: left;
+}
+
+h3 {
+    padding: 0;
+    margin: 0;
+    top: 4px;
+    position: fixed;
+}
+
+canvas {
+    border: none;
+}
+
+input {
+    border-width: 0 0 1px 0;
+    text-align: right;
+    width: 64px;
+    color: white;
+    background-color: black;
+}

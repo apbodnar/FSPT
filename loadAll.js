@@ -1,7 +1,7 @@
 (function (exports) {
   exports.loadAll = function (urls, callback) {
-    var counter = urls.length;
-    var resHash = {};
+    let counter = urls.length;
+    let resHash = {};
     urls.forEach(function (url) {
       if (url.match(/^texture\//)) {
         img = new Image();
@@ -14,7 +14,7 @@
         };
         img.src = url;
       } else {
-        var req = new XMLHttpRequest();
+        let req = new XMLHttpRequest();
         req.addEventListener("load", function (res) {
           counter--;
           resHash[url] = res.target.responseText;
@@ -29,10 +29,10 @@
         req.send();
       }
     });
-  }
+  };
 
   exports.getText = function (path, callback) {
-    var req = new XMLHttpRequest();
+    let req = new XMLHttpRequest();
     req.addEventListener("load", function (res) {
       callback.apply(null, [res.target.responseText]);
     });
