@@ -3,20 +3,29 @@
     {
       "path": "mesh/ob.obj",
       "scale": 1,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "rotate": {"angle": 0.0001, "axis": [0,1,0]},
       "translate": [0,0,0],
-      "reflectance": [1,1,0.4],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
       "specular": 0.5,
       "normals": "flat"
     },
     {
+      "path": "mesh/bunny.obj",
+      "scale": 4,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,-0.7,0],
+      "reflectance": [1,0.01,0.01],
+      "emittance": [0,0,0],
+      "specular": 0.5
+    },
+    {
       "path": "mesh/top.obj",
       "scale": 8,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,3,0],
+      "translate": [0,8,0],
       "reflectance": [0,0,0],
-      "emittance": [50,50,100],
+      "emittance": [100,100,100],
       "specular": 0.5
     }
   ]

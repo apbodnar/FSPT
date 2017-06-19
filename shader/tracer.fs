@@ -112,7 +112,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
   float det = dot(e1, p);
-  if(abs(det) < epsilon){return max_t;}
+  if(det < epsilon){return max_t;}
   float invDet = 1.0 / det;
   vec3 t = ray.origin - tri.v1;
   float u = dot(t, p) * invDet;
@@ -121,10 +121,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   float v = dot(ray.dir, q) * invDet;
   if(v < 0.0 || u + v > 1.0){return max_t;}
   float dist = dot(e2, q) * invDet;
-  if(dist > epsilon){
-    return dist;
-  }
-  return max_t;
+  return dist > epsilon ? dist : max_t;
 }
 
 vec2 getAA(){
@@ -220,33 +217,6 @@ float rayBoxIntersect(Node node, Ray ray){
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
   return tMax >= tMin && tMax > 0.0 ? tMin : max_t;
-}
-
-Hit gpuTraverseTree(Ray ray){
-	Hit result = Hit(max_t, -1.0);
-	Hit temp;
-	Node last= createNode(-1.0);
-	Node current = createNode(0.0);
-	while(true){
-		if(current.index == -1.0){
-			return result;
-		}
-		Node near = nearChild(current, ray);
-		Node far = siblingNode(near);
-		float t = rayBoxIntersect(current, ray);
-		bool fromParent = last.index == current.parent;
-		if(t < result.t){
-			if(current.triangles < 0.0){
-				result.t = t;
-				last = current;
-				current = createNode(fromParent ? current.sibling : current.parent); 
-			}
-		} else {
-			
-		}
-
-		
-  }
 }
 
 vec3 barycentricNormal(Triangle tri, Normals normals, vec3 p){
