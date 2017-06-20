@@ -19,16 +19,19 @@ out vec4 fragColor;
 
 uniform float scale;
 uniform int tick;
+uniform float numLights;
 uniform vec3 eye;
 uniform vec3 rightMax;
 uniform vec3 rightMin;
 uniform vec3 leftMax;
 uniform vec3 leftMin;
+uniform vec2 lightRanges[20];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
 uniform sampler2D matTex;
 uniform sampler2D normTex;
+uniform sampler2D lightTex;
 
 struct Triangle {
   vec3 v1;
@@ -155,6 +158,15 @@ Triangle createTriangle(float index){
   );
 }
 
+Triangle createLight(float index){
+  ivec2 base = indexToCoords(lightTex, index, 3.0);
+  return Triangle(
+    texelFetch(lightTex, base, 0).rgb,
+    texelFetch(lightTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(lightTex, base + ivec2(2,0), 0).rgb
+  );
+}
+
 Normals createNormals(float index){
   ivec2 base = indexToCoords(normTex, index, 3.0);
   return Normals(
@@ -275,6 +287,20 @@ Hit traverseTree(Ray ray){
   }
 }
 
+vec3 randomPointOnTriangle(Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  float u = rand(coords.xy);
+  float v = (1.0 - u) * rand(coords.yx);
+  return e1 * v + e2 * u;
+}
+
+Triangle randomLight(){
+  vec2 range = lightRanges[uint(rand(coords.xy) * numLights)];
+  float index = floor(range.x + rand(coords.yx) * (range.y + 1.0 - range.x));
+  return createLight(index);
+}
+
 vec3 getScreen(){
 	vec2 size = vec2(textureSize(fbTex, 0));
 	vec2 pct = gl_FragCoord.xy / size;
@@ -293,20 +319,30 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
-  for(int i=0; i < NUM_BOUNCES; i++){
-    result = traverseTree(ray);
-    vec3 origin = ray.origin + ray.dir * result.t;
-	  if(result.index < 0.0){break;}
-	  bounces++;
-    Material mat = createMaterial(result.index);
-    emittance[i] = mat.emittance;
-    reflectance[i] = mat.reflectance;
-    vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
-    ray = Ray(origin + EPSILON * dir, dir);
-  }
-  for(int i=bounces-1; i>=0; i--){
-    color = reflectance[i]*color + emittance[i];
-  }
-  color = pow(color,vec3(gamma));
+  // for(int i=0; i < NUM_BOUNCES; i++){
+    // result = traverseTree(ray);
+    // vec3 origin = ray.origin + ray.dir * result.t;
+	  // if(result.index < 0.0){break;}
+	  // bounces++;
+    // Material mat = createMaterial(result.index);
+    // emittance[i] = mat.emittance;
+    // reflectance[i] = mat.reflectance;
+    // vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
+    // ray = Ray(origin + EPSILON * dir, dir);
+  // }
+  // for(int i=bounces-1; i>=0; i--){
+    // color = reflectance[i]*color + emittance[i];
+  // }
+  // color = pow(color,vec3(gamma));
+  
+  result = traverseTree(ray);
+  Triangle tri = createTriangle(result.index);
+  vec3 origin = ray.origin + ray.dir * result.t;
+  Triangle light = randomLight();
+  vec3 lightPoint = randomPointOnTriangle(light);
+  vec3 dir = normalize(lightPoint - origin);
+  vec3 normal = barycentricNormal(createTriangle(result.index), createNormals(result.index), origin);
+  Hit shadow = traverseTree(Ray(origin + normal*EPSILON, dir));
+  color = createMaterial(shadow.index).emittance;
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
