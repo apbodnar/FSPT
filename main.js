@@ -22,7 +22,7 @@ function PathTracer(scenePath) {
 
   function initGL(canvas) {
     gl = canvas.getContext("webgl2");
-    gl.viewportWidth = canvas.width = window.innerHeight;
+    gl.viewportWidth = canvas.width = window.innerHeight; // square render target
     gl.viewportHeight = canvas.height = window.innerHeight;
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   }
@@ -269,6 +269,7 @@ function PathTracer(scenePath) {
     element.addEventListener("mouseup", function () {
       mode = false;
       clear = false;
+      pingpong = 0;
     }, false);
     element.addEventListener('mousewheel', function (e) {
       scale -= e.wheelDelta / 2400 * scale;
@@ -314,11 +315,11 @@ function PathTracer(scenePath) {
     //gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
-    gl.uniform3f(program.uniforms.eye, eye[0], eye[1], eye[2]);
-    gl.uniform3f(program.uniforms.rightMax, corners.rightMax[0], corners.rightMax[1], corners.rightMax[2]);
-    gl.uniform3f(program.uniforms.leftMin, corners.leftMin[0], corners.leftMin[1], corners.leftMin[2]);
-    gl.uniform3f(program.uniforms.leftMax, corners.leftMax[0], corners.leftMax[1], corners.leftMax[2]);
-    gl.uniform3f(program.uniforms.rightMin, corners.rightMin[0], corners.rightMin[1], corners.rightMin[2]);
+    gl.uniform3fv(program.uniforms.eye, eye);
+    gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
+    gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
+    gl.uniform3fv(program.uniforms.leftMax, corners.leftMax);
+    gl.uniform3fv(program.uniforms.rightMin, corners.rightMin);
     gl.activeTexture(gl.TEXTURE4);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.activeTexture(gl.TEXTURE3);
@@ -352,7 +353,7 @@ function PathTracer(scenePath) {
       for (let i = 0; i < 1; i++) {
         drawTracer(pingpong);
         pingpong++;
-        writeCounter(pingpong)
+        writeCounter(pingpong);
       }
       drawQuad(pingpong);
       if (!(pingpong % 1000)) {
@@ -368,9 +369,6 @@ function PathTracer(scenePath) {
     initBVH(res);
     initBuffers();
     initEvents();
-    // setInterval(function () {
-    //   writeCounter(pingpong);
-    // },1000);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);

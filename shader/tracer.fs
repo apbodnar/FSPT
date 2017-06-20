@@ -132,9 +132,9 @@ vec2 getAA(){
 
 
 ivec2 indexToCoords(sampler2D tex, float index, float perElement){
-    ivec2 dims = textureSize(tex, 0);
+  ivec2 dims = textureSize(tex, 0);
 	float compensated = (index+0.1); // Hack to handle floaty errors
-    return ivec2(mod(compensated * perElement, float(dims.x)), floor((compensated * perElement)/ float(dims.x)));
+  return ivec2(mod(compensated * perElement, float(dims.x)), floor((compensated * perElement)/ float(dims.x)));
 }
 
 Material createMaterial(float index){
