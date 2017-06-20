@@ -77,7 +77,7 @@ float rand(vec2 co){
   float a = 12.9898;
   float b = 78.233;
   float c = 43758.5453;
-  float dt= dot(co ,vec2(a,b) + float(tick) * 0.0194161103873);
+  float dt= dot(co ,vec2(a,b) + float(tick) * vec2(0.0194161103, 0.0375151509));
   float sn= mod(dt,M_PI);
   return fract(sin(sn) * c);
 }
@@ -287,17 +287,17 @@ Hit traverseTree(Ray ray){
   }
 }
 
-vec3 randomPointOnTriangle(Triangle tri){
+vec3 randomPointOnTriangle(Triangle tri, vec2 seed){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
-  float u = rand(coords.xy);
-  float v = (1.0 - u) * rand(coords.yx);
-  return e1 * v + e2 * u;
+  float u = rand(coords.xy + seed);
+  float v = (1.0 - u) * rand(coords.yx + seed);
+  return tri.v1 + e1 * v + e2 * u;
 }
 
-Triangle randomLight(){
-  vec2 range = lightRanges[uint(rand(coords.xy) * numLights)];
-  float index = floor(range.x + rand(coords.yx) * (range.y + 1.0 - range.x));
+Triangle randomLight(vec2 seed){
+  vec2 range = lightRanges[uint(rand(coords.xy + seed) * numLights)];
+  float index = floor(range.x + rand(coords.yx + seed) * (range.y + 1.0 - range.x));
   return createLight(index);
 }
 
@@ -307,6 +307,21 @@ vec3 getScreen(){
 	vec3 top =  pct.x * (rightMax - leftMax) + leftMax;
 	vec3 bottom =  pct.x * (rightMin - leftMin) + leftMin;
 	return pct.y * (top - bottom) + bottom;
+}
+
+float triangleArea(Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  vec3 n = cross(e1, e2);
+  return length(n) * 0.5;
+}
+
+float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 normal){
+  float a = triangleArea(tri);
+  vec3 span = ray.origin - p;
+  float rr = dot(span, span);
+  //magic number is 1 / Tau, the solid angle of a hemisphere
+  return (a/rr) * dot(normal, normalize(ray.origin - p)) * 0.1591549;
 }
 
 void main(void) {
@@ -338,11 +353,18 @@ void main(void) {
   result = traverseTree(ray);
   Triangle tri = createTriangle(result.index);
   vec3 origin = ray.origin + ray.dir * result.t;
-  Triangle light = randomLight();
-  vec3 lightPoint = randomPointOnTriangle(light);
+  Triangle light = randomLight(origin.xz);
+  vec3 lightPoint = randomPointOnTriangle(light, origin.zy);
   vec3 dir = normalize(lightPoint - origin);
   vec3 normal = barycentricNormal(createTriangle(result.index), createNormals(result.index), origin);
-  Hit shadow = traverseTree(Ray(origin + normal*EPSILON, dir));
-  color = createMaterial(shadow.index).emittance;
+  ray = Ray(origin + normal*EPSILON, dir);
+  Hit shadow = traverseTree(ray);
+  Material mat = createMaterial(shadow.index);
+  if(result.index > -1.0 && dot(mat.emittance, vec3(1)) > 0.0){
+    vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
+    vec3 p = ray.origin + ray.dir * shadow.t;
+    color = dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) / numLights;
+  }
+
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
