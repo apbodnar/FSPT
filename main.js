@@ -11,6 +11,7 @@ function PathTracer(scenePath) {
   let clear = false;
   let sampleInput = document.getElementById('max-samples');
   let sampleOutput = document.getElementById("counter");
+  let lightRanges = [];
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -63,8 +64,9 @@ function PathTracer(scenePath) {
       "shader/tracer",
       [
         "tick", "dims", "eye",
-        "fbTex", "triTex", "bvhTex", "matTex", "normTex",
-        "scale", "rightMax", "rightMin", "leftMax", "leftMin"],
+        "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex",
+        "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
+      ],
       ["corner"],
       assets
     );
@@ -111,6 +113,7 @@ function PathTracer(scenePath) {
     let trianglesBuffer = [];
     let materialBuffer = [];
     let normalBuffer = [];
+    let lightBuffer = [];
     for (let i = 0; i < bvhArray.length; i++) {
       let e = bvhArray[i];
       let node = e.node;
@@ -148,6 +151,17 @@ function PathTracer(scenePath) {
         bvhBuffer.push(bufferNode[j]);
       }
     }
+    for(let i=0; i<lights.length; i++){
+      lightRanges.push(lightBuffer.length / 9);
+      for(let j=0; j<lights[i].length; j++){
+        let t = lights[i][j];
+        [].concat(t.v1,t.v2,t.v3).forEach(function(e){
+          lightBuffer.push(e);
+        });
+      }
+      lightRanges.push(lightBuffer.length / 9 - 1);
+    }
+    console.log(lightRanges, lightBuffer);
 
     textures.materials = createTexture();
     let res = requiredRes(materialBuffer.length, 3, 3);
@@ -172,6 +186,12 @@ function PathTracer(scenePath) {
     padBuffer(normalBuffer, res[0], res[1], 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(normalBuffer));
+    
+    textures.lights = createTexture();
+    res = requiredRes(lightBuffer.length, 3, 3);
+    padBuffer(lightBuffer, res[0], res[1], 3);
+    gl.bindTexture(gl.TEXTURE_2D, textures.lights);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(lightBuffer));
     writeBanner("");
   }
 
@@ -262,14 +282,16 @@ function PathTracer(scenePath) {
         corners.leftMin = Vec3.rotateArbitrary(corners.leftMin, axis, ry);
         xi = e.layerX;
         yi = e.layerY;
-        pingpong = 0;
+        //pingpong = 1;
         clear = true;
       }
     }, false);
-    element.addEventListener("mouseup", function () {
+    element.addEventListener("mouseup", function (e) {
       mode = false;
       clear = false;
-      pingpong = 0;
+      if(e.which == 1){
+        pingpong = 0;
+      }
     }, false);
     element.addEventListener('mousewheel', function (e) {
       scale -= e.wheelDelta / 2400 * scale;
@@ -312,14 +334,19 @@ function PathTracer(scenePath) {
     gl.uniform1i(program.uniforms.bvhTex, 2);
     gl.uniform1i(program.uniforms.matTex, 3);
     gl.uniform1i(program.uniforms.normTex, 4);
+    gl.uniform1i(program.uniforms.lightTex, 5);
     //gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
+    gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
+    gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform3fv(program.uniforms.eye, eye);
     gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
     gl.uniform3fv(program.uniforms.leftMax, corners.leftMax);
     gl.uniform3fv(program.uniforms.rightMin, corners.rightMin);
+    gl.activeTexture(gl.TEXTURE5);
+    gl.bindTexture(gl.TEXTURE_2D, textures.lights);
     gl.activeTexture(gl.TEXTURE4);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.activeTexture(gl.TEXTURE3);

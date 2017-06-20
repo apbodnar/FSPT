@@ -1,0 +1,34 @@
+{
+  "props": [
+    {
+      "path": "mesh/sibenik.obj",
+      "scale": 1,
+      "rotate": {"angle": -1.57, "axis": [0,1,0]},
+      "translate": [0,12,0],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/cube.obj",
+      "scale": 1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,2,0],
+      "reflectance": [1,1,1],
+      "emittance": [1000,1000,1000],
+	  "specular": 0.5,
+	  "normals": "flat"
+    },
+    {
+      "path": "mesh/bunny.obj",
+      "scale": 8,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,-3,-8],
+      "reflectance": [1,1,1],
+      "emittance": [1000,0.1,0.1],
+	  "specular": 0.5,
+	  "normals": "flat"
+    }
+  ]
+}

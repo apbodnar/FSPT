@@ -9,6 +9,7 @@ body {
 form {
     position: fixed;
     top: 24px;
+    left: 4px;
     text-align: left;
 }
 
