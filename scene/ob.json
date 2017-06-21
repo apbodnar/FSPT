@@ -12,11 +12,11 @@
     },
     {
       "path": "mesh/octohedron.obj",
-      "scale": 0.5,
+      "scale": 0.4,
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,-0.4,0],
       "reflectance": [1,1,1],
-      "emittance": [1000,0,0],
+      "emittance": [5,0,0],
       "specular": 0.5,
       "normals": "smooth"
     },
@@ -26,7 +26,7 @@
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,8,0],
       "reflectance": [0,0,0],
-      "emittance": [10000,10000,10000],
+      "emittance": [1000,1000,1000],
       "specular": 0.5
     }
   ]
