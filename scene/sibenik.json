@@ -16,7 +16,7 @@
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,2,0],
       "reflectance": [1,1,1],
-      "emittance": [1000,1000,1000],
+      "emittance": [10000,10000,10000],
 	  "specular": 0.5,
 	  "normals": "flat"
     },
@@ -26,7 +26,7 @@
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,-3,-8],
       "reflectance": [1,1,1],
-      "emittance": [1000,0.1,0.1],
+      "emittance": [1000000,0.1,0.1],
 	  "specular": 0.5,
 	  "normals": "flat"
     }
