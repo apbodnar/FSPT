@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 6;
+const int NUM_BOUNCES = 4;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -290,13 +290,12 @@ Hit traverseTree(Ray ray){
 vec3 randomPointOnTriangle(Triangle tri, vec2 seed){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
-  float u = rand(coords.xx + seed);
-  float v = (1.0 - u) * rand(coords.yy + seed);
-  return tri.v1 + e1 * v + e2 * u;
+  float u = sqrt(rand(coords.xx + seed));
+  float v = u * rand(coords.yy + seed);
+  return tri.v1 + e1 * v * u + e2 * (1.0 - u);
 }
 
-Triangle randomLight(vec2 seed){
-  vec2 range = lightRanges[uint(rand(coords.xy + seed) * numLights)];
+Triangle randomLight(vec2 seed, vec2 range){
   float index = floor(range.x + rand(coords.yx + seed.yx) * ((range.y - range.x) + 1.0));
   return createLight(index);
 }
@@ -324,6 +323,26 @@ float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 normal){
   return (a/rr) * dot(normal, normalize(ray.origin - p)) * 0.1591549;
 }
 
+vec3 getDirectEmmission(Ray ray, Triangle tri, Hit result, vec3 normal){
+  vec3 color = vec3(0);
+  vec3 origin = ray.origin + ray.dir * result.t;
+  vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
+  Triangle light = randomLight(origin.xz, range);
+  vec3 lightPoint = randomPointOnTriangle(light, origin.zy);
+  vec3 dir = normalize(lightPoint - origin);
+  ray = Ray(origin + normal*EPSILON, dir);
+  Hit shadow = traverseTree(ray);
+  vec3 tspan = ray.dir * shadow.t;
+  vec3 span = lightPoint - ray.origin;
+  if(abs(shadow.t - length(span)) < EPSILON * 10.0){
+    Material mat = createMaterial(shadow.index);
+    vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
+    vec3 p = ray.origin + ray.dir * shadow.t;
+    color += dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0);
+  }
+  return color;
+}
+
 void main(void) {
   vec3 screen = getScreen() * scale ;
   vec3 aa = (vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
@@ -334,44 +353,24 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
-  // for(int i=0; i < NUM_BOUNCES; i++){
-    // result = traverseTree(ray);
-    // vec3 origin = ray.origin + ray.dir * result.t;
-	  // if(result.index < 0.0){break;}
-	  // bounces++;
-    // Material mat = createMaterial(result.index);
-    // emittance[i] = mat.emittance;
-    // reflectance[i] = mat.reflectance;
-    // vec3 dir = randomVec(barycentricNormal(createTriangle(result.index), createNormals(result.index), origin), origin , mat.specular);
-    // ray = Ray(origin + EPSILON * dir, dir);
-  // }
-  // for(int i=bounces-1; i>=0; i--){
-    // color = reflectance[i]*color + emittance[i];
-  // }
-  // color = pow(color,vec3(gamma));
-  
-  result = traverseTree(ray);
-  Triangle tri = createTriangle(result.index);
-  vec3 origin = ray.origin + ray.dir * result.t;
-  Triangle light = randomLight(origin.xz);
-  vec3 lightPoint = randomPointOnTriangle(light, origin.zy);
-  vec3 dir = normalize(lightPoint - origin);
-  vec3 normal = barycentricNormal(createTriangle(result.index), createNormals(result.index), origin);
-  ray = Ray(origin + normal*EPSILON, dir);
-  Hit shadow = traverseTree(ray);
-  
-  
-  vec3 tspan = ray.dir * shadow.t;
-  vec3 span = lightPoint - ray.origin;
-  Material primaryMat = createMaterial(result.index);
-  color = primaryMat.emittance;
-  if(abs(shadow.t - length(span)) < 0.0001){
-    Material mat = createMaterial(shadow.index);
-    
-    vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
-    vec3 p = ray.origin + ray.dir * shadow.t;
-    color += dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) / numLights;
-  }
+   for(int i=0; i < NUM_BOUNCES; i++){
+     result = traverseTree(ray);
+     vec3 origin = ray.origin + ray.dir * result.t;
+	   if(result.index < 0.0){break;}
+	   Triangle tri = createTriangle(result.index);
+	   vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
+     Material mat = createMaterial(result.index);
+     emittance[i] = mat.specular > 0.5 ? mat.emittance : getDirectEmmission(ray, tri, result, normal);
+     reflectance[i] = mat.reflectance;
+     vec3 dir = randomVec(normal, origin , mat.specular);
+     ray = Ray(origin + EPSILON * dir, dir);
+     bounces++;
+   }
+   for(int i=bounces-1; i>=0; i--){
+     color = reflectance[i]*color + emittance[i];
+   }
+
+  //color = pow(color,vec3(gamma));
 
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }

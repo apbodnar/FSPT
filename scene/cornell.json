@@ -37,7 +37,7 @@
       "rotate": {"angle": 1.57, "axis": [0,1,0]},
       "translate": [0.5,0.495,0],
       "reflectance": [0,0,0],
-      "emittance": [400,400,400],
+      "emittance": [50,50,50],
 	  "specular": 0.5,
 	  "normals": "flat"
     },
@@ -47,7 +47,7 @@
       "rotate": {"angle": 1.57, "axis": [0,1,0]},
       "translate": [0.25,-0.42,0],
       "reflectance": [0.5,0.5,1],
-      "emittance": [0.5,0.5,400],
+      "emittance": [0.5,0.5,30],
 	  "specular": 0.5,
 	  "normals": "flat"
     },
@@ -96,16 +96,6 @@
       "scale": 1,
       "rotate": {"angle": -1.570796, "axis": [0,1,0]},
       "translate": [-1,0,0],
-      "reflectance": [0.9,0.9,0.9],
-      "emittance": [0,0,0],
-	  "specular": 0.5,
-	  "normals": "flat"
-    },
-    {
-      "path": "mesh/left.obj",
-      "scale": 1,
-      "rotate": {"angle": 1.570796, "axis": [0,1,0]},
-      "translate": [0,0,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
 	  "specular": 0.5,
