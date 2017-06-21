@@ -11,21 +11,22 @@
       "normals": "flat"
     },
     {
-      "path": "mesh/bunny.obj",
-      "scale": 4,
+      "path": "mesh/octohedron.obj",
+      "scale": 0.5,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,-0.7,0],
-      "reflectance": [1,0.01,0.01],
-      "emittance": [0,0,0],
-      "specular": 0.5
+      "translate": [0,-0.4,0],
+      "reflectance": [1,1,1],
+      "emittance": [1000,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 8,
+      "scale": 1,
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,8,0],
       "reflectance": [0,0,0],
-      "emittance": [100,100,100],
+      "emittance": [10000,10000,10000],
       "specular": 0.5
     }
   ]

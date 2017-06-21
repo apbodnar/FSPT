@@ -77,7 +77,7 @@ float rand(vec2 co){
   float a = 12.9898;
   float b = 78.233;
   float c = 43758.5453;
-  float dt= dot(co ,vec2(a,b) + float(tick) * vec2(0.0194161103, 0.0375151509));
+  float dt= dot(co ,vec2(a,b) + float(tick) * 0.0194161103);
   float sn= mod(dt,M_PI);
   return fract(sin(sn) * c);
 }
@@ -99,7 +99,7 @@ mat3 rotationMatrix(vec3 axis, float angle){
 
 vec3 randomVec(vec3 normal, vec3 origin, float exp){
   float r2 = rand(origin.xz);
-  float r1 = rand(origin.xy)-EPSILON;
+  float r1 = rand(origin.xy);
   float r = pow(r1,exp);
   float theta = 2.0 * M_PI * r2;
   float x = r * cos(theta);
@@ -290,14 +290,14 @@ Hit traverseTree(Ray ray){
 vec3 randomPointOnTriangle(Triangle tri, vec2 seed){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
-  float u = rand(coords.xy + seed);
-  float v = (1.0 - u) * rand(coords.yx + seed);
+  float u = rand(coords.xx + seed);
+  float v = (1.0 - u) * rand(coords.yy + seed);
   return tri.v1 + e1 * v + e2 * u;
 }
 
 Triangle randomLight(vec2 seed){
   vec2 range = lightRanges[uint(rand(coords.xy + seed) * numLights)];
-  float index = floor(range.x + rand(coords.yx + seed) * (range.y + 1.0 - range.x));
+  float index = floor(range.x + rand(coords.yx + seed.yx) * ((range.y - range.x) + 1.0));
   return createLight(index);
 }
 
@@ -359,11 +359,18 @@ void main(void) {
   vec3 normal = barycentricNormal(createTriangle(result.index), createNormals(result.index), origin);
   ray = Ray(origin + normal*EPSILON, dir);
   Hit shadow = traverseTree(ray);
-  Material mat = createMaterial(shadow.index);
-  if(result.index > -1.0 && dot(mat.emittance, vec3(1)) > 0.0){
+  
+  
+  vec3 tspan = ray.dir * shadow.t;
+  vec3 span = lightPoint - ray.origin;
+  Material primaryMat = createMaterial(result.index);
+  color = primaryMat.emittance;
+  if(abs(shadow.t - length(span)) < 0.0001){
+    Material mat = createMaterial(shadow.index);
+    
     vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
     vec3 p = ray.origin + ray.dir * shadow.t;
-    color = dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) / numLights;
+    color += dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) / numLights;
   }
 
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
