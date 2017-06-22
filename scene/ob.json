@@ -12,21 +12,41 @@
     },
     {
       "path": "mesh/octohedron.obj",
-      "scale": 0.4,
+      "scale": 0.1,
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,-0.4,0],
       "reflectance": [1,1,1],
-      "emittance": [5,0,0],
+      "emittance": [40,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/octohedron.obj",
+      "scale": 0.1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,-0.4,-10],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,40],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.25,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,-0.7,-3],
+      "reflectance": [1,1,0.1],
+      "emittance": [0,0,0],
       "specular": 0.5,
       "normals": "smooth"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 1,
+      "scale": 0.2,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,8,0],
+      "translate": [8,8,0],
       "reflectance": [0,0,0],
-      "emittance": [1000,1000,1000],
+      "emittance": [20000,20000,20000],
       "specular": 0.5
     }
   ]

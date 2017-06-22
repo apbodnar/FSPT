@@ -11,22 +11,12 @@
       "normals": "flat"
     },
     {
-      "path": "mesh/cube.obj",
+      "path": "mesh/top.obj",
       "scale": 1,
       "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,2,0],
+      "translate": [0,4,0],
       "reflectance": [1,1,1],
-      "emittance": [10000,10000,10000],
-	  "specular": 0.5,
-	  "normals": "flat"
-    },
-    {
-      "path": "mesh/bunny.obj",
-      "scale": 8,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,-3,-8],
-      "reflectance": [1,1,1],
-      "emittance": [1000000,0.1,0.1],
+      "emittance": [100,100,100],
 	  "specular": 0.5,
 	  "normals": "flat"
     }
