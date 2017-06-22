@@ -360,7 +360,8 @@ void main(void) {
 	   Triangle tri = createTriangle(result.index);
 	   vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
      Material mat = createMaterial(result.index);
-     emittance[i] = mat.specular > 0.5 ? mat.emittance : getDirectEmmission(ray, tri, result, normal);
+     vec3 direct = mat.specular > 0.5 ? vec3(0) : getDirectEmmission(ray, tri, result, normal);
+     emittance[i] = mat.reflectance * direct;
      reflectance[i] = mat.reflectance;
      vec3 dir = randomVec(normal, origin , mat.specular);
      ray = Ray(origin + EPSILON * dir, dir);
