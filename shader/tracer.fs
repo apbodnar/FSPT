@@ -353,24 +353,26 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
-   for(int i=0; i < NUM_BOUNCES; i++){
-     result = traverseTree(ray);
-     vec3 origin = ray.origin + ray.dir * result.t;
-	   if(result.index < 0.0){break;}
-	   Triangle tri = createTriangle(result.index);
-	   vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
-     Material mat = createMaterial(result.index);
-     vec3 direct = mat.specular > 0.5 ? vec3(0) : getDirectEmmission(ray, tri, result, normal);
-     emittance[i] = mat.reflectance * direct;
-     reflectance[i] = mat.reflectance;
-     vec3 dir = randomVec(normal, origin , mat.specular);
-     ray = Ray(origin + EPSILON * dir, dir);
-     bounces++;
-   }
-   for(int i=bounces-1; i>=0; i--){
-     color = reflectance[i]*color + emittance[i];
-   }
-
+  float prevSpecular = 0.5;
+  for(int i=0; i < NUM_BOUNCES; i++){
+    result = traverseTree(ray);
+    vec3 origin = ray.origin + ray.dir * result.t;
+    if(result.index < 0.0){break;}
+    Triangle tri = createTriangle(result.index);
+    vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
+    Material mat = createMaterial(result.index);
+    bool isLight = dot(mat.emittance, vec3(1)) > 0.0 && i == 0;
+    emittance[i] = isLight ? mat.emittance : mat.reflectance * (mat.specular > 0.5 ? vec3(0) : getDirectEmmission(ray, tri, result, normal));
+    reflectance[i] = mat.reflectance;
+    prevSpecular = mat.specular;
+    bounces++;
+    if(isLight){break;}
+    vec3 dir = randomVec(normal, origin , mat.specular);
+    ray = Ray(origin + EPSILON * dir, dir);
+  }
+  for(int i=bounces-1; i>=0; i--){
+    color = reflectance[i]*color + emittance[i];
+  }
   //color = pow(color,vec3(gamma));
 
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));

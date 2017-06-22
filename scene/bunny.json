@@ -12,11 +12,11 @@
     },
 	{
       "path": "mesh/cube.obj",
-      "scale": 0.5,
+      "scale": 0.1,
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0.125,0.75,0.2],
       "reflectance": [1,1,1],
-      "emittance": [100,100,100],
+      "emittance": [1000,1000,1000],
 	  "specular": 0.1,
 	  "normals": "flat"
     }
