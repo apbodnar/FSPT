@@ -12,6 +12,7 @@ function PathTracer(scenePath) {
   let sampleInput = document.getElementById('max-samples');
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
+  let randomNumbers = new Float32Array(64);
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -63,7 +64,7 @@ function PathTracer(scenePath) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye",
+        "tick", "dims", "eye", "randoms",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -161,7 +162,6 @@ function PathTracer(scenePath) {
       }
       lightRanges.push(lightBuffer.length / 9 - 1);
     }
-    console.log(lightRanges, lightBuffer);
 
     textures.materials = createTexture();
     let res = requiredRes(materialBuffer.length, 3, 3);
@@ -335,11 +335,11 @@ function PathTracer(scenePath) {
     gl.uniform1i(program.uniforms.matTex, 3);
     gl.uniform1i(program.uniforms.normTex, 4);
     gl.uniform1i(program.uniforms.lightTex, 5);
-    //gl.uniform1i(program.uniforms.randTex, 3);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
+    gl.uniform2fv(program.uniforms.randoms, randomNumbers);
     gl.uniform3fv(program.uniforms.eye, eye);
     gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
@@ -372,12 +372,19 @@ function PathTracer(scenePath) {
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
+  
+  function writeRandoms(){
+    for (let i=0; i< randomNumbers.length; i++){
+      randomNumbers[i] = Math.random();
+    }
+  }
 
   function tick() {
     requestAnimationFrame(tick);
     let max = parseInt(sampleInput.value);
     if(max && pingpong < max) {
       for (let i = 0; i < 1; i++) {
+        writeRandoms()
         drawTracer(pingpong);
         pingpong++;
         writeCounter(pingpong);
