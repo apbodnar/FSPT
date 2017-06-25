@@ -29,16 +29,6 @@
       "emittance": [300,1,1],
       "specular": 0.5,
       "normals": "flat"
-    },
-    {
-      "path": "mesh/armadillo.obj",
-      "scale": 0.02,
-      "rotate": {"angle": 3.14159, "axis": [0,1,0]},
-      "translate": [0,-1,15],
-      "reflectance": [1,1,1],
-      "emittance": [0,0,0],
-      "specular": 0.5,
-      "normals": "smooth"
     }
   ]
 }

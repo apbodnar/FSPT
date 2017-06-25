@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 4;
+const int NUM_BOUNCES = 6;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -26,6 +26,7 @@ uniform vec3 rightMin;
 uniform vec3 leftMax;
 uniform vec3 leftMin;
 uniform vec2 lightRanges[20];
+uniform vec2 randoms[32];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
@@ -97,11 +98,9 @@ mat3 rotationMatrix(vec3 axis, float angle){
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
-vec3 randomVec(vec3 normal, vec3 origin, float exp){
-  float r2 = rand(origin.xz);
-  float r1 = rand(origin.xy);
-  float r = pow(r1,exp);
-  float theta = 2.0 * M_PI * r2;
+vec3 randomVec(vec3 normal, vec3 seed){
+  float r = sqrt(rand(seed.xy));
+  float theta = 2.0 * M_PI * rand(seed.zx);
   float x = r * cos(theta);
   float y = r * sin(theta);
   vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
@@ -129,7 +128,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 
 vec2 getAA(){
   float theta = rand(coords) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx));
+  float sqrt_r = sqrt(rand(coords.yx + vec2(EPSILON)));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
@@ -362,12 +361,12 @@ void main(void) {
     vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
     Material mat = createMaterial(result.index);
     bool isLight = dot(mat.emittance, vec3(1)) > 0.0 && i == 0;
-    emittance[i] = isLight ? mat.emittance : mat.reflectance * (mat.specular > 0.5 ? vec3(0) : getDirectEmmission(ray, tri, result, normal));
+    emittance[i] = mat.reflectance * getDirectEmmission(ray, tri, result, normal);
     reflectance[i] = mat.reflectance;
     prevSpecular = mat.specular;
     bounces++;
-    if(isLight){break;}
-    vec3 dir = randomVec(normal, origin , mat.specular);
+    if(isLight || rand(origin.zy) < 0.33){break;}
+    vec3 dir = randomVec(normal, origin);
     ray = Ray(origin + EPSILON * dir, dir);
   }
   for(int i=bounces-1; i>=0; i--){
