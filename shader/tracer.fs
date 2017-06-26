@@ -72,6 +72,12 @@ struct Node {
   vec3 boxMax;
 };
 
+struct TexCoords {
+  vec2 uv1;
+  vec2 uv2;
+  vec2 uv3;
+};
+
 struct Hit {
   float t;
   float index;
@@ -180,6 +186,15 @@ Normals createNormals(float index){
   );
 }
 
+TexCoords createTexCoords(float index){
+  ivec2 base = indexToCoords(uvTex, index, 3.0);
+  return TexCoords(
+    texelFetch(uvTex, base, 0).rg,
+    texelFetch(uvTex, base + ivec2(1,0), 0).rg,
+    texelFetch(uvTex, base + ivec2(2,0), 0).rg
+  );
+}
+
 Node createNode(float index){
   ivec2 nodeCoords = indexToCoords(bvhTex, index, 4.0);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
@@ -235,7 +250,7 @@ float rayBoxIntersect(Node node, Ray ray){
   return tMax >= tMin && tMax > 0.0 ? tMin : max_t;
 }
 
-vec3 barycentricNormal(Triangle tri, Normals normals, vec3 p){
+vec3 barycentricWeights(Triangle tri, vec3 p){
   vec3 v0 = tri.v2 - tri.v1;
   vec3 v1 = tri.v3 - tri.v1;
   vec3 v2 = p - tri.v1;
@@ -248,7 +263,15 @@ vec3 barycentricNormal(Triangle tri, Normals normals, vec3 p){
   float v = (d11 * d20 - d01 * d21) * invDenom;
   float w = (d00 * d21 - d01 * d20) * invDenom;
   float u = 1.0 - v - w;
-	return u * normals.n1 + v * normals.n2 + w * normals.n3;
+  return vec3(u, v, w);
+}
+
+vec2 barycentricTexCoord(vec3 weights, TexCoords texCoords){
+	return weights.x * texCoords.uv1 + weights.y * texCoords.uv2 + weights.z * texCoords.uv3;
+}
+
+vec3 barycentricNormal(vec3 weights, Normals normals){
+	return weights.x * normals.n1 + weights.y * normals.n2 + weights.z * normals.n3;
 }
 
 Hit traverseTree(Ray ray){
@@ -340,7 +363,7 @@ vec3 getDirectEmmission(Ray ray, Triangle tri, Hit result, vec3 normal){
   vec3 span = lightPoint - ray.origin;
   if(abs(shadow.t - length(span)) < EPSILON * 10.0){
     Material mat = createMaterial(shadow.index);
-    vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
+    vec3 lightNormal = barycentricNormal(barycentricWeights(createTriangle(shadow.index), origin), createNormals(shadow.index));
     vec3 p = ray.origin + ray.dir * shadow.t;
     color += max(dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
@@ -363,11 +386,14 @@ void main(void) {
     vec3 origin = ray.origin + ray.dir * result.t;
     if(result.index < 0.0){break;}
     Triangle tri = createTriangle(result.index);
-    vec3 normal = barycentricNormal(tri, createNormals(result.index), origin);
+    vec3 weights = barycentricWeights(tri, origin);
+    vec3 normal = barycentricNormal(weights, createNormals(result.index));
+    vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index));
     Material mat = createMaterial(result.index);
-    bool isLight = dot(mat.emittance, vec3(1)) > 0.0 && i == 0;
-    emittance[i] = mat.reflectance * getDirectEmmission(ray, tri, result, normal);
-    reflectance[i] = mat.reflectance;
+    bool isLight = dot(mat.emittance, vec3(1)) > 0.0;
+    vec3 texRef = mat.reflectance + texture(atlasTex, texCoord).rgb;
+    emittance[i] = texRef * getDirectEmmission(ray, tri, result, normal);
+    reflectance[i] = texRef;
     prevSpecular = mat.specular;
     bounces++;
     if(isLight || rand(origin.zy) < 0.33){break;}

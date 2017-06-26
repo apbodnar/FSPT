@@ -122,7 +122,9 @@
     this.i2 = i2;
     this.i3 = i3;
     this.normals = null;
-    this.uvs = null;
+    this.uv1 = uv1;
+    this.uv2 = uv2;
+    this.uv3 = uv3;
     this.boundingBox = new BoundingBox(this);
     this.transforms = transforms;
   }
