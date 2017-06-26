@@ -33,6 +33,8 @@ uniform sampler2D bvhTex;
 uniform sampler2D matTex;
 uniform sampler2D normTex;
 uniform sampler2D lightTex;
+uniform sampler2D uvTex;
+uniform sampler2D atlasTex;
 
 struct Triangle {
   vec3 v1;

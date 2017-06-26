@@ -8,7 +8,8 @@
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
       "specular": 0.5,
-      "normals": "smooth"
+      "normals": "smooth",
+      "texture": "texture/wood.png"
     },
     {
       "path": "mesh/wooddoll_14.obj",
