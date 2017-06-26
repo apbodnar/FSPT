@@ -5,7 +5,7 @@
       "scale": 0.05,
       "rotate": {"angle":0, "axis": [0,1,0]},
       "translate": [0,-0.25,-0.8],
-      "reflectance": [1,1,1],
+      "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "smooth"
@@ -56,7 +56,7 @@
       "scale": 1,
       "rotate": {"angle": 0, "axis": [0,0,1]},
       "translate": [0,0.5,-0.5],
-      "reflectance": [0.9,0.9,0.9],
+      "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "flat"
@@ -66,7 +66,7 @@
       "scale": 1,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.5,-0.5],
-      "reflectance": [0.9,0.9,0.9],
+      "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "flat"
@@ -96,7 +96,7 @@
       "scale": 1,
       "rotate": {"angle": -1.570796, "axis": [0,1,0]},
       "translate": [-1,0,0],
-      "reflectance": [0.9,0.9,0.9],
+      "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
 	  "specular": 0.5,
 	  "normals": "flat"

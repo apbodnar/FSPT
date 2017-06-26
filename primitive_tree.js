@@ -114,7 +114,7 @@
     };
   }
 
-  function Triangle(v1, v2, v3, i1, i2, i3, transforms) {
+  function Triangle(v1, v2, v3, i1, i2, i3, uv1, uv2, uv3, transforms) {
     this.v1 = v1;
     this.v2 = v2;
     this.v3 = v3;
@@ -122,6 +122,7 @@
     this.i2 = i2;
     this.i3 = i3;
     this.normals = null;
+    this.uvs = null;
     this.boundingBox = new BoundingBox(this);
     this.transforms = transforms;
   }
@@ -156,81 +157,6 @@
   // let t2 = new Triangle(verts[idx], opposite, verts[(idx+2) % verts.length], triangle.transforms);
   // return splitTriangle(t1, threshold).concat(splitTriangle(t2, threshold));
   // }
-
-  exports.parseMesh = function (objText, transforms) {
-    let lines = objText.split('\n');
-    let vertices = [];
-    let triangles = [];
-    let vertNormals = [];
-
-    function applyTransforms(vert) {
-      return Vec3.rotateArbitrary(Vec3.add(Vec3.scale(vert, transforms.scale), transforms.translate), transforms.rotate.axis, transforms.rotate.angle);
-    }
-
-    function getNormal(tri) {
-      let e1 = Vec3.sub(tri.v2, tri.v1);
-      let e2 = Vec3.sub(tri.v3, tri.v1);
-      return Vec3.normalize(Vec3.cross(e1, e2));
-    }
-
-    function averageNormals(normArray) {
-      let total = [0, 0, 0];
-      for (let i = 0; i < normArray.length; i++) {
-        total = Vec3.add(total, normArray[i]);
-      }
-      return Vec3.scale(total, 1.0 / normArray.length);
-    }
-
-    for (let i = 0; i < lines.length; i++) {
-      let array = lines[i].split(/[ ]+/);
-      let vals = array.slice(1, 4).map(parseFloat);
-      if (array[0] == 'v') {
-        vertices.push(vals)
-      } else if (array[0] == 'f') {
-        let i1 = transforms.invert_faces ? 1 : 0;
-        let i2 = transforms.invert_faces ? 0 : 1;
-        let tri = new Triangle(
-          applyTransforms(vertices[vals[i1] - 1]),
-          applyTransforms(vertices[vals[i2] - 1]),
-          applyTransforms(vertices[vals[2] - 1]),
-          vals[i1] - 1, vals[i2] - 1, vals[2] - 1,
-          transforms
-        );
-        let normal = getNormal(tri);
-        tri.normals = [normal, normal, normal];
-        triangles.push(tri);
-        for (let j = 0; j < vals.length; j++) {
-          if (!vertNormals[vals[j] - 1]) {
-            vertNormals[vals[j] - 1] = [];
-          }
-          vertNormals[vals[j] - 1].push(normal);
-        }
-      }
-    }
-    let bb = new BoundingBox(triangles).getBounds();
-    let span = 0;
-    for (let i = 0; i < bb.length / 2; i++) {
-      span = Math.max(bb[i * 2 + 1] - bb[i * 2], span)
-    }
-    let original = triangles.length;
-    if (transforms.normals == "smooth") {
-      for (let i = 0; i < triangles.length; i++) {
-        triangles[i].normals[0] = averageNormals(vertNormals[triangles[i].i1])
-        triangles[i].normals[1] = averageNormals(vertNormals[triangles[i].i2])
-        triangles[i].normals[2] = averageNormals(vertNormals[triangles[i].i3])
-      }
-    }
-    // for(let i = 0; i < triangles.length; i++) {
-    //   let subTriangles = splitTriangle(triangles[i], span/1);
-    //   if(subTriangles.length > 1){
-    //
-    //     triangles.splice(i,1)
-    //     subTriangles.forEach(function(e){triangles.push(e)});
-    //   }
-    // }
-    console.log(transforms.path, "original:", original, "split:", triangles.length);
-    return triangles;
-  }
 
   exports.Triangle = Triangle;
 })(this);

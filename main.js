@@ -108,6 +108,9 @@ function PathTracer(scenePath) {
       }
       geometry = geometry.concat(parsed);
     }
+    function getAlbedo(color){
+      return Math.sqrt(Vec3.dot(Vec3.mult([0.299, 0.587, 0.114], Vec3.mult(color, color)), [1, 1, 1]));
+    }
     let bvh = new BVH(geometry, 4);
     let bvhArray = bvh.serializeTree();
     let bvhBuffer = [];
@@ -133,7 +136,7 @@ function PathTracer(scenePath) {
         }
         for (let j = 0; j < tris.length; j++) {
           let transforms = tris[j].transforms;
-          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, 0, 0]);
+          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, getAlbedo(transforms.reflectance), 0]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });

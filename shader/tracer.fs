@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 6;
+const int NUM_BOUNCES = 8;
 const float max_t = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.458;
@@ -50,6 +50,7 @@ struct Material {
   vec3 reflectance;
   vec3 emittance;
   float specular;
+  float albedo;
 };
 
 struct Ray {
@@ -114,7 +115,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
   float det = dot(e1, p);
-  if(det < epsilon){return max_t;}
+  if(abs(det) < epsilon){return max_t;}
   float invDet = 1.0 / det;
   vec3 t = ray.origin - tri.v1;
   float u = dot(t, p) * invDet;
@@ -127,8 +128,8 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getAA(){
-  float theta = rand(coords) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx + vec2(EPSILON)));
+  float theta = rand(coords + randoms[1]) * M_PI * 2.0;
+  float sqrt_r = sqrt(rand(coords.yx + randoms[0]));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
@@ -141,10 +142,12 @@ ivec2 indexToCoords(sampler2D tex, float index, float perElement){
 
 Material createMaterial(float index){
   ivec2 base = indexToCoords(matTex, index, 3.0);
+  vec4 third = texelFetch(matTex, base + ivec2(2,0), 0);
   return Material(
     texelFetch(matTex, base + ivec2(1,0), 0).rgb,
     texelFetch(matTex, base, 0).rgb,
-	  texelFetch(matTex, base + ivec2(2,0), 0).r
+	  third.r,
+    third.g
   );
 }
 
@@ -337,7 +340,7 @@ vec3 getDirectEmmission(Ray ray, Triangle tri, Hit result, vec3 normal){
     Material mat = createMaterial(shadow.index);
     vec3 lightNormal = barycentricNormal(createTriangle(shadow.index), createNormals(shadow.index), origin);
     vec3 p = ray.origin + ray.dir * shadow.t;
-    color += dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0);
+    color += max(dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
   return color;
 }
