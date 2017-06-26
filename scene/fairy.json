@@ -1,0 +1,44 @@
+{
+  "props": [
+    {
+      "path": "mesh/fairy.obj",
+      "scale": 1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,-0.5,0],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 0.3,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [4,4,2],
+      "reflectance": [1,1,1],
+      "emittance": [1000,1000,1000],
+      "specular": 0.1,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0.5,-0.45,0],
+      "reflectance": [0.1,1,0.1],
+      "emittance": [0,0,0],
+      "specular": 0.1,
+      "normals": "smnooth"
+    },
+    {
+      "path": "mesh/back.obj",
+      "scale": 0.17,
+      "rotate": {"angle": -0.7, "axis": [0,1,0]},
+      "translate": [0,0.15,-0.9],
+      "reflectance": [1,1,1],
+      "emittance": [1000,1,1],
+      "specular": 0.1,
+      "normals": "smnooth"
+    }
+  ]
+}

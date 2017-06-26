@@ -1,0 +1,126 @@
+{
+  "props": [
+      {
+      "path": "mesh/cube.obj",
+      "scale": 0.5,
+      "rotate": {"angle": 0.001, "axis": [0,1,0]},
+      "translate": [-0.25,-0.85,-0.25],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 0, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.5],
+      "reflectance": [0.1,1,0.1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 1.57, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.5],
+      "reflectance": [1,1,0.1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+        {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 3.1415, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.5],
+      "reflectance": [0.1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+        {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 4.7123, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.5],
+      "reflectance": [1,0.1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    
+    
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 0.785, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.75],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 2.35617, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.75],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+        {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 3.9269, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.75],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+        {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.15,
+      "rotate": {"angle": 5.497787, "axis": [0,1,0]},
+      "translate": [0,-0.45,-0.75],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 0.1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,1,0],
+      "reflectance": [1,1,1],
+      "emittance": [1100,1100,1100],
+      "specular": 0.5,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 16,
+      "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
+      "translate": [0,0.5,-0.5],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/teapot_big.obj",
+      "scale": 0.003,
+      "rotate": {"angle": 1.57, "axis": [-1,0,0]},
+      "translate": [0.58,0,-0.5],
+      "reflectance": [1,0.1,0.1],
+      "emittance": [0,0,0],
+      "specular": 0.5,
+      "normals": "smooth"
+    }
+  ]
+}
