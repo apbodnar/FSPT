@@ -120,7 +120,7 @@ function PathTracer(scenePath) {
       if(prop.texture){
         uvTransforms = texturePacker.addTexture(assets[prop.texture])
       } else {
-        uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance);
+        uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance));
       }
       prop.uvTransforms = uvTransforms;
       let parsed = parseMesh(assets[prop.path], prop);
@@ -232,7 +232,7 @@ function PathTracer(scenePath) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, res[0], res[1], 0, gl.RG, gl.FLOAT, new Float32Array(uvBuffer));
     writeBanner("");
 
-    initAtlas(assets, imageList);
+    initAtlas(assets, texturePacker.canvas);
   }
 
   function initAtlas(assets, atlas){
