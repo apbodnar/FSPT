@@ -388,10 +388,10 @@ void main(void) {
     Triangle tri = createTriangle(result.index);
     vec3 weights = barycentricWeights(tri, origin);
     vec3 normal = barycentricNormal(weights, createNormals(result.index));
-    vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index));
+    vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
     bool isLight = dot(mat.emittance, vec3(1)) > 0.0;
-    vec3 texRef = mat.reflectance + texture(atlasTex, texCoord).rgb;
+    vec3 texRef =  texture(atlasTex, texCoord).rgb;
     emittance[i] = texRef * getDirectEmmission(ray, tri, result, normal);
     reflectance[i] = texRef;
     prevSpecular = mat.specular;
