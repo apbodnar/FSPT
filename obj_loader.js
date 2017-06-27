@@ -10,6 +10,14 @@
       return Vec3.rotateArbitrary(Vec3.add(Vec3.scale(vert, transforms.scale), transforms.translate), transforms.rotate.axis, transforms.rotate.angle);
     }
 
+    function transformUV(uv, trans){
+      uv[0] *= trans.scale;
+      uv[1] *= trans.scale;
+      uv[0] += trans.offsetX;
+      uv[1] += trans.offseyY;
+      return uv;
+    }
+
     function getNormal(tri) {
       let e1 = Vec3.sub(tri.v2, tri.v1);
       let e2 = Vec3.sub(tri.v3, tri.v1);
@@ -23,14 +31,14 @@
       }
       return Vec3.scale(total, 1.0 / normArray.length);
     }
-    
+
     function parseQuad(quad_indices){
       [
-        [quad_indices[0], quad_indices[1], quad_indices[2]], 
+        [quad_indices[0], quad_indices[1], quad_indices[2]],
         [quad_indices[0], quad_indices[2], quad_indices[3]]
       ].forEach(parseTriangle);
     }
-    
+
     function parseTriangle(indices){
       let i1 = transforms.invert_faces ? 1 : 0;
       let i2 = transforms.invert_faces ? 0 : 1;
@@ -67,7 +75,8 @@
           parseQuad(vals);
         }
       } else if(array[0] == 'vt'){
-        uvs.push(vals.map(parseFloat));
+        let uv = vals.map(parseFloat);
+        uvs.push(transformUV(uv, transforms.uvTransforms));
       }
     }
     let original = triangles.length;
