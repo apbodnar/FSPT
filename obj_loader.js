@@ -40,7 +40,7 @@
         applyTransforms(vertices[indices[i2][0] - 1]),
         applyTransforms(vertices[indices[2][0] - 1]),
         indices[i1][0] - 1, indices[i2][0] - 1, indices[2][0] - 1,
-        uvs[indices[i1][1] - 1], uvs[indices[i2][1] - 1], uvs[indices[2][1] - 1],
+        uvs[indices[i1][1] - 1] || 0, uvs[indices[i2][1] - 1] || 0, uvs[indices[2][1] - 1] || 0,
         transforms
       );
       let normal = getNormal(tri);
@@ -60,7 +60,6 @@
       if (array[0] == 'v') {
         vertices.push(vals.map(parseFloat))
       } else if (array[0] == 'f') {
-        debugger;
         vals = vals.map(function(s){return s.split('/').map(parseFloat)})
         if(vals.length == 3){
           parseTriangle(vals);
