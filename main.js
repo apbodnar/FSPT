@@ -96,21 +96,38 @@ function PathTracer(scenePath) {
     }
   }
 
+  function createFlatTexture(color){
+    let canvas = document.createElement('canvas');
+    canvas.naturalWidth = canvas.naturalHeight = canvas.width = canvas.height = 1;
+    let ctx = canvas.getContext('2d');
+    ctx.fillStyle = "rgb("+
+      parseInt(color[0]*255)+","+
+      parseInt(color[1]*255)+","+
+      parseInt(color[2]*255)+")";
+    ctx.fillRect( 0, 0, 1, 1 );
+    return canvas
+  }
+
   function initBVH(assets) {
     let scene = JSON.parse(assets[scenePath]);
     //writeBanner("Compiling scene");
     let geometry = [];
+    let texturePacker = new TexturePacker(atlasRes);
     let lights = [];
-    let imageList = [];
     for (let i = 0; i < scene.props.length; i++) {
       let prop = scene.props[i];
+      let uvTransforms = null;
+      if(prop.texture){
+        uvTransforms = texturePacker.addTexture(assets[prop.texture])
+      } else {
+        uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance);
+      }
+      prop.uvTransforms = uvTransforms;
       let parsed = parseMesh(assets[prop.path], prop);
       if(Vec3.dot(prop.emittance, [1,1,1]) > 0){
         lights.push(parsed);
       }
-      if(prop.texture){
-        imageList.push(assets[prop.texture])
-      }
+
       geometry = geometry.concat(parsed);
     }
     function getAlbedo(color){
@@ -218,15 +235,14 @@ function PathTracer(scenePath) {
     initAtlas(assets, imageList);
   }
 
-  function initAtlas(assets, imageList){
-    console.log(imageList[0])
+  function initAtlas(assets, atlas){
     textures.atlas = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, textures.atlas);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageList[0]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas);
   }
 
   function createTexture() {
