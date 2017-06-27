@@ -13,6 +13,7 @@ function PathTracer(scenePath) {
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
   let randomNumbers = new Float32Array(64);
+  let atlasRes = 4096;
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -108,7 +109,7 @@ function PathTracer(scenePath) {
         lights.push(parsed);
       }
       if(prop.texture){
-        imageList.push(prop.texture)
+        imageList.push(assets[prop.texture])
       }
       geometry = geometry.concat(parsed);
     }
@@ -156,7 +157,6 @@ function PathTracer(scenePath) {
           });
         }
         for (let j = 0; j < tris.length; j++) {
-          debugger;
           let subBuffer = [].concat(tris[j].uv1, tris[j].uv2, tris[j].uv3);
           subBuffer.forEach(function (el) {
             uvBuffer.push(el)
@@ -208,7 +208,6 @@ function PathTracer(scenePath) {
     gl.bindTexture(gl.TEXTURE_2D, textures.lights);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(lightBuffer));
 
-    console.log(uvBuffer);
     textures.uvs = createTexture();
     res = requiredRes(uvBuffer.length, 3, 2);
     padBuffer(uvBuffer, res[0], res[1], 2);
@@ -220,14 +219,14 @@ function PathTracer(scenePath) {
   }
 
   function initAtlas(assets, imageList){
-    console.log(assets[imageList[0]])
+    console.log(imageList[0])
     textures.atlas = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, textures.atlas);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, assets[imageList[0]]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageList[0]);
   }
 
   function createTexture() {
@@ -458,7 +457,7 @@ function PathTracer(scenePath) {
       }
     });
     writeBanner("Compiling scene");
-    loadAll(Array.from(pathSet), start)
+    loadAll(Array.from(pathSet), start);
   });
 }
 

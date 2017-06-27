@@ -4,7 +4,7 @@
     let resHash = {};
     urls.forEach(function (url) {
       if (url.match(/^texture\//)) {
-        img = new Image();
+        let img = new Image();
         img.onload = function () {
           counter--;
           resHash[url] = img;
