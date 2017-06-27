@@ -13,7 +13,7 @@ function PathTracer(scenePath) {
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
   let randomNumbers = new Float32Array(64);
-  let atlasRes = 4096;
+  let atlasRes = 8192;
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;

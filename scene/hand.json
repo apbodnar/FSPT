@@ -22,11 +22,22 @@
       "normals": "flat"
     },
     {
+      "path": "mesh/head.obj",
+      "scale": 1,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0,0,0],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.1,
+      "normals": "smooth",
+      "texture": "texture/lambertian.jpg"
+    },
+    {
       "path": "mesh/top.obj",
       "scale": 8,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.25,0],
-      "reflectance": [1,0,0],
+      "reflectance": [0.733,0.04,0.117],
       "emittance": [0,0,0],
       "specular": 0.5,
       "normals": "flat"

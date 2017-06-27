@@ -50,14 +50,23 @@
     resizedDims(image){
       let area = image.naturalHeight * image.naturalWidth;
       let bestDim = 1;
-      for(let i=0; Math.pow(2,i)*Math.pow(2,i) <= Math.sqrt(area); i++){
-        bestDim = Math.pow(2,i)*Math.pow(2,i);
+      for(let i=0; Math.pow(2,i) <= Math.sqrt(area); i++){
+        bestDim = Math.pow(2,i);
       }
       return bestDim;
     }
 
+    flipImage(image, size){
+      let scratch = document.createElement('canvas');
+      scratch.width = scratch.height = size;
+      let sctx = scratch.getContext('2d');
+      sctx.scale(1,-1);
+      sctx.drawImage(image, 0, 0, size, -size);
+      return scratch;
+    }
+
     resizeAndPaste(image, offsetX, offsetY, size){
-      this.ctx.drawImage(image, offsetX, offsetY, size, size)
+      this.ctx.drawImage(this.flipImage(image, size), offsetX, offsetY);
     }
   };
 

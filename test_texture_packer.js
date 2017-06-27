@@ -2,7 +2,7 @@
  * Created by adam on 6/26/17.
  */
 
-let urlList = ["texture/wood.png", "texture/wood.jpg"];
+let urlList = ["texture/wood.png", "texture/wood.jpg", "texture/stone.jpg", "texture/hand.png"];
 
 function createFlatTexture(color){
   let canvas = document.createElement('canvas');
@@ -25,8 +25,8 @@ loadAll(urlList, function(assets){
   console.log(packer.addTexture(assets["texture/wood.png"]),
   packer.addTexture(assets["texture/wood.png"]),
   packer.addTexture(assets["texture/wood.png"]),
-  packer.addTexture(assets["texture/wood.png"]),
+  packer.addTexture(assets["texture/hand.png"]),
   packer.addTexture(createFlatTexture([1,0,0])),
-  packer.addTexture(assets["texture/wood.jpg"]));
+  packer.addTexture(assets["texture/stone.jpg"]));
   ctx.drawImage(packer.canvas, 0 ,0);
 });
