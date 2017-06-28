@@ -14,6 +14,7 @@ function PathTracer(scenePath) {
   let lightRanges = [];
   let randomNumbers = new Float32Array(64);
   let atlasRes = 8192;
+  let skybox = [0,0,0];
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -65,7 +66,7 @@ function PathTracer(scenePath) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "randoms",
+        "tick", "dims", "eye", "randoms", "skybox",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -110,6 +111,7 @@ function PathTracer(scenePath) {
 
   function initBVH(assets) {
     let scene = JSON.parse(assets[scenePath]);
+    skybox = scene.skybox || skybox;
     //writeBanner("Compiling scene");
     let geometry = [];
     let texturePacker = new TexturePacker(atlasRes);
@@ -383,6 +385,7 @@ function PathTracer(scenePath) {
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform2fv(program.uniforms.randoms, randomNumbers);
     gl.uniform3fv(program.uniforms.eye, eye);
+    gl.uniform3fv(program.uniforms.skybox, skybox);
     gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
     gl.uniform3fv(program.uniforms.leftMax, corners.leftMax);
