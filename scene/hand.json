@@ -38,7 +38,7 @@
       "scale": 8,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.25,0],
-      "reflectance": [0.8,0.1,0.8],
+      "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
       "specular": 0.5,
       "normals": "flat"

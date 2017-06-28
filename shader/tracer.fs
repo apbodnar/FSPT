@@ -119,7 +119,7 @@ vec3 randomVec(vec3 normal, vec3 seed){
 }
 
 float rayTriangleIntersect(Ray ray, Triangle tri){
-  float epsilon= 0.00000001;
+  float epsilon= 0.0000001;
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
@@ -281,32 +281,32 @@ Hit traverseTree(Ray ray){
 	Hit temp;
   Node current = nearChild(createNode(0.0), ray);
   while(true){
-  if(state == FROM_CHILD){
-    if(current.index == 0.0){
-      return result;
-    }
-    Node parentNear = nearChild(createNode(current.parent), ray);
-    if(current.index == parentNear.index){
-      current = createNode(current.sibling);
-      state = FROM_SIBLING;
-    } else {
-      current = createNode(current.parent);
-      state = FROM_CHILD;
-    }
-  } else {
-    bool fromParent = state == FROM_PARENT;
-    uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-    float nextIndex = fromParent ? current.sibling : current.parent;
-    if(rayBoxIntersect(current, ray) >= result.t){
-      current = createNode(nextIndex);
-      state = nextState;
-    } else if (current.triangles > -1.0) {
-      temp = processLeaf(current, ray);
-      if (temp.t < result.t){
-        result = temp;
+    if(state == FROM_CHILD){
+      if(current.index == 0.0){
+        return result;
       }
-      current = createNode(nextIndex);
-      state = nextState;
+      Node parentNear = nearChild(createNode(current.parent), ray);
+      if(current.index == parentNear.index){
+        current = createNode(current.sibling);
+        state = FROM_SIBLING;
+      } else {
+        current = createNode(current.parent);
+        state = FROM_CHILD;
+      }
+    } else {
+      bool fromParent = state == FROM_PARENT;
+      uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
+      float nextIndex = fromParent ? current.sibling : current.parent;
+      if(rayBoxIntersect(current, ray) >= result.t){
+        current = createNode(nextIndex);
+        state = nextState;
+      } else if (current.triangles > -1.0) {
+        temp = processLeaf(current, ray);
+        if (temp.t < result.t){
+          result = temp;
+        }
+        current = createNode(nextIndex);
+        state = nextState;
       } else {
         current = nearChild(current, ray);
         state = FROM_PARENT;
