@@ -21,6 +21,7 @@ uniform float scale;
 uniform int tick;
 uniform float numLights;
 uniform vec3 eye;
+uniform vec3 skybox;
 uniform vec3 rightMax;
 uniform vec3 rightMin;
 uniform vec3 leftMax;
@@ -384,7 +385,8 @@ void main(void) {
   for(int i=0; i < NUM_BOUNCES; i++){
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
-    if(result.index < 0.0){break;}
+    bounces++;
+    if(result.index < 0.0){ emittance[i] = skybox; break; }
     Triangle tri = createTriangle(result.index);
     vec3 weights = barycentricWeights(tri, origin);
     vec3 normal = barycentricNormal(weights, createNormals(result.index));
@@ -395,7 +397,7 @@ void main(void) {
     emittance[i] = texRef * getDirectEmmission(ray, tri, result, normal);
     reflectance[i] = texRef;
     prevSpecular = mat.specular;
-    bounces++;
+
     if(isLight || rand(origin.zy) < 0.33){break;}
     vec3 dir = randomVec(normal, origin);
     ray = Ray(origin + EPSILON * dir, dir);
