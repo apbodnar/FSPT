@@ -1,11 +1,11 @@
 {
-  "skybox": [1,1,1],
+  "skybox": [0.8,0.9,1],
   "props": [
     {
       "path": "mesh/hand_18.obj",
-      "scale": 1,
+      "scale": 0.9,
       "rotate": {"angle": -1.57, "axis": [0,0,1]},
-      "translate": [-0.2,-0.4,0.5],
+      "translate": [-0.06,-1.25,0.5],
       "reflectance": [0,0,0],
       "emittance": [0,0,0],
       "specular": 0.5,
@@ -13,12 +13,23 @@
       "texture": "texture/hand.png"
     },
     {
+      "path": "mesh/head.obj",
+      "scale": 4,
+      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "translate": [0.5,0.7,0.5],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "specular": 0.15,
+      "normals": "smooth",
+      "texture": "texture/lambertian.jpg"
+    },
+    {
       "path": "mesh/top.obj",
       "scale": 0.5,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [0,4,2],
+      "rotate": {"angle": -1, "axis": [0,0,1]},
+      "translate": [0,4,0.5],
       "reflectance": [1,1,1],
-      "emittance": [100,100,100],
+      "emittance": [200,200,200],
       "specular": 0.1,
       "normals": "flat"
     },
@@ -27,7 +38,7 @@
       "scale": 8,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.25,0],
-      "reflectance": [0.73,0.1,0.14],
+      "reflectance": [0.8,0.1,0.8],
       "emittance": [0,0,0],
       "specular": 0.5,
       "normals": "flat"
