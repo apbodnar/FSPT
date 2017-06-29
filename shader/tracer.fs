@@ -108,8 +108,8 @@ mat3 rotationMatrix(vec3 axis, float angle){
 }
 
 // GGX microfacet
-vec3 randomNormal(vec3 oNormal, float a, vec2 seed){
-  vec2 xi = vec2(rand(seed), rand(seed.yx));
+vec3 randomNormal(vec3 oNormal, float a, vec3 seed){
+  vec2 xi = vec2(rand(seed.xy), rand(seed.zx));
   float phi = 2.0f * M_PI * xi.x;
   float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
   vec3 facet = vec3(cos(phi) * sin(theta), sin(theta) * sin(phi), cos(theta));
@@ -394,7 +394,6 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
-  float prevSpecular = 0.5;
   for(int i=0; i < NUM_BOUNCES; i++){
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
@@ -405,12 +404,11 @@ void main(void) {
     vec3 normal = barycentricNormal(weights, createNormals(result.index));
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
-    normal = randomNormal(normal, mat.specular, origin.zy);
+    normal = randomNormal(normal, mat.specular, origin);
     bool isLight = dot(mat.emittance, vec3(1)) > 0.0;
     vec3 texRef =  texture(atlasTex, texCoord).rgb;
-    emittance[i] = texRef * getDirectEmmission(ray, tri, result, normal);
+    emittance[i] = mat.emittance;//texRef * getDirectEmmission(ray, tri, result, normal);
     reflectance[i] = texRef;
-    prevSpecular = mat.specular;
 
     if(isLight || rand(origin.zy) > albedo(texRef)){break;}
     vec3 dir = reflect(ray.dir, normal);
