@@ -93,8 +93,7 @@ float rand(vec2 co){
   return fract(sin(sn) * c);
 }
 
-float getAngle(vec3 a){
-  vec3 b = vec3(0.0,0.0,1.0);
+float getAngle(vec3 a, vec3 b){
   return atan(length(cross(a,b)),a.z);
 }
 
@@ -108,15 +107,25 @@ mat3 rotationMatrix(vec3 axis, float angle){
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
-vec3 randomVec(vec3 normal, vec3 seed){
-  float r = sqrt(rand(seed.xy));
-  float theta = 2.0 * M_PI * rand(seed.zx);
-  float x = r * cos(theta);
-  float y = r * sin(theta);
-  vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
-  float phi = getAngle(normal);
-  return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
+// GGX microfacet
+vec3 randomNormal(vec3 oNormal, float a, vec2 seed){
+  vec2 xi = vec2(rand(seed), rand(seed.yx));
+  float phi = 2.0f * M_PI * xi.x;
+  float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
+  vec3 facet = vec3(cos(phi) * sin(theta), sin(theta) * sin(phi), cos(theta));
+  float trans = getAngle(oNormal, vec3(0.0,0.0,1.0));
+  return rotationMatrix(cross(oNormal,vec3(0.0,0.0,1.0)),trans) * facet;
 }
+
+//vec3 randomVec(vec3 normal, vec3 seed){
+//  float r = sqrt(rand(seed.xy));
+//  float theta = 2.0 * M_PI * rand(seed.zx);
+//  float x = r * cos(theta);
+//  float y = r * sin(theta);
+//  vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
+//  float phi = getAngle(normal);
+//  return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
+//}
 
 float rayTriangleIntersect(Ray ray, Triangle tri){
   float epsilon= 0.0000001;
@@ -351,6 +360,10 @@ float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 normal){
   return (a/rr) * dot(normal, normalize(ray.origin - p)) * 0.1591549;
 }
 
+float albedo(vec3 color){
+  return sqrt(dot(vec3(0.299, 0.587, 0.114) * color*color, vec3(1)));
+}
+
 vec3 getDirectEmmission(Ray ray, Triangle tri, Hit result, vec3 normal){
   vec3 color = vec3(0);
   vec3 origin = ray.origin + ray.dir * result.t;
@@ -392,14 +405,15 @@ void main(void) {
     vec3 normal = barycentricNormal(weights, createNormals(result.index));
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
+    normal = randomNormal(normal, mat.specular, origin.zy);
     bool isLight = dot(mat.emittance, vec3(1)) > 0.0;
     vec3 texRef =  texture(atlasTex, texCoord).rgb;
     emittance[i] = texRef * getDirectEmmission(ray, tri, result, normal);
     reflectance[i] = texRef;
     prevSpecular = mat.specular;
 
-    if(isLight || rand(origin.zy) < 0.33){break;}
-    vec3 dir = randomVec(normal, origin);
+    if(isLight || rand(origin.zy) > albedo(texRef)){break;}
+    vec3 dir = reflect(ray.dir, normal);
     ray = Ray(origin + EPSILON * dir, dir);
   }
   for(int i=bounces-1; i>=0; i--){
