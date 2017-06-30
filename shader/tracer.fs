@@ -93,7 +93,8 @@ float rand(vec2 co){
   return fract(sin(sn) * c);
 }
 
-float getAngle(vec3 a, vec3 b){
+float getAngle(vec3 a){
+  vec3 b = vec3(0.0,0.0,1.0);
   return atan(length(cross(a,b)),a.z);
 }
 
@@ -107,14 +108,24 @@ mat3 rotationMatrix(vec3 axis, float angle){
         oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
-// GGX microfacet
+// GGX importance-sampled microfacet
 vec3 randomNormal(vec3 oNormal, float a, vec3 seed){
   vec2 xi = vec2(rand(seed.xy), rand(seed.zx));
   float phi = 2.0f * M_PI * xi.x;
   float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
-  vec3 facet = vec3(cos(phi) * sin(theta), sin(theta) * sin(phi), cos(theta));
-  float trans = getAngle(oNormal, vec3(0.0,0.0,1.0));
+  float sinTheta = sin(theta);
+  vec3 facet = vec3(cos(phi) * sinTheta, sinTheta * sin(phi), cos(theta));
+  float trans = getAngle(oNormal);
   return rotationMatrix(cross(oNormal,vec3(0.0,0.0,1.0)),trans) * facet;
+}
+
+// GGX PDF
+float directLightWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
+  vec3 facetNormal = normalize(lightDir - incidentDir);
+  float a2 = a*a;
+  float ndm = dot(normal, facetNormal);
+  float denom = ndm*ndm * (a2 - 1.0) + 1.0;
+  return a2 / (M_PI * denom * denom);
 }
 
 //vec3 randomVec(vec3 normal, vec3 seed){
@@ -127,6 +138,7 @@ vec3 randomNormal(vec3 oNormal, float a, vec3 seed){
 //  return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
 //}
 
+// Moller-Trumbore
 float rayTriangleIntersect(Ray ray, Triangle tri){
   float epsilon= 0.0000001;
   vec3 e1 = tri.v2 - tri.v1;
@@ -364,17 +376,17 @@ float albedo(vec3 color){
   return sqrt(dot(vec3(0.299, 0.587, 0.114) * color*color, vec3(1)));
 }
 
-vec3 getDirectEmmission(Ray ray, Triangle tri, Hit result, vec3 normal){
+vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular){
   vec3 color = vec3(0);
-  vec3 origin = ray.origin + ray.dir * result.t;
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
   vec3 lightPoint = randomPointOnTriangle(light, origin.zy);
   vec3 dir = normalize(lightPoint - origin);
-  ray = Ray(origin + normal*EPSILON, dir);
+  Ray ray = Ray(origin, dir);
   Hit shadow = traverseTree(ray);
   vec3 tspan = ray.dir * shadow.t;
   vec3 span = lightPoint - ray.origin;
+  float weight = directLightWeight(normal, incident, normalize(span), specular);
   if(abs(shadow.t - length(span)) < EPSILON * 10.0){
     Material mat = createMaterial(shadow.index);
     vec3 lightNormal = barycentricNormal(barycentricWeights(createTriangle(shadow.index), origin), createNormals(shadow.index));
@@ -401,18 +413,17 @@ void main(void) {
     if(result.index < 0.0){ emittance[i] = skybox; break; }
     Triangle tri = createTriangle(result.index);
     vec3 weights = barycentricWeights(tri, origin);
-    vec3 normal = barycentricNormal(weights, createNormals(result.index));
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
-    normal = randomNormal(normal, mat.specular, origin);
-    bool isLight = dot(mat.emittance, vec3(1)) > 0.0;
-    vec3 texRef =  texture(atlasTex, texCoord).rgb;
-    emittance[i] = mat.emittance;//texRef * getDirectEmmission(ray, tri, result, normal);
-    reflectance[i] = texRef;
-
-    if(isLight || rand(origin.zy) > albedo(texRef)){break;}
+    vec3 oNormal = barycentricNormal(weights, createNormals(result.index));
+    vec3 incident = ray.dir;
+    vec3 normal = randomNormal(oNormal, mat.specular, origin);
     vec3 dir = reflect(ray.dir, normal);
-    ray = Ray(origin + EPSILON * dir, dir);
+    ray = Ray(origin + normal * EPSILON, dir);
+    vec3 texRef =  texture(atlasTex, texCoord).rgb;
+    emittance[i] = texRef * getDirectEmmission(ray.origin, oNormal, incident, mat.specular);
+    reflectance[i] = texRef;
+    if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
   for(int i=bounces-1; i>=0; i--){
     color = reflectance[i]*color + emittance[i];
