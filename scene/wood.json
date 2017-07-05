@@ -51,7 +51,7 @@
       "translate": [0,0.25,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "specular": 0.05,
+      "specular": 0.1,
       "normals": "flat"
     }
   ]

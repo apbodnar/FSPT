@@ -124,8 +124,9 @@ float directLightWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   vec3 facetNormal = normalize(lightDir - incidentDir);
   float a2 = a*a;
   float ndm = dot(normal, facetNormal);
-  float denom = ndm*ndm * (a2 - 1.0) + 1.0;
-  return a2 / (M_PI * denom * denom);
+  float ndm2 = ndm*ndm;
+  float denom = ndm2 * a2 + (1.0 - ndm2);
+  return ceil(ndm) * a2 / (M_PI * denom * denom);
 }
 
 //vec3 randomVec(vec3 normal, vec3 seed){
@@ -336,12 +337,15 @@ Hit traverseTree(Ray ray){
   }
 }
 
-vec3 randomPointOnTriangle(Triangle tri, vec2 seed){
+vec3 randomPointOnTriangle(Triangle tri, vec3 seed){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
-  float u = sqrt(rand(coords.xx + seed));
-  float v = u * rand(coords.yy + seed);
-  return tri.v1 + e1 * v * u + e2 * (1.0 - u);
+  float u = rand(seed.xz);
+  float v = rand(seed.zy);
+  bool over = u + v > 1.0;
+  u = over ? 1.0 - u : u;
+  v = over ? 1.0 - v : v;
+  return tri.v1 + e1 * v + e2 * u;
 }
 
 Triangle randomLight(vec2 seed, vec2 range){
@@ -380,7 +384,7 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular)
   vec3 color = vec3(0);
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
-  vec3 lightPoint = randomPointOnTriangle(light, origin.zy);
+  vec3 lightPoint = randomPointOnTriangle(light, origin);
   vec3 dir = normalize(lightPoint - origin);
   Ray ray = Ray(origin, dir);
   Hit shadow = traverseTree(ray);
@@ -391,7 +395,7 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular)
     Material mat = createMaterial(shadow.index);
     vec3 lightNormal = barycentricNormal(barycentricWeights(createTriangle(shadow.index), origin), createNormals(shadow.index));
     vec3 p = ray.origin + ray.dir * shadow.t;
-    color += max(dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
+    color += max(weight * dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
   return color;
 }
