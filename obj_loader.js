@@ -42,7 +42,6 @@
     function parseTriangle(indices){
       let i1 = transforms.invert_faces ? 1 : 0;
       let i2 = transforms.invert_faces ? 0 : 1;
-      let a = [uvs[indices[i1][1] - 1], uvs[indices[i2][1] - 1], uvs[indices[2][1] - 1]]
       let tri = new Triangle(
         applyTransforms(vertices[indices[i1][0] - 1]),
         applyTransforms(vertices[indices[i2][0] - 1]),
