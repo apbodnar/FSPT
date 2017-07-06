@@ -395,7 +395,7 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular)
     Material mat = createMaterial(shadow.index);
     vec3 lightNormal = barycentricNormal(barycentricWeights(createTriangle(shadow.index), origin), createNormals(shadow.index));
     vec3 p = ray.origin + ray.dir * shadow.t;
-    color += max(weight * dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
+    color += max(dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
   return color;
 }

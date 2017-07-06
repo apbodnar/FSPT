@@ -62,7 +62,7 @@
     }
 
     for (let i = 0; i < lines.length; i++) {
-      let array = lines[i].split(/[ ]+/);
+      let array = lines[i].trim().split(/[ ]+/);
       let vals = array.slice(1, 5);
       if (array[0] == 'v') {
         vertices.push(vals.map(parseFloat))
