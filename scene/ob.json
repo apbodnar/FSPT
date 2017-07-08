@@ -15,10 +15,10 @@
     {
       "path": "mesh/top.obj",
       "scale": 1,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
-      "translate": [80,80,0],
+      "rotate": {"angle": 0.5, "axis": [0,0,1]},
+      "translate": [0,80,0],
       "reflectance": [0,0,0],
-      "emittance": [1000000,1000000,1000000],
+      "emittance": [250000,250000,250000],
       "specular": 0.25,
       "normals": "flat"
     }

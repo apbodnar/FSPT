@@ -368,12 +368,12 @@ float triangleArea(Triangle tri){
   return length(n) * 0.5;
 }
 
-float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 normal){
+float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, vec3 normal){
   float a = triangleArea(tri);
   vec3 span = ray.origin - p;
   float rr = dot(span, span);
   //magic number is 1 / Tau, the solid angle of a hemisphere
-  return (a/rr) * dot(normal, normalize(ray.origin - p)) * 0.1591549;
+  return dot(ray.dir, normal) * (a/rr) * dot(lightNormal, normalize(ray.origin - p)) * 0.1591549;
 }
 
 float albedo(vec3 color){
@@ -381,23 +381,22 @@ float albedo(vec3 color){
 }
 
 vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular){
-  vec3 color = vec3(0);
+  vec3 intensity = vec3(0);
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
   vec3 lightPoint = randomPointOnTriangle(light, origin);
-  vec3 dir = normalize(lightPoint - origin);
+  float span = length(lightPoint - origin);
+  vec3 dir = (lightPoint - origin) / span;
   Ray ray = Ray(origin, dir);
   Hit shadow = traverseTree(ray);
-  vec3 tspan = ray.dir * shadow.t;
-  vec3 span = lightPoint - ray.origin;
-  float weight = directLightWeight(normal, incident, normalize(span), specular);
-  if(abs(shadow.t - length(span)) < EPSILON * 10.0){
+  float weight = directLightWeight(normal, incident, dir, specular);
+  if(abs(shadow.t - span) < EPSILON * 10.0){
     Material mat = createMaterial(shadow.index);
-    vec3 lightNormal = barycentricNormal(barycentricWeights(createTriangle(shadow.index), origin), createNormals(shadow.index));
     vec3 p = ray.origin + ray.dir * shadow.t;
-    color += max(dot(ray.dir, normal) * mat.emittance * attenuationFactor(ray, light, p, lightNormal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
+    vec3 lightNormal = createNormals(shadow.index).n1; // don't use smooth normals for lights
+    intensity += max(mat.emittance * attenuationFactor(ray, light, p, lightNormal, normal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
-  return color;
+  return intensity;
 }
 
 void main(void) {
