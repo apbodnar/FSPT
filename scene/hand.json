@@ -1,5 +1,5 @@
 {
-  "skybox": [0.5,0.5,0.5],
+  "skybox": [0.5294117647058824, 0.807843137254902, 0.9803921568627451],
   "props": [
     {
       "path": "mesh/hand_18.obj",
@@ -19,17 +19,17 @@
       "translate": [0.5,0.7,0.5],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "specular": 0.5,
+      "specular": 1,
       "normals": "smooth",
       "texture": "texture/lambertian.jpg"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 2,
-      "rotate": {"angle": -1, "axis": [0,0,1]},
+      "scale": 1,
+      "rotate": {"angle": -0.5, "axis": [0,0,1]},
       "translate": [0,4,0.5],
       "reflectance": [1,1,1],
-      "emittance": [25,25,25],
+      "emittance": [75,75,75],
       "specular": 1,
       "normals": "flat"
     },
@@ -40,7 +40,7 @@
       "translate": [0,0.25,0],
       "reflectance": [0.9,0.1,0.15],
       "emittance": [0,0,0],
-      "specular": 0.05,
+      "specular": 0.1,
       "normals": "flat"
     }
   ]

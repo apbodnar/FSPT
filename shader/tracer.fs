@@ -3,7 +3,7 @@ precision highp float;
 const int NUM_BOUNCES = 8;
 const float max_t = 100000.0;
 const float n1 = 1.0;
-const float n2 = 1.458;
+const float n2 = 1.43;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
@@ -129,15 +129,20 @@ float directLightWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   return ceil(ndm) * a2 / (M_PI * denom * denom);
 }
 
-//vec3 randomVec(vec3 normal, vec3 seed){
-//  float r = sqrt(rand(seed.xy));
-//  float theta = 2.0 * M_PI * rand(seed.zx);
-//  float x = r * cos(theta);
-//  float y = r * sin(theta);
-//  vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
-//  float phi = getAngle(normal);
-//  return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
-//}
+float schlick(vec3 dir, vec3 normal){
+  float dh = 1.0 - dot(-dir,normal);
+  return r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
+}
+
+vec3 randomVec(vec3 normal, vec3 seed){
+ float r = sqrt(rand(seed.xy));
+ float theta = 2.0 * M_PI * rand(seed.zx);
+ float x = r * cos(theta);
+ float y = r * sin(theta);
+ vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
+ float phi = getAngle(normal);
+ return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
+}
 
 // Moller-Trumbore
 float rayTriangleIntersect(Ray ray, Triangle tri){
@@ -380,7 +385,7 @@ float albedo(vec3 color){
   return sqrt(dot(vec3(0.299, 0.587, 0.114) * color*color, vec3(1)));
 }
 
-vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular){
+vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular, bool weighted){
   vec3 intensity = vec3(0);
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
@@ -389,12 +394,12 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular)
   vec3 dir = (lightPoint - origin) / span;
   Ray ray = Ray(origin, dir);
   Hit shadow = traverseTree(ray);
-  float weight = directLightWeight(normal, incident, dir, specular);
+  float weight = weighted ? directLightWeight(normal, incident, dir, specular) : 1.0;
   if(abs(shadow.t - span) < EPSILON * 10.0){
     Material mat = createMaterial(shadow.index);
     vec3 p = ray.origin + ray.dir * shadow.t;
     vec3 lightNormal = createNormals(shadow.index).n1; // don't use smooth normals for lights
-    intensity += max(mat.emittance * attenuationFactor(ray, light, p, lightNormal, normal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
+    intensity += max(weight * mat.emittance * attenuationFactor(ray, light, p, lightNormal, normal) * numLights * ((range.y - range.x) + 1.0), vec3(0));
   }
   return intensity;
 }
@@ -409,6 +414,7 @@ void main(void) {
   Hit result = Hit(max_t, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
+  bool specular = true;
   for(int i=0; i < NUM_BOUNCES; i++){
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
@@ -421,10 +427,17 @@ void main(void) {
     vec3 oNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 incident = ray.dir;
     vec3 normal = randomNormal(oNormal, mat.specular, origin);
-    vec3 dir = reflect(ray.dir, normal);
-    ray = Ray(origin + normal * EPSILON, dir);
+    vec3 implicit = specular ? mat.emittance : vec3(0);
+    if(rand(origin.zx) < schlick(incident, normal)){
+      ray = Ray(origin + oNormal * EPSILON, reflect(ray.dir, normal));
+      specular = true;
+    } else {
+      ray = Ray(origin + oNormal * EPSILON, randomVec(oNormal, origin));
+      specular = false;
+    }
     vec3 texRef =  texture(atlasTex, texCoord).rgb;
-    emittance[i] = texRef * getDirectEmmission(ray.origin, oNormal, incident, mat.specular);
+    vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, oNormal, incident, mat.specular, !specular);
+    emittance[i] = direct;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
