@@ -1,4 +1,11 @@
 (function (exports) {
+  exports.transformUV = function(uv, trans){
+    uv[0] *= trans.scale;
+    uv[1] *= trans.scale;
+    uv[0] += trans.offset[0];
+    uv[1] += trans.offset[1];
+    return uv;
+  };
   exports.parseMesh = function (objText, transforms) {
     let lines = objText.split('\n');
     let vertices = [];
@@ -8,14 +15,6 @@
 
     function applyTransforms(vert) {
       return Vec3.rotateArbitrary(Vec3.add(Vec3.scale(vert, transforms.scale), transforms.translate), transforms.rotate.axis, transforms.rotate.angle);
-    }
-
-    function transformUV(uv, trans){
-      uv[0] *= trans.scale;
-      uv[1] *= trans.scale;
-      uv[0] += trans.offset[0];
-      uv[1] += trans.offset[1];
-      return uv;
     }
 
     function getNormal(tri) {
@@ -76,7 +75,7 @@
       } else if(array[0] == 'vt'){
         let uv = vals.map(parseFloat);
         //debugger
-        let tuv = transformUV(uv, transforms.uvTransforms);
+        let tuv = exports.transformUV(uv, transforms.uvTransforms);
         uvs.push(tuv);
         //uvs.push(uv);
       }

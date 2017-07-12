@@ -20,6 +20,7 @@ out vec4 fragColor;
 uniform float scale;
 uniform int tick;
 uniform float numLights;
+uniform vec3 envTrans;
 uniform vec3 eye;
 uniform vec3 skybox;
 uniform vec3 rightMax;
@@ -246,18 +247,17 @@ Node farChild(Node node, Ray ray){
 }
 
 
-Hit processLeaf(Node leaf, Ray ray){
+void processLeaf(Node leaf, Ray ray, inout Hit result){
 	float t = max_t;
 	float index = -1.0;
-	for(int i=0; i<4; i++){
+	for(int i=0; i<4; ++i){
 		Triangle tri = createTriangle(leaf.triangles + float(i));
 		float res = rayTriangleIntersect(ray, tri);
-		if(res < t){
-			t = res;
-			index = leaf.triangles + float(i);
+		if(res < result.t){
+			result.t = res;
+			result.index = leaf.triangles + float(i);
 		}
 	}
-	return Hit(t, index);
 }
 
 Node siblingNode(Node node){
@@ -329,10 +329,7 @@ Hit traverseTree(Ray ray){
         current = createNode(nextIndex);
         state = nextState;
       } else if (current.triangles > -1.0) {
-        temp = processLeaf(current, ray);
-        if (temp.t < result.t){
-          result = temp;
-        }
+        processLeaf(current, ray, result);
         current = createNode(nextIndex);
         state = nextState;
       } else {
@@ -378,12 +375,20 @@ float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, vec3 no
   float a = triangleArea(tri);
   vec3 span = ray.origin - p;
   float rr = dot(span, span);
-  //magic number is 1 / Tau, the solid angle of a hemisphere
+  //magic number is 1 / Tau, the inverted solid angle of a hemisphere
   return dot(ray.dir, normal) * (a/rr) * dot(lightNormal, normalize(ray.origin - p)) * 0.1591549;
 }
 
 float albedo(vec3 color){
   return sqrt(dot(vec3(0.299, 0.587, 0.114) * color*color, vec3(1)));
+}
+
+vec3 envColor(vec3 dir){
+  float m = 2. * sqrt(pow( dir.x, 2.0 ) + pow( dir.y + 1.0, 2.0 ) + pow( dir.z, 2.0));
+  vec2 c = dir.xy / m + 0.5;
+  c *= envTrans.z;
+  c += envTrans.xy;
+  return texture(atlasTex, c).rgb;
 }
 
 vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular, bool weighted){
@@ -407,7 +412,7 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular,
 
 void main(void) {
   vec3 screen = getScreen() * scale ;
-  vec3 aa = (vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x) * scale;
+  vec3 aa = vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x * scale;
   Ray ray = Ray(eye + aa, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   vec3 emittance[NUM_BOUNCES];
@@ -420,7 +425,7 @@ void main(void) {
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
     bounces++;
-    if(result.index < 0.0){ emittance[i] = skybox; break; }
+    if(result.index < 0.0){ emittance[i] = envColor(ray.dir); break; }
     Triangle tri = createTriangle(result.index);
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));

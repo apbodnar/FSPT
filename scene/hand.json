@@ -1,5 +1,5 @@
 {
-  "skybox": [0.5294117647058824, 0.807843137254902, 0.9803921568627451],
+  "environment": "texture/env.jpg",
   "props": [
     {
       "path": "mesh/hand_18.obj",
@@ -35,7 +35,7 @@
     },
     {
       "path": "mesh/top.obj",
-      "scale": 8,
+      "scale": 600,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.25,0],
       "reflectance": [0.9,0.1,0.15],
