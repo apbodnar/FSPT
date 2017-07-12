@@ -3,7 +3,7 @@ precision highp float;
 const int NUM_BOUNCES = 8;
 const float max_t = 100000.0;
 const float n1 = 1.0;
-const float n2 = 1.43;
+const float n2 = 1.2;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
@@ -114,9 +114,10 @@ vec3 randomNormal(vec3 oNormal, float a, vec3 seed){
   float phi = 2.0f * M_PI * xi.x;
   float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
   float sinTheta = sin(theta);
-  vec3 facet = vec3(cos(phi) * sinTheta, sinTheta * sin(phi), cos(theta));
-  float trans = getAngle(oNormal);
-  return rotationMatrix(cross(oNormal,vec3(0.0,0.0,1.0)),trans) * facet;
+  vec3 u = normalize(cross(oNormal,vec3(0.0,0.0,1.0)));
+  vec3 v = normalize(cross(u, oNormal));
+  vec3 facet = cos(phi) * sinTheta * u + sinTheta * sin(phi) * v + cos(theta) * oNormal;
+  return facet;
 }
 
 // GGX PDF
@@ -139,9 +140,9 @@ vec3 randomVec(vec3 normal, vec3 seed){
  float theta = 2.0 * M_PI * rand(seed.zx);
  float x = r * cos(theta);
  float y = r * sin(theta);
- vec3 rv = vec3(x, y, sqrt(1.0 - r*r));
- float phi = getAngle(normal);
- return rotationMatrix(cross(normal,vec3(0.0,0.0,1.0)),phi) * rv;
+ vec3 u = normalize(cross(normal,vec3(0.0,0.0,1.0)));
+ vec3 v = normalize(cross(u, normal));
+ return x*u + y*v + sqrt(1.0 - r*r)*normal;
 }
 
 // Moller-Trumbore
@@ -415,7 +416,7 @@ void main(void) {
   vec3 color = vec3(0);
   int bounces = 0;
   bool specular = true;
-  for(int i=0; i < NUM_BOUNCES; i++){
+  for(int i=0; i < NUM_BOUNCES; ++i){
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
     bounces++;
@@ -441,7 +442,7 @@ void main(void) {
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
-  for(int i=bounces-1; i>=0; i--){
+  for(int i=bounces-1; i>=0; --i){
     color = reflectance[i]*color + emittance[i];
   }
   //color = pow(color,vec3(gamma));
