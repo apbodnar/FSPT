@@ -15,6 +15,7 @@ function PathTracer(scenePath) {
   let randomNumbers = new Float32Array(64);
   let atlasRes = 8192;
   let skybox = [0,0,0];
+  let envTrans = [0,0,1];
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -66,7 +67,7 @@ function PathTracer(scenePath) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "randoms", "skybox",
+        "tick", "dims", "eye", "randoms", "skybox", "envTrans",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -109,6 +110,13 @@ function PathTracer(scenePath) {
     return canvas
   }
 
+  function createEnvironmentMap(packer, assets, path){
+    let uvTransforms = packer.addTexture(assets[path]);
+    envTrans[0] = uvTransforms.offset[0];
+    envTrans[1] = uvTransforms.offset[1];
+    envTrans[2] = uvTransforms.scale;
+  }
+
   function initBVH(assets) {
     let scene = JSON.parse(assets[scenePath]);
     skybox = scene.skybox || skybox;
@@ -116,6 +124,7 @@ function PathTracer(scenePath) {
     let geometry = [];
     let texturePacker = new TexturePacker(atlasRes);
     let lights = [];
+    createEnvironmentMap(texturePacker, assets, scene.environment);
     for (let i = 0; i < scene.props.length; i++) {
       let prop = scene.props[i];
       let uvTransforms = null;
@@ -382,6 +391,7 @@ function PathTracer(scenePath) {
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
+    gl.uniform3fv(program.uniforms.envTrans, envTrans);
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform2fv(program.uniforms.randoms, randomNumbers);
     gl.uniform3fv(program.uniforms.eye, eye);
@@ -475,6 +485,9 @@ function PathTracer(scenePath) {
         pathSet.add(e.texture);
       }
     });
+    if(scene.environment){
+      pathSet.add(scene.environment);
+    }
     writeBanner("Compiling scene");
     loadAll(Array.from(pathSet), start);
   });
