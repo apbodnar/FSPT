@@ -170,7 +170,7 @@ function PathTracer(scenePath) {
         }
         for (let j = 0; j < tris.length; j++) {
           let transforms = tris[j].transforms;
-          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, getAlbedo(transforms.reflectance), 0]);
+          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, transforms.metal, 0]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });

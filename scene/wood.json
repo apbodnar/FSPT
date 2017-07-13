@@ -1,4 +1,5 @@
 {
+  "environment": "texture/env.jpg",
   "props": [
     {
       "path": "mesh/wooddoll_14.obj",
@@ -40,7 +41,7 @@
       "translate": [0,4,2],
       "reflectance": [1,1,1],
       "emittance": [50,50,50],
-      "specular": 0.1,
+      "specular": 0.2,
       "normals": "flat"
     },
     {
@@ -48,9 +49,10 @@
       "scale": 8,
       "rotate": {"angle": 3.141592653589793, "axis": [0,0,1]},
       "translate": [0,0.25,0],
-      "reflectance": [1,1,1],
+      "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "specular": 0.1,
+      "metal": true,
       "normals": "flat"
     }
   ]
