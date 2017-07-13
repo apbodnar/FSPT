@@ -3,7 +3,7 @@ precision highp float;
 const int NUM_BOUNCES = 8;
 const float max_t = 100000.0;
 const float n1 = 1.0;
-const float n2 = 1.2;
+const float n2 = 1.3;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
@@ -54,7 +54,7 @@ struct Material {
   vec3 reflectance;
   vec3 emittance;
   float specular;
-  float albedo;
+  float metal;
 };
 
 struct Ray {
@@ -92,21 +92,6 @@ float rand(vec2 co){
   float dt= dot(co ,vec2(a,b) + float(tick) * 0.0194161103);
   float sn= mod(dt,M_PI);
   return fract(sin(sn) * c);
-}
-
-float getAngle(vec3 a){
-  vec3 b = vec3(0.0,0.0,1.0);
-  return atan(length(cross(a,b)),a.z);
-}
-
-mat3 rotationMatrix(vec3 axis, float angle){
-  axis = normalize(axis);
-  float s = sin(angle);
-  float c = cos(angle);
-  float oc = 1.0 - c;
-  return mat3(oc * axis.x * axis.x + c,    oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
-        oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c,          oc * axis.y * axis.z - axis.x * s,
-        oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c);
 }
 
 // GGX importance-sampled microfacet
@@ -430,19 +415,15 @@ void main(void) {
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
-    vec3 oNormal = barycentricNormal(weights, createNormals(result.index));
+    vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 incident = ray.dir;
-    vec3 normal = randomNormal(oNormal, mat.specular, origin);
+    vec3 microNormal = randomNormal(macroNormal, mat.specular, origin);
     vec3 implicit = specular ? mat.emittance : vec3(0);
-    if(rand(origin.zx) < schlick(incident, normal)){
-      ray = Ray(origin + oNormal * EPSILON, reflect(ray.dir, normal));
-      specular = true;
-    } else {
-      ray = Ray(origin + oNormal * EPSILON, randomVec(oNormal, origin));
-      specular = false;
-    }
+    specular = rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
+    ray.origin = origin + macroNormal * EPSILON;
+    ray.dir = specular ? reflect(ray.dir, microNormal) : randomVec(macroNormal, origin);
     vec3 texRef =  texture(atlasTex, texCoord).rgb;
-    vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, oNormal, incident, mat.specular, !specular);
+    vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.specular, specular);
     emittance[i] = direct;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}

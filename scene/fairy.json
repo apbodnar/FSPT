@@ -1,5 +1,5 @@
 {
-  "skybox": [1,1,1],
+  "environment": "texture/env.jpg",
   "props": [
     {
       "path": "mesh/fairy.obj",
@@ -8,7 +8,7 @@
       "translate": [0,-0.5,0],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-      "specular": 0.5,
+      "specular": 0.1,
       "normals": "smooth"
     },
     {

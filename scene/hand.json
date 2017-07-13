@@ -40,7 +40,8 @@
       "translate": [0,0.25,0],
       "reflectance": [0.9,0.1,0.15],
       "emittance": [0,0,0],
-      "specular": 0.1,
+      "metal": false,
+      "specular": 0.01,
       "normals": "flat"
     }
   ]
