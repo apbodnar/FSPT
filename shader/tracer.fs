@@ -225,10 +225,22 @@ Node nearChild(Node node, Ray ray){
   return createNode(index);
 }
 
+float nearChildIndex(Node node, Ray ray){
+  uint axis = uint(node.split);
+  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
+  return index;
+}
+
 Node farChild(Node node, Ray ray){
   uint axis = uint(node.split);
   float index = ray.dir[axis] <= 0.0 ? node.left : node.right;
   return createNode(index);
+}
+
+float farChildIndex(Node node, Ray ray){
+  uint axis = uint(node.split);
+  float index = ray.dir[axis] <= 0.0 ? node.left : node.right;
+  return index;
 }
 
 
@@ -288,10 +300,45 @@ vec3 barycentricNormal(vec3 weights, Normals normals){
 	return weights.x * normals.n1 + weights.y * normals.n2 + weights.z * normals.n3;
 }
 
+Hit traverse(Ray ray){
+	Hit result = Hit(max_t, -1.0);
+  Node current = createNode(0.0);
+  float last = -1.0;
+  while(true){
+    float near = nearChildIndex(current, ray);
+    float far = farChildIndex(current, ray);
+    if(last == far){
+      if(current.index == 0.0){
+        return result;
+      }
+      last = current.index;
+      current = createNode(current.parent);
+      continue;
+    }
+    float tryChild = last == current.parent ? near : far;
+    if(rayBoxIntersect(current, ray) < result.t){
+      last = current.index;
+      if (current.triangles > -1.0) {
+        // at leaf
+        processLeaf(current, ray, result);
+        current = createNode(current.parent);
+      } else {
+        current = createNode(tryChild);
+      }
+    } else {
+      if(tryChild == near){
+        last = near;
+      } else {
+        last = current.index;
+        current = createNode(current.parent);
+      }
+    }
+  }
+}
+
 Hit traverseTree(Ray ray){
   uint state = FROM_PARENT;
 	Hit result = Hit(max_t, -1.0);
-	Hit temp;
   Node current = nearChild(createNode(0.0), ray);
   while(true){
     if(state == FROM_CHILD){
@@ -299,28 +346,24 @@ Hit traverseTree(Ray ray){
         return result;
       }
       Node parentNear = nearChild(createNode(current.parent), ray);
-      if(current.index == parentNear.index){
-        current = createNode(current.sibling);
-        state = FROM_SIBLING;
-      } else {
-        current = createNode(current.parent);
-        state = FROM_CHILD;
-      }
+      bool atNear = current.index == parentNear.index;
+      current = createNode(atNear ? current.sibling : current.parent);
+      state = atNear ? FROM_SIBLING : FROM_CHILD;
     } else {
       bool fromParent = state == FROM_PARENT;
       uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
       float nextIndex = fromParent ? current.sibling : current.parent;
       if(rayBoxIntersect(current, ray) >= result.t){
-        current = createNode(nextIndex);
-        state = nextState;
+        // missed box
       } else if (current.triangles > -1.0) {
+        // at leaf
         processLeaf(current, ray, result);
-        current = createNode(nextIndex);
-        state = nextState;
       } else {
-        current = nearChild(current, ray);
-        state = FROM_PARENT;
+        nextIndex = nearChildIndex(current, ray);
+        nextState = FROM_PARENT;
       }
+      current = createNode(nextIndex);
+      state = nextState;
     }
   }
 }
@@ -416,8 +459,8 @@ void main(void) {
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
-    vec3 incident = ray.dir;
     vec3 microNormal = randomNormal(macroNormal, mat.specular, origin);
+    vec3 incident = ray.dir;
     vec3 implicit = specular ? mat.emittance : vec3(0);
     specular = rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
     ray.origin = origin + macroNormal * EPSILON;
