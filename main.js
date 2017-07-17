@@ -13,7 +13,7 @@ function PathTracer(scenePath) {
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
   let randomNumbers = new Float32Array(64);
-  let atlasRes = 8192;
+  let atlasRes = 2048;
   let skybox = [0,0,0];
   let envTrans = [0,0,1];
 
@@ -122,7 +122,7 @@ function PathTracer(scenePath) {
     skybox = scene.skybox || skybox;
     //writeBanner("Compiling scene");
     let geometry = [];
-    let texturePacker = new TexturePacker(atlasRes);
+    let texturePacker = new TexturePacker(scene.atlasRes || atlasRes);
     let lights = [];
     createEnvironmentMap(texturePacker, assets, scene.environment);
     for (let i = 0; i < scene.props.length; i++) {

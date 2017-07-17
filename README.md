@@ -10,7 +10,7 @@ There's a lot of room to speed things up.  Sub 30 fps is not uncommon on an over
 
 ## Experiments
 
-![alt text](images/head.png)
-![alt text](images/v5.png)
+![alt text](images/hands.png)
+![alt text](images/fairy.png)
 ![alt text](images/wood.png)
-![alt text](images/v9.png)
+![alt text](images/sib.png)
