@@ -12,9 +12,14 @@
     let triangles = [];
     let vertNormals = [];
     let uvs = [];
+    
+    function applyRotations(vert){
+      transforms.rotate.forEach((r) => {vert = Vec3.rotateArbitrary(vert, r.axis, r.angle)});
+      return vert;
+    }
 
     function applyTransforms(vert) {
-      return Vec3.rotateArbitrary(Vec3.add(Vec3.scale(vert, transforms.scale), transforms.translate), transforms.rotate.axis, transforms.rotate.angle);
+      return Vec3.add(Vec3.scale(applyRotations(vert), transforms.scale), transforms.translate);
     }
 
     function getNormal(tri) {
@@ -73,7 +78,7 @@
           parseQuad(vals);
         }
       } else if(array[0] == 'vt'){
-        let uv = vals.map(parseFloat);
+        let uv = vals.map(function(coord){return parseFloat(coord) || 0});
         //debugger
         let tuv = exports.transformUV(uv, transforms.uvTransforms);
         uvs.push(tuv);
