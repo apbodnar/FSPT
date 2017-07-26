@@ -3,7 +3,7 @@
     {
       "path": "mesh/bunny.obj",
       "scale": 8,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0.1,-0.4,0],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
@@ -13,7 +13,7 @@
 	{
       "path": "mesh/cube.obj",
       "scale": 0.1,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0.125,0.75,0.2],
       "reflectance": [1,1,1],
       "emittance": [1000,1000,1000],

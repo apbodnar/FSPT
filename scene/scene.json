@@ -1,44 +1,51 @@
 {
+  "environment": "texture/env.png",
   "props": [
     {
       "path": "mesh/bunny.obj",
       "scale": 4,
-      "rotate": 0.0,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0.1,-0.4,0],
       "reflectance": [1,1,1],
-      "emittance": [0,0,0]
+      "emittance": [0,0,0],
+      "texture": "texture/kamen.jpg",
+      "specular": 0.9
     },
     {
       "path": "mesh/octohedron.obj",
       "scale": 0.15,
-      "rotate": 0,
-      "translate": [0,0.6,0],
-      "reflectance": [1,1,1],
-      "emittance": [500,0.1,0.1]
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [-0.6,0,0],
+      "reflectance": [0,0,0],
+      "emittance": [500,0.1,0.1],
+      "specular": 0.9
     },
     {
       "path": "mesh/octohedron.obj",
       "scale": 0.15,
-      "rotate": 1.5707963267948966,
-      "translate": [0,0.6,0],
-      "reflectance": [0.25,0.25,0.25],
-      "emittance": [0.1,500,0.1]
+      "rotate": [{"angle": 1.5707963267948966, "axis": [0,0,1]}],
+      "translate": [0.6,0,0],
+      "reflectance": [0,0,0],
+      "emittance": [0.1,500,0.1],
+      "specular": 0.9
     },
     {
       "path": "mesh/octohedron.obj",
       "scale": 0.15,
-      "rotate": 3.141592653589793,
-      "translate": [0,0.6,0],
-      "reflectance": [0.25,0.25,0.25],
-      "emittance": [0.1,0.1,500]
+      "rotate": [{"angle": 3.141592653589793, "axis": [0,0,1]}],
+      "translate": [0,-0.6,0],
+      "reflectance": [0,0.0,0.0],
+      "emittance": [0.1,0.1,500],
+      "specular": 0.9
     },
     {
       "path": "mesh/octohedron.obj",
       "scale": 0.15,
-      "rotate": 4.71238898038469,
+      "rotate": [{"angle": 4.71238898038469, "axis": [0,0,1]}],
       "translate": [0,0.6,0],
-      "reflectance": [0.25,0.25,0.25],
-      "emittance": [50,50,50]
+      "reflectance": [0.0,0.0,0.0],
+      "emittance": [50,50,50],
+      "specular": 0.9
     }
   ]
 }
