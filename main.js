@@ -135,7 +135,6 @@ function PathTracer(scenePath, resolution) {
         uvTransforms = texturePacker.addTexture(assets[prop.texture])
       } else {
         uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance));
-        console.log(uvTransforms);
       }
       prop.uvTransforms = uvTransforms;
       let parsed = parseMesh(assets[prop.path], prop);
