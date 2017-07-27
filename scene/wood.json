@@ -1,5 +1,5 @@
 {
-  "environment": "texture/env.png",
+  "environment": "texture/pano.jpg",
   "props": [
     {
       "path": "mesh/wooddoll_14.obj",

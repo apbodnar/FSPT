@@ -10,15 +10,17 @@ TODOs (Not Exhaustive):
 * Fully implement specular and diffuse BRDFs
 * Refraction with configurable IoR
 * Better BVH construction (SAH) and traversal.
+* Rewrite scene file structure.
+* Actually support asset standards. OBJ, MTL, etc...
 
 ## Demo
 
-WARNING: Any one of these could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  I've tested on Windows and Linux with a GTX 1080 and GTX 980 
+WARNING: Any one of these links could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  I've tested on Windows and Linux with a GTX 1080 and GTX 980 
 
 ## Experiments
 
 ![alt text](images/hands.png)
-![alt text](images/bunnies.png)
+![alt text](images/dragbunn.png)
 ![alt text](images/fairy.png)
 ![alt text](images/wood.png)
 ![alt text](images/sib.png)
@@ -87,3 +89,5 @@ A scene config file like `bunnies.json` looks like:
 }
 ```
 
+Any prop with a non zero emittance will be treated as a light source. Any prop without a `texture` will use its reflectance as a solid color. More rotations can be applied by adding more into the array.
+If you wish to use your own OBJs, make sure you add the texture to the scene file and that it has at least one `vt` attribute.
