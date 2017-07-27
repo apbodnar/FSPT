@@ -20,7 +20,6 @@ out vec4 fragColor;
 uniform float scale;
 uniform int tick;
 uniform float numLights;
-uniform vec3 envTrans;
 uniform vec3 eye;
 uniform vec3 skybox;
 uniform vec3 rightMax;
@@ -37,6 +36,7 @@ uniform sampler2D normTex;
 uniform sampler2D lightTex;
 uniform sampler2D uvTex;
 uniform sampler2D atlasTex;
+uniform sampler2D envTex;
 
 struct Triangle {
   vec3 v1;
@@ -96,7 +96,7 @@ float rand(vec2 co){
 
 // GGX importance-sampled microfacet
 vec3 randomNormal(vec3 oNormal, float a, vec3 seed){
-  vec2 xi = vec2(rand(seed.xy), rand(seed.zx));
+  vec2 xi = vec2(rand(seed.xy), rand(seed.xz));
   float phi = 2.0f * M_PI * xi.x;
   float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
   float sinTheta = sin(theta);
@@ -412,11 +412,8 @@ float albedo(vec3 color){
 }
 
 vec3 envColor(vec3 dir){
-  float m = 2. * sqrt(pow( dir.x, 2.0 ) + pow( dir.y + 1.0, 2.0 ) + pow( dir.z, 2.0));
-  vec2 c = dir.xy / m + 0.5;
-  c *= envTrans.z;
-  c += envTrans.xy;
-  return texture(atlasTex, c).rgb;
+  vec2 c = vec2(atan(dir.z, dir.x) / 6.28, dir.y * -0.5 + 0.5);
+  return texture(envTex, c).rgb;
 }
 
 vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular, bool weighted){
@@ -465,7 +462,7 @@ void main(void) {
     specular = rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
     ray.origin = origin + macroNormal * EPSILON;
     ray.dir = specular ? reflect(ray.dir, microNormal) : randomVec(macroNormal, origin);
-    vec3 texRef =  texture(atlasTex, texCoord).rgb;
+    vec3 texRef = texture(atlasTex, texCoord).rgb;
     vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.specular, specular);
     emittance[i] = direct;
     reflectance[i] = texRef;

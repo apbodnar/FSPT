@@ -1,4 +1,4 @@
-function PathTracer(scenePath) {
+function PathTracer(scenePath, resolution) {
   "use strict";
   let gl;
   let programs = {};
@@ -27,8 +27,8 @@ function PathTracer(scenePath) {
 
   function initGL(canvas) {
     gl = canvas.getContext("webgl2");
-    gl.viewportWidth = canvas.width = window.innerHeight; // square render target
-    gl.viewportHeight = canvas.height = window.innerHeight;
+    gl.viewportWidth = canvas.width = resolution; // square render target
+    gl.viewportHeight = canvas.height = resolution;
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   }
 
@@ -67,7 +67,7 @@ function PathTracer(scenePath) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "randoms", "skybox", "envTrans",
+        "tick", "dims", "eye", "randoms", "skybox", "envTex",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -110,11 +110,14 @@ function PathTracer(scenePath) {
     return canvas
   }
 
-  function createEnvironmentMap(packer, assets, path){
-    let uvTransforms = packer.addTexture(assets[path]);
-    envTrans[0] = uvTransforms.offset[0];
-    envTrans[1] = uvTransforms.offset[1];
-    envTrans[2] = uvTransforms.scale;
+  function createEnvironmentMap(assets, path){
+    textures.env = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, textures.env);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, assets[path]);
   }
 
   function initBVH(assets) {
@@ -124,7 +127,7 @@ function PathTracer(scenePath) {
     let geometry = [];
     let texturePacker = new TexturePacker(scene.atlasRes || atlasRes);
     let lights = [];
-    createEnvironmentMap(texturePacker, assets, scene.environment);
+    createEnvironmentMap(assets, scene.environment);
     for (let i = 0; i < scene.props.length; i++) {
       let prop = scene.props[i];
       let uvTransforms = null;
@@ -132,6 +135,7 @@ function PathTracer(scenePath) {
         uvTransforms = texturePacker.addTexture(assets[prop.texture])
       } else {
         uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance));
+        console.log(uvTransforms);
       }
       prop.uvTransforms = uvTransforms;
       let parsed = parseMesh(assets[prop.path], prop);
@@ -140,9 +144,6 @@ function PathTracer(scenePath) {
       }
 
       geometry = geometry.concat(parsed);
-    }
-    function getAlbedo(color){
-      return Math.sqrt(Vec3.dot(Vec3.mult([0.299, 0.587, 0.114], Vec3.mult(color, color)), [1, 1, 1]));
     }
     let bvh = new BVH(geometry, 4);
     let bvhArray = bvh.serializeTree();
@@ -388,6 +389,7 @@ function PathTracer(scenePath) {
     gl.uniform1i(program.uniforms.lightTex, 5);
     gl.uniform1i(program.uniforms.uvTex, 6);
     gl.uniform1i(program.uniforms.atlasTex, 7);
+    gl.uniform1i(program.uniforms.envTex, 8);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
@@ -400,6 +402,8 @@ function PathTracer(scenePath) {
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
     gl.uniform3fv(program.uniforms.leftMax, corners.leftMax);
     gl.uniform3fv(program.uniforms.rightMin, corners.rightMin);
+    gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_2D, textures.env);
     gl.activeTexture(gl.TEXTURE7);
     gl.bindTexture(gl.TEXTURE_2D, textures.atlas);
     gl.activeTexture(gl.TEXTURE6);
@@ -493,5 +497,8 @@ function PathTracer(scenePath) {
   });
 }
 
-let scene = window.location.search.match(/[a-zA-Z_]+/);
-new PathTracer(Array.isArray(scene) ? 'scene/' + scene[0] + '.json' : 'scene/plane.json');
+let scene_match = window.location.search.match(/scene=([a-zA-Z_]+)/);
+let scene = Array.isArray(scene_match) ? 'scene/' + scene_match[1] + '.json' : 'scene/basic.json';
+let resolution_match = window.location.search.match(/res=(\d+)/);//window.innerHeight;
+let resolution = Array.isArray(resolution_match) ? parseFloat(resolution_match[1]) : window.innerHeight;
+new PathTracer(scene, resolution);
