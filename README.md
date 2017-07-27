@@ -17,7 +17,13 @@ TODOs (Not Exhaustive):
 ## Demo
 
 **WARNING**: Any one of these links could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  
-I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980 
+I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
+
+[Bunny](http://apbodnar.github.io/FSPT/index.html?scene=bunny&res=400)
+
+[Bunnies](http://apbodnar.github.io/FSPT/index.html?scene=bunnies&res=400)
+
+[Dolls](http://apbodnar.github.io/FSPT/index.html?scene=wood&res=400)
 
 ## Experiments
 
