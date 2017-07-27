@@ -51,7 +51,7 @@
         applyTransforms(vertices[indices[i2][0] - 1]),
         applyTransforms(vertices[indices[2][0] - 1]),
         indices[i1][0] - 1, indices[i2][0] - 1, indices[2][0] - 1,
-        uvs[indices[i1][1] - 1] || 0, uvs[indices[i2][1] - 1] || 0, uvs[indices[2][1] - 1] || 0,
+        uvs[(indices[i1][1] - 1) || 0], uvs[(indices[i2][1] - 1) || 0], uvs[(indices[2][1] - 1 || 0)],
         transforms
       );
       let normal = getNormal(tri);
@@ -79,7 +79,7 @@
         }
       } else if(array[0] == 'vt'){
         let uv = vals.map(function(coord){return parseFloat(coord) || 0});
-        //debugger
+        debugger
         let tuv = exports.transformUV(uv, transforms.uvTransforms);
         uvs.push(tuv);
         //uvs.push(uv);

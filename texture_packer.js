@@ -1,6 +1,6 @@
 /**
  * Created by adam on 6/26/17.
- * Make a texture atlas with a quadtree to track available space
+ * Make a texture atlas with somthing like a quadtree to track available space
  */
 
 (function(exports){
