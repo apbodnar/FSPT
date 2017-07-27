@@ -79,7 +79,6 @@
         }
       } else if(array[0] == 'vt'){
         let uv = vals.map(function(coord){return parseFloat(coord) || 0});
-        debugger
         let tuv = exports.transformUV(uv, transforms.uvTransforms);
         uvs.push(tuv);
         //uvs.push(uv);
