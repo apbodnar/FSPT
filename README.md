@@ -12,10 +12,12 @@ TODOs (Not Exhaustive):
 * Better BVH construction (SAH) and traversal.
 * Rewrite scene file structure.
 * Actually support asset standards. OBJ, MTL, etc...
+* Tiled rendering
 
 ## Demo
 
-WARNING: Any one of these links could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  I've tested on Windows and Linux with a GTX 1080 and GTX 980 
+**WARNING**: Any one of these links could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  
+I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980 
 
 ## Experiments
 
