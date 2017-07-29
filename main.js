@@ -14,7 +14,6 @@ function PathTracer(scenePath, resolution) {
   let lightRanges = [];
   let randomNumbers = new Float32Array(64);
   let atlasRes = 2048;
-  let skybox = [0,0,0];
   let envTrans = [0,0,1];
 
   function writeBanner(message) {
@@ -67,7 +66,7 @@ function PathTracer(scenePath, resolution) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "randoms", "skybox", "envTex",
+        "tick", "dims", "eye", "randoms", "envTex",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -110,24 +109,42 @@ function PathTracer(scenePath, resolution) {
     return canvas
   }
 
-  function createEnvironmentMap(assets, path){
+  function createGradientTexture(){
+    let canvas = document.createElement('canvas');
+    let height = 256;
+    canvas.height = height;
+    canvas.width = 1;
+    let ctx = canvas.getContext('2d');
+    let grad = ctx.createLinearGradient(0,0, 0, height);
+    grad.addColorStop(1, 'white');
+    grad.addColorStop(0, '#1E90FF');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0, 1, height);
+    return canvas;
+  }
+
+  function createEnvironmentMap(image){
     textures.env = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, textures.env);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, assets[path]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   }
 
   function initBVH(assets) {
     let scene = JSON.parse(assets[scenePath]);
-    skybox = scene.skybox || skybox;
     //writeBanner("Compiling scene");
     let geometry = [];
     let texturePacker = new TexturePacker(scene.atlasRes || atlasRes);
     let lights = [];
-    createEnvironmentMap(assets, scene.environment);
+    if(scene.environment){
+      createEnvironmentMap(assets[scene.environment]);
+    } else {
+      createEnvironmentMap(createGradientTexture());
+    }
+
     for (let i = 0; i < scene.props.length; i++) {
       let prop = scene.props[i];
       let uvTransforms = null;
@@ -396,7 +413,6 @@ function PathTracer(scenePath, resolution) {
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform2fv(program.uniforms.randoms, randomNumbers);
     gl.uniform3fv(program.uniforms.eye, eye);
-    gl.uniform3fv(program.uniforms.skybox, skybox);
     gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
     gl.uniform3fv(program.uniforms.leftMax, corners.leftMax);
