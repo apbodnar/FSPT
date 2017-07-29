@@ -1,5 +1,4 @@
 {
-  "environment": "texture/pano.jpg",
   "props": [
     {
       "path": "mesh/bunny.obj",
