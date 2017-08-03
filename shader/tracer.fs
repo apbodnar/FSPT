@@ -3,7 +3,7 @@ precision highp float;
 const int NUM_BOUNCES = 8;
 const float max_t = 100000.0;
 const float n1 = 1.0;
-const float n2 = 1.3;
+const float n2 = 1.4;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
@@ -53,7 +53,7 @@ struct Normals {
 struct Material {
   vec3 reflectance;
   vec3 emittance;
-  float specular;
+  float roughness;
   float metal;
 };
 
@@ -404,7 +404,7 @@ float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, vec3 no
   vec3 span = ray.origin - p;
   float rr = dot(span, span);
   //magic number is 1 / Tau, the inverted solid angle of a hemisphere
-  return dot(ray.dir, normal) * (a/rr) * dot(lightNormal, normalize(ray.origin - p)) * 0.1591549;
+  return dot(ray.dir, normal) * (a/rr) * dot(lightNormal, normalize(ray.origin - p));
 }
 
 float albedo(vec3 color){
@@ -456,14 +456,14 @@ void main(void) {
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     Material mat = createMaterial(result.index);
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
-    vec3 microNormal = randomNormal(macroNormal, mat.specular, origin);
+    vec3 microNormal = randomNormal(macroNormal, mat.roughness, origin);
     vec3 incident = ray.dir;
     vec3 implicit = specular ? mat.emittance : vec3(0);
     specular = rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
     ray.origin = origin + macroNormal * EPSILON;
     ray.dir = specular ? reflect(ray.dir, microNormal) : randomVec(macroNormal, origin);
     vec3 texRef = texture(atlasTex, texCoord).rgb;
-    vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.specular, specular);
+    vec3 direct = implicit + texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.roughness, specular);
     emittance[i] = direct;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}

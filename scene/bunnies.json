@@ -1,4 +1,5 @@
 {
+  "environment": [[1,1,1],[0.3,0.7,1]],
   "atlasRes": 2048,
   "props": [
     {
@@ -8,7 +9,7 @@
       "translate": [0.4,-0.2,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "specular": 0.05,
+      "roughness": 0.001,
       "normals": "smooth"
     },
     {
@@ -16,20 +17,20 @@
       "scale": 0.2,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [-0.4,-0.2,0],
-      "reflectance": [0.9, 0.9, 0.9],
+      "reflectance": [0.997644, 0.823524, 0.258816],
       "emittance": [0,0,0],
-      "specular": 0.001,
+      "roughness": 0.001,
       "normals": "smooth",
       "metal": true
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.4,
+      "scale": 0.8,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [1,2,1],
-      "reflectance": [0,0,0],
-      "emittance": [100,100,100],
-      "specular": 0.9
+      "reflectance": [1,1,1],
+      "emittance": [5,5,5],
+      "roughness": 0.9
     },
     {
       "path": "mesh/top.obj",
@@ -38,7 +39,7 @@
       "translate": [0,-0.3,0],
       "reflectance": [0.9,0.2,0.4],
       "emittance": [0,0,0],
-      "specular": 0.01
+      "roughness": 0.1
     }
   ]
 }
