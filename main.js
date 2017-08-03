@@ -109,15 +109,18 @@ function PathTracer(scenePath, resolution) {
     return canvas
   }
 
-  function createGradientTexture(){
+  function createGradientTexture(start, stop){
+    function colorString(rgb){
+      return "rgb("+Math.floor(rgb[0] * 255)+","+Math.floor(rgb[1] * 255)+","+Math.floor(rgb[2] * 255)+")"
+    }
     let canvas = document.createElement('canvas');
-    let height = 256;
+    let height = 1024;
     canvas.height = height;
     canvas.width = 1;
     let ctx = canvas.getContext('2d');
     let grad = ctx.createLinearGradient(0,0, 0, height);
-    grad.addColorStop(1, 'white');
-    grad.addColorStop(0, '#1E90FF');
+    grad.addColorStop(1, colorString(start));
+    grad.addColorStop(0, colorString(stop));
     ctx.fillStyle = grad;
     ctx.fillRect(0,0, 1, height);
     return canvas;
@@ -140,9 +143,13 @@ function PathTracer(scenePath, resolution) {
     let texturePacker = new TexturePacker(scene.atlasRes || atlasRes);
     let lights = [];
     if(scene.environment){
-      createEnvironmentMap(assets[scene.environment]);
+      if(Array.isArray(scene.environment)){
+        createEnvironmentMap(createGradientTexture(scene.environment[0], scene.environment[1]));
+      } else {
+        createEnvironmentMap(assets[scene.environment]);
+      }
     } else {
-      createEnvironmentMap(createGradientTexture());
+      createEnvironmentMap(createGradientTexture([0,0,0], [0,0,0]));
     }
 
     for (let i = 0; i < scene.props.length; i++) {
@@ -187,7 +194,7 @@ function PathTracer(scenePath, resolution) {
         }
         for (let j = 0; j < tris.length; j++) {
           let transforms = tris[j].transforms;
-          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [transforms.specular, transforms.metal, 0]);
+          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [Math.pow(transforms.roughness, 2), transforms.metal, 0]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });
@@ -504,7 +511,7 @@ function PathTracer(scenePath, resolution) {
         pathSet.add(e.texture);
       }
     });
-    if(scene.environment){
+    if(typeof scene.environment == 'string'){
       pathSet.add(scene.environment);
     }
     writeBanner("Compiling scene");
