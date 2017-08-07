@@ -194,7 +194,7 @@ function PathTracer(scenePath, resolution) {
         }
         for (let j = 0; j < tris.length; j++) {
           let transforms = tris[j].transforms;
-          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [Math.pow(transforms.roughness, 2), transforms.metal, 0]);
+          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [Math.pow(transforms.roughness, 2), transforms.metal, transforms.diffuse]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });
