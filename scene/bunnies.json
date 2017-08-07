@@ -3,33 +3,44 @@
   "atlasRes": 2048,
   "props": [
     {
-      "path": "mesh/dragon.obj",
-      "scale": 0.07,
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.2,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0.4,-0.2,0],
+      "translate": [0.6,-0.2,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.001,
+      "roughness": 0.1,
       "normals": "smooth"
     },
     {
       "path": "mesh/bunny_big.obj",
       "scale": 0.2,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [-0.4,-0.2,0],
-      "reflectance": [0.997644, 0.823524, 0.258816],
+      "translate": [-0.6,-0.2,0],
+      "reflectance":  [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.001,
+      "roughness": 0.9,
       "normals": "smooth",
-      "metal": true
+      "diffuse": true
+    },
+    {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.2,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [0,-0.2,0],
+      "reflectance":  [0.9,0.9,0.9],
+      "emittance": [0,0,0],
+      "roughness": 0.4,
+      "normals": "smooth",
+      "diffuse": true
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.8,
+      "scale": 0.01,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [1,2,1],
       "reflectance": [1,1,1],
-      "emittance": [5,5,5],
+      "emittance": [10000,10000,10000],
       "roughness": 0.9
     },
     {
@@ -37,9 +48,9 @@
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [0,-0.3,0],
-      "reflectance": [0.9,0.2,0.4],
+      "reflectance": [1,0.4,0.4],
       "emittance": [0,0,0],
-      "roughness": 0.1
+      "roughness": 0.3
     }
   ]
 }
