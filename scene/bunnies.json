@@ -1,10 +1,10 @@
 {
-  "environment": [[1,1,1],[0.3,0.7,1]],
+  "environment": [[0,0,0],[0.2,0.2,0.2]],
   "atlasRes": 2048,
   "props": [
     {
       "path": "mesh/bunny_big.obj",
-      "scale": 0.2,
+      "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0.6,-0.2,0],
       "reflectance": [0.9,0.9,0.9],
@@ -14,21 +14,21 @@
     },
     {
       "path": "mesh/bunny_big.obj",
-      "scale": 0.2,
+      "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [-0.6,-0.2,0],
+      "translate": [-0.5,-0.2,0],
       "reflectance":  [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.9,
+      "roughness": 0.01,
       "normals": "smooth",
-      "diffuse": true
+      "metal": true
     },
     {
       "path": "mesh/bunny_big.obj",
-      "scale": 0.2,
+      "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0,-0.2,0],
-      "reflectance":  [0.9,0.9,0.9],
+      "translate": [0.05,-0.2,0],
+      "reflectance":  [0.5,0.5,1],
       "emittance": [0,0,0],
       "roughness": 0.4,
       "normals": "smooth",
@@ -36,11 +36,11 @@
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.01,
+      "scale": 0.5,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [1,2,1],
-      "reflectance": [1,1,1],
-      "emittance": [10000,10000,10000],
+      "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
+      "emittance": [15,15,15],
       "roughness": 0.9
     },
     {
@@ -50,7 +50,7 @@
       "translate": [0,-0.3,0],
       "reflectance": [1,0.4,0.4],
       "emittance": [0,0,0],
-      "roughness": 0.3
+      "roughness": 0.2
     }
   ]
 }

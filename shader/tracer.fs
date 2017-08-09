@@ -8,7 +8,6 @@ const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
 const float M_PI = 3.14159265;
-const float gamma = 1.0/2.2;
 const uint FROM_PARENT = uint(0);
 const uint FROM_SIBLING = uint(1);
 const uint FROM_CHILD = uint(2);
@@ -121,7 +120,7 @@ float schlick(vec3 dir, vec3 normal){
   return r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
 }
 
-vec3 randomVec(vec3 normal, vec3 seed){
+vec3 cosineWeightedRandomVec(vec3 normal, vec3 seed){
  float r = sqrt(rand(seed.xy));
  float theta = 2.0 * M_PI * rand(seed.zx);
  float x = r * cos(theta);
@@ -301,42 +300,6 @@ vec3 barycentricNormal(vec3 weights, Normals normals){
 	return weights.x * normals.n1 + weights.y * normals.n2 + weights.z * normals.n3;
 }
 
-Hit traverse(Ray ray){
-	Hit result = Hit(MAX_T, -1.0);
-  Node current = createNode(0.0);
-  float last = -1.0;
-  while(true){
-    float near = nearChildIndex(current, ray);
-    float far = farChildIndex(current, ray);
-    if(last == far){
-      if(current.index == 0.0){
-        return result;
-      }
-      last = current.index;
-      current = createNode(current.parent);
-      continue;
-    }
-    float tryChild = last == current.parent ? near : far;
-    if(rayBoxIntersect(current, ray) < result.t){
-      last = current.index;
-      if (current.triangles > -1.0) {
-        // at leaf
-        processLeaf(current, ray, result);
-        current = createNode(current.parent);
-      } else {
-        current = createNode(tryChild);
-      }
-    } else {
-      if(tryChild == near){
-        last = near;
-      } else {
-        last = current.index;
-        current = createNode(current.parent);
-      }
-    }
-  }
-}
-
 Hit traverseTree(Ray ray){
   uint state = FROM_PARENT;
 	Hit result = Hit(MAX_T, -1.0);
@@ -446,6 +409,7 @@ void main(void) {
   Hit result = Hit(MAX_T, -1.0);
   vec3 color = vec3(0);
   int bounces = 0;
+  float directWeight = 1.0;
   //bool specular = rand(coords.xy * randoms[0]) > 0.5;
   for(int i=0; i < NUM_BOUNCES; ++i){
     result = traverseTree(ray);
@@ -459,19 +423,19 @@ void main(void) {
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
     vec3 incident = ray.dir;
-    bool specular = true;//rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
+    bool specular = rand(origin.zx) < schlick(incident, microNormal) || mat.metal > 0.0;
     ray.origin = origin + macroNormal * EPSILON;
-    ray.dir = specular ? reflect(ray.dir, microNormal) : randomVec(macroNormal, origin);
+    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal, origin);
     vec3 texRef = texture(atlasTex, texCoord).rgb;
-    vec3 direct = texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.roughness, specular);
+    vec3 direct = directWeight * mat.emittance + texRef * getDirectEmmission(ray.origin, macroNormal, incident, mat.roughness, specular);
     emittance[i] = direct;
     reflectance[i] = texRef;
+    directWeight = specular ? (1.0 - mat.roughness) : 0.0;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
   for(int i=bounces-1; i>=0; --i){
     color = reflectance[i]*color + emittance[i];
   }
-  //color = pow(color,vec3(gamma));
 
   fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
 }
