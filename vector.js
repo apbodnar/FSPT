@@ -1,6 +1,3 @@
-/**
- * Created by adam on 4/21/17.
- */
 (function (exports) {
   class Vec3 {
     static magnitude(v) {
@@ -43,31 +40,28 @@
     static rotateX(v, a) {
       let x = v[0],
         y = v[1],
-        z = v[2];
-      let x1 = x,
+        z = v[2],
         y1 = z * Math.sin(a) + y * Math.cos(a),
         z1 = z * Math.cos(a) - y * Math.sin(a);
-      return [x1, y1, z1];
+      return [x, y1, z1];
     }
 
     static rotateY(v, a) {
       let x = v[0],
         y = v[1],
-        z = v[2];
-      let y1 = y,
+        z = v[2],
         x1 = z * Math.sin(a) + x * Math.cos(a),
         z1 = z * Math.cos(a) - x * Math.sin(a);
-      return [x1, y1, z1];
+      return [x1, y, z1];
     }
 
     static rotateZ(v, a) {
       let x = v[0],
         y = v[1],
-        z = v[2];
-      let z1 = z,
+        z = v[2],
         x1 = y * Math.sin(a) + x * Math.cos(a),
         y1 = y * Math.cos(a) - x * Math.sin(a);
-      return [x1, y1, z1];
+      return [x1, y1, z];
     }
 
     static rotateArbitrary(v, axis, angle) {
