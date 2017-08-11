@@ -7,6 +7,7 @@ Requirements:
 * A top-end discrete GPU (for now)
 
 TODOs (Not Exhaustive):
+* Remove biased specular hacks
 * Fully implement specular and diffuse BRDFs
 * Refraction with configurable IoR
 * Better BVH construction (SAH) and traversal.

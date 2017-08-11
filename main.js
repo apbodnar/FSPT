@@ -15,6 +15,7 @@ function PathTracer(scenePath, resolution) {
   let randomNumbers = new Float32Array(64);
   let atlasRes = 2048;
   let envTrans = [0,0,1];
+  let moving = false;
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -342,8 +343,12 @@ function PathTracer(scenePath, resolution) {
     }, false);
     element.addEventListener("mousemove", function (e) {
       if (mode) {
-        let rx = (e.layerX - xi) / 180.0;
+        moving = true;
+        pingpong = 0;
+        let copy = eye;
+        let rx = (xi - e.layerX) / 180.0;
         let ry = (e.layerY - yi) / 180.0;
+        addTranslation(Vec3.scale(copy, -1));
         eye = Vec3.rotateY(eye, rx);
         corners.rightMax = Vec3.rotateY(corners.rightMax, rx);
         corners.rightMin = Vec3.rotateY(corners.rightMin, rx);
@@ -355,15 +360,16 @@ function PathTracer(scenePath, resolution) {
         corners.rightMin = Vec3.rotateArbitrary(corners.rightMin, axis, ry);
         corners.leftMax = Vec3.rotateArbitrary(corners.leftMax, axis, ry);
         corners.leftMin = Vec3.rotateArbitrary(corners.leftMin, axis, ry);
+        addTranslation(copy);
         xi = e.layerX;
         yi = e.layerY;
-        //pingpong = 1;
         clear = true;
       }
     }, false);
     element.addEventListener("mouseup", function (e) {
       mode = false;
       clear = false;
+      moving = false;
       if(e.which == 1){
         pingpong = 0;
       }
@@ -374,7 +380,8 @@ function PathTracer(scenePath, resolution) {
       clear = true;
     }, false);
     document.addEventListener("keypress", function (e) {
-      let dir = Vec3.normalize(Vec3.sub([0, 0, 0], eye));
+      let center = Vec3.add(corners.leftMin, Vec3.scale(Vec3.sub(corners.rightMax, corners.leftMin), 0.5));
+      let dir = Vec3.normalize(Vec3.sub(center, eye));
       let strafe = Vec3.normalize(Vec3.sub(corners.rightMax, corners.leftMax));
       switch (e.key) {
         case 'w':
@@ -393,13 +400,20 @@ function PathTracer(scenePath, resolution) {
           addTranslation(Vec3.scale(strafe, 0.1 * scale));
           pingpong = 0;
           break;
+        case 'r':
+          addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), -0.1 * scale));
+          pingpong = 0;
+          break;
+        case 'f':
+          addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), 0.1 * scale));
+          pingpong = 0;
+          break;
       }
     }, false);
   }
 
   function drawTracer(i) {
     let program = programs.tracer;
-    //console.log(program)
     gl.useProgram(program);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
@@ -470,11 +484,11 @@ function PathTracer(scenePath, resolution) {
     if(max && pingpong < max) {
       for (let i = 0; i < 1; i++) {
         writeRandoms()
-        drawTracer(pingpong);
+        drawTracer(moving ? 0 : pingpong);
         pingpong++;
         writeCounter(pingpong);
       }
-      drawQuad(pingpong);
+      drawQuad(moving ? 0 : pingpong);
       if (!(pingpong % 1000)) {
         console.log(pingpong);
       }
@@ -518,6 +532,7 @@ function PathTracer(scenePath, resolution) {
     loadAll(Array.from(pathSet), start);
   });
 }
+
 
 let scene_match = window.location.search.match(/scene=([a-zA-Z_]+)/);
 let scene = Array.isArray(scene_match) ? 'scene/' + scene_match[1] + '.json' : 'scene/basic.json';
