@@ -1,8 +1,10 @@
 (function (exports) {
-  exports.BVH = function (triangles, maxTris) {
-    this.root = buildTree(triangles);
+  exports.BVH = class BVH {
+    constructor(triangles, maxTris){
+      this.root = this.buildTree(triangles, maxTris);
+    }
 
-    function buildTree(triangles) {
+    buildTree(triangles, maxTris) {
       let root = new Node(triangles);
       let split = root.getSplittingAxis();
       root.sortOnAxis(split);
@@ -12,15 +14,14 @@
       }
       let l = root.triangles.length;
       let i = root.getSplittingIndex(split);
-      root.left = buildTree(triangles.slice(0, i));
-      root.right = buildTree(triangles.slice(i, l));
+      root.left = this.buildTree(triangles.slice(0, i), maxTris);
+      root.right = this.buildTree(triangles.slice(i, l), maxTris);
       root.triangles = null;
       return root;
     }
 
-    this.serializeTree = function () {
+    serializeTree() {
       let nodes = [],
-        tris = [],
         i = -1;
 
       function traverseTree(root, prev) {
@@ -68,14 +69,17 @@
     }
   }
 
-  function Node(triangles) {
-    this.triangles = triangles;
-    this.boundingBox = new BoundingBox(triangles);
-    this.leaf = false;
-    this.left = null;
-    this.right = null;
-    this.split = null;
-    this.getSplittingAxis = function () {
+  class Node {
+    constructor(triangles){
+      this.triangles = triangles;
+      this.boundingBox = new BoundingBox(triangles);
+      this.leaf = false;
+      this.left = null;
+      this.right = null;
+      this.split = null;
+    }
+
+    getSplittingAxis () {
       let box = this.boundingBox.getBounds();
       let bestIndex = 0;
       let bestSpan = 0;
@@ -87,8 +91,9 @@
         }
       }
       return bestIndex;
-    };
-    this.getSplittingIndex = function (axis) {
+    }
+
+    getSplittingIndex(axis) {
       let median = this.boundingBox.getCenter(axis);
       for (let i = 0; i < this.triangles.length; i++) {
         let point = this.triangles[i].boundingBox.getCenter(axis)
@@ -97,8 +102,9 @@
         }
       }
       return this.triangles.length / 2;
-    };
-    this.sortOnAxis = function (axis) {
+    }
+
+    sortOnAxis(axis) {
       this.split = axis;
       this.triangles.sort(function (t1, t2) {
         let c1 = t1.boundingBox.getCenter(axis);
@@ -111,22 +117,24 @@
         }
         return 0;
       });
-    };
+    }
   }
 
-  function Triangle(v1, v2, v3, i1, i2, i3, uv1, uv2, uv3, transforms) {
-    this.v1 = v1;
-    this.v2 = v2;
-    this.v3 = v3;
-    this.i1 = i1;
-    this.i2 = i2;
-    this.i3 = i3;
-    this.normals = null;
-    this.uv1 = uv1;
-    this.uv2 = uv2;
-    this.uv3 = uv3;
-    this.boundingBox = new BoundingBox(this);
-    this.transforms = transforms;
+  class Triangle {
+    constructor(v1, v2, v3, i1, i2, i3, uv1, uv2, uv3, transforms) {
+      this.v1 = v1;
+      this.v2 = v2;
+      this.v3 = v3;
+      this.i1 = i1;
+      this.i2 = i2;
+      this.i3 = i3;
+      this.normals = null;
+      this.uv1 = uv1;
+      this.uv2 = uv2;
+      this.uv3 = uv3;
+      this.boundingBox = new BoundingBox(this);
+      this.transforms = transforms;
+    }
   }
 
   // function splitTriangle(triangle, threshold){

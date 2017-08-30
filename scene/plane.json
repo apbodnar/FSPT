@@ -1,0 +1,60 @@
+{
+  "environment": [[1,1,1],[0.0,0.4,0.8]],
+  "props": [
+    {
+      "path": "mesh/happy.obj",
+      "scale": 6,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [0,-0.6,0],
+      "reflectance": [0.997644, 0.4, 0.258816],
+      "emittance": [0,0,0],
+      "roughness": 0.99
+    },
+    {
+      "path": "mesh/happy.obj",
+      "scale": 6,
+      "rotate": [{"angle": 1, "axis": [0,1,0]}],
+      "translate": [-0.5,-0.6,0],
+      "reflectance": [0.8, 0.8, 0.8],
+      "emittance": [0,0,0],
+      "roughness": 0.3,
+      "metal": true
+    },
+    {
+      "path": "mesh/happy.obj",
+      "scale": 6,
+      "rotate": [{"angle": -1, "axis": [0,1,0]}],
+      "translate": [0.5,-0.6,0],
+      "reflectance": [0.8, 0.8, 0.8],
+      "emittance": [0,0,0],
+      "roughness": 0.2
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 0.5,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [1,2,1],
+      "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
+      "emittance": [10,10,10],
+      "roughness": 0.9
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 0.5,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [-1,2,-1],
+      "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
+      "emittance": [10,10,10],
+      "roughness": 0.9
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 4,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [0,-0.3,0],
+      "reflectance": [1,1,0.1],
+      "emittance": [0,0,0],
+      "roughness": 0.2
+    }
+  ]
+}

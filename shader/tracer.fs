@@ -376,7 +376,7 @@ float albedo(vec3 color){
 }
 
 vec3 envColor(vec3 dir){
-  vec2 c = vec2(atan(dir.z, dir.x) / 6.28, dir.y * -0.5 + 0.5);
+  vec2 c = vec2(atan(dir.z, dir.x) / 6.283185, dir.y * - 0.5 + 0.5);
   return texture(envTex, c).rgb;
 }
 
