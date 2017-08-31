@@ -30,6 +30,7 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 ## Experiments
 
 ![alt text](images/hands.png)
+![alt text](images/monks.png)
 ![alt text](images/dragbunn.png)
 ![alt text](images/dragon.png)
 ![alt text](images/fairy.png)
@@ -63,7 +64,7 @@ A scene config file like `bunnies.json` looks like:
       "translate": [0.4,-0.2,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "specular": 0.05,
+      "roughness": 0.05,
       "normals": "smooth"
     },
     {
@@ -73,7 +74,7 @@ A scene config file like `bunnies.json` looks like:
       "translate": [-0.4,-0.2,0],
       "reflectance": [0.9, 0.9, 0.9],
       "emittance": [0,0,0],
-      "specular": 0.001,
+      "roughness": 0.001,
       "normals": "smooth",
       "metal": true
     },
@@ -84,7 +85,7 @@ A scene config file like `bunnies.json` looks like:
       "translate": [1,2,1],
       "reflectance": [0,0,0],
       "emittance": [100,100,100],
-      "specular": 0.9
+      "roughness": 0.9
     },
     {
       "path": "mesh/top.obj",
@@ -93,7 +94,7 @@ A scene config file like `bunnies.json` looks like:
       "translate": [0,-0.3,0],
       "reflectance": [0.9,0.2,0.4],
       "emittance": [0,0,0],
-      "specular": 0.01,
+      "roughness": 0.01,
       "metal": true
     }
   ]
