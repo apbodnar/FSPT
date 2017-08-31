@@ -1,25 +1,25 @@
 {
-  "environment": "texture/env.jpg",
+  "environment": "texture/pano.jpg",
   "props": [
     {
       "path": "mesh/fairy.obj",
       "scale": 1,
-      "rotate": {"angle": 0, "axis": [0,0,1]},
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0,-0.5,0],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-      "roughness": 0.01,
+      "roughness": 0.2,
       "normals": "smooth",
-      "texture": "texture/wood.jpg"
+      "texture": "texture/wood2.png"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 1,
-      "rotate": {"angle": 0.75, "axis": [1,0,0]},
-      "translate": [4,40,2],
+      "scale": 0.5,
+      "rotate": [{"angle": 0.75, "axis": [1,0,0]}],
+      "translate": [1,4,1],
       "reflectance": [0.8,0.8,0.8],
-      "emittance": [10000,10000,10000],
-      "roughness": 0.8,
+      "emittance": [100,100,100],
+      "roughness": 0.3,
       "normals": "flat"
     }
   ]
