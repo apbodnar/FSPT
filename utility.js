@@ -38,5 +38,14 @@
     });
     req.open("GET", path, true);
     req.send();
+  };
+
+  exports.uploadDataUrl = function(path, blob, callback){
+    let req = new XMLHttpRequest();
+    req.addEventListener("load", function (res) {
+      callback.apply(null, [res]);
+    });
+    req.open("POST", path, true);
+    req.send(blob);
   }
 })(this);

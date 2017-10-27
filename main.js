@@ -1,4 +1,4 @@
-function PathTracer(scenePath, resolution) {
+function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   "use strict";
   let gl;
   let programs = {};
@@ -26,7 +26,7 @@ function PathTracer(scenePath, resolution) {
   }
 
   function initGL(canvas) {
-    gl = canvas.getContext("webgl2");
+    gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
     gl.viewportWidth = canvas.width = resolution; // square render target
     gl.viewportHeight = canvas.height = resolution;
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -152,9 +152,9 @@ function PathTracer(scenePath, resolution) {
     } else {
       createEnvironmentMap(createGradientTexture([0,0,0], [0,0,0]));
     }
-
-    for (let i = 0; i < scene.props.length; i++) {
-      let prop = scene.props[i];
+    let props = mergeSceneProps(scene);
+    for (let i = 0; i < props.length; i++) {
+      let prop = props[i];
       let uvTransforms = null;
       if(prop.texture){
         uvTransforms = texturePacker.addTexture(assets[prop.texture])
@@ -162,7 +162,7 @@ function PathTracer(scenePath, resolution) {
         uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance));
       }
       prop.uvTransforms = uvTransforms;
-      let parsed = parseMesh(assets[prop.path], prop);
+      let parsed = parseMesh(assets[prop.path], prop, scene.worldTransforms);
       if(Vec3.dot(prop.emittance, [1,1,1]) > 0){
         lights.push(parsed);
       }
@@ -479,8 +479,14 @@ function PathTracer(scenePath, resolution) {
   }
 
   function tick() {
-    requestAnimationFrame(tick);
     let max = parseInt(sampleInput.value);
+    if(pingpong >= max){
+      uploadOutput();
+      return
+    } else {
+      requestAnimationFrame(tick);
+    }
+
     if(max && pingpong < max) {
       for (let i = 0; i < 1; i++) {
         writeRandoms()
@@ -493,6 +499,20 @@ function PathTracer(scenePath, resolution) {
         console.log(pingpong);
       }
     }
+  }
+
+  function uploadOutput(){
+    let canvas = document.getElementById('trace');
+    canvas.toBlob(function(blob){
+      uploadDataUrl('/upload/' + sceneName + '/' + frameNumber, blob, (res) => {
+        let newFrame = frameNumber + 1;
+        window.location.href = window.location.href.replace(/frame=\d+/, 'frame=' + newFrame)
+      });
+    });
+  }
+
+  function mergeSceneProps(scene){
+    return [].concat((scene.props || []), (scene.static_props || []), Object.values(scene.animated_props || []))
   }
 
   function start(res) {
@@ -519,7 +539,8 @@ function PathTracer(scenePath, resolution) {
       scenePath
     ]);
     let scene = JSON.parse(res);
-    scene.props.forEach(function (e) {
+    sampleInput.value = scene.samples || 2000;
+    mergeSceneProps(scene).forEach(function (e) {
       pathSet.add(e.path);
       if(e.texture){
         pathSet.add(e.texture);
@@ -533,9 +554,11 @@ function PathTracer(scenePath, resolution) {
   });
 }
 
-
-let scene_match = window.location.search.match(/scene=([a-zA-Z_]+)/);
-let scene = Array.isArray(scene_match) ? 'scene/' + scene_match[1] + '.json' : 'scene/basic.json';
-let resolution_match = window.location.search.match(/res=(\d+)/);//window.innerHeight;
-let resolution = Array.isArray(resolution_match) ? parseFloat(resolution_match[1]) : window.innerHeight;
-new PathTracer(scene, resolution);
+let frameNumberMatch = window.location.search.match(/frame=(\d+)/);
+let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[1]) : 0;
+let sceneMatch = window.location.search.match(/scene=([a-zA-Z_]+)/);
+let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?frame=' + frameNumber : 'scene/bunny.json?frame=0';
+let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
+let resolutionMatch = window.location.search.match(/res=(\d+)/);
+let resolution = Array.isArray(resolutionMatch) ? parseFloat(resolutionMatch[1]) : window.innerHeight;
+new PathTracer(scenePath, sceneName, resolution, frameNumber);
