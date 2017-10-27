@@ -6,7 +6,7 @@
     uv[1] += trans.offset[1];
     return uv;
   };
-  exports.parseMesh = function (objText, transforms) {
+  exports.parseMesh = function (objText, transforms, worldTransforms) {
     let lines = objText.split('\n');
     let vertices = [];
     let triangles = [];
@@ -19,7 +19,19 @@
     }
 
     function applyTransforms(vert) {
-      return Vec3.add(Vec3.scale(applyRotations(vert), transforms.scale), transforms.translate);
+      let modelTransformed =  Vec3.add(Vec3.scale(applyRotations(vert), transforms.scale), transforms.translate);
+      if(worldTransforms){
+        worldTransforms.forEach(function(transform){
+          if(transform.rotate){
+            transform.rotate.forEach(function(rotation){
+              modelTransformed = Vec3.rotateArbitrary(modelTransformed, rotation.axis, rotation.angle);
+            });
+          } else if(transform.translate) {
+            modelTransformed = Vec3.add(modelTransformed, transform.translate);
+          }
+        });
+      }
+      return modelTransformed;
     }
 
     function getNormal(tri) {
