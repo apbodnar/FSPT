@@ -29,6 +29,7 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 ## Experiments
 
+![alt text](images/lighthouse.png)
 ![alt text](images/hands.png)
 ![alt text](images/monks.png)
 ![alt text](images/dragbunn.png)
