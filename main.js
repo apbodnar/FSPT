@@ -480,7 +480,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
 
   function tick() {
     let max = parseInt(sampleInput.value);
-    if(pingpong >= max){
+    if(pingpong >= max && frameNumber >= 0){
       uploadOutput();
       return
     } else {
@@ -555,7 +555,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
 }
 
 let frameNumberMatch = window.location.search.match(/frame=(\d+)/);
-let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[1]) : 0;
+let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[1]) : -1;
 let sceneMatch = window.location.search.match(/scene=([a-zA-Z_]+)/);
 let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?frame=' + frameNumber : 'scene/bunny.json?frame=0';
 let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
