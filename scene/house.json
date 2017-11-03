@@ -8,7 +8,7 @@
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [7,5,7],
       "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
-      "emittance": [250, 100, 60],
+      "emittance": [500, 200, 120],
       "roughness": 0.9
     },
         {
@@ -25,7 +25,7 @@
     "b1": {
       "path": "mesh/lighthouse.obj",
       "scale": 0.1,
-      "rotate": [{"angle": 0.01, "axis": [0,1,1]}],
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [-0.5,-0.36,0],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
