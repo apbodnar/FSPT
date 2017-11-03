@@ -55,6 +55,14 @@
       ].forEach(parseTriangle);
     }
 
+    function parseFace(quad_indices){
+      let triList = [];
+      for(let i=0; i < quad_indices.length - 2; i++){
+        triList.push([quad_indices[0], quad_indices[i+1], quad_indices[i+2]])
+      }
+      triList.forEach(parseTriangle);
+    }
+
     function parseTriangle(indices){
       let i1 = transforms.invert_faces ? 1 : 0;
       let i2 = transforms.invert_faces ? 0 : 1;
@@ -79,17 +87,13 @@
 
     for (let i = 0; i < lines.length; i++) {
       let array = lines[i].trim().split(/[ ]+/);
-      let vals = array.slice(1, 5);
-      if (array[0] == 'v') {
+      let vals = array.slice(1, array.length);
+      if (array[0] === 'v') {
         vertices.push(vals.map(parseFloat))
-      } else if (array[0] == 'f') {
+      } else if (array[0] === 'f') {
         vals = vals.map(function(s){return s.split('/').map(parseFloat)})
-        if(vals.length == 3){
-          parseTriangle(vals);
-        } else {
-          parseQuad(vals);
-        }
-      } else if(array[0] == 'vt'){
+        parseFace(vals);
+      } else if(array[0] === 'vt'){
         let uv = vals.map(function(coord){return parseFloat(coord) || 0});
         let tuv = exports.transformUV(uv, transforms.uvTransforms);
         uvs.push(tuv);
@@ -97,7 +101,7 @@
       }
     }
     let original = triangles.length;
-    if (transforms.normals == "smooth") {
+    if (transforms.normals === "smooth") {
       for (let i = 0; i < triangles.length; i++) {
         triangles[i].normals[0] = averageNormals(vertNormals[triangles[i].i1])
         triangles[i].normals[1] = averageNormals(vertNormals[triangles[i].i2])
