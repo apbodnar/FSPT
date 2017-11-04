@@ -38,6 +38,8 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 ![alt text](images/wood.png)
 ![alt text](images/sib.png)
 
+"Lighthouse.obj" and "Tugboat.obj" by 'Poly by Google' is licensed under CC BY 2.0
+
 ## Forking
 
 Run an HTTP server of your choice from the root directory.
