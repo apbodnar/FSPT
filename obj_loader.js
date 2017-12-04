@@ -118,6 +118,10 @@
         meshNormals.push(vals.map(parseFloat))
       }
     }
+    //for the mesh to have a vt attribute for atlas reads
+    if(uvs.length === 0){
+      uvs.push([0, 0]);
+    }
     let original = triangles.length;
     if (transforms.normals === "smooth") {
       for (let i = 0; i < triangles.length; i++) {

@@ -385,12 +385,12 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, vec3 incident, float specular,
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
   vec3 lightPoint = randomPointOnTriangle(light, origin);
-  float span = length(lightPoint - origin);
-  vec3 dir = (lightPoint - origin) / span;
+  vec3 dir = normalize(lightPoint - origin);
   Ray ray = Ray(origin, dir);
   Hit shadow = traverseTree(ray);
   float weight = weighted ? ggxWeight(normal, incident, dir, specular) : 1.0;
-  if(abs(shadow.t - span) < EPSILON * 10.0){
+  // Gross float equality hack
+  if(createTriangle(shadow.index).v1 == light.v1){
     Material mat = createMaterial(shadow.index);
     vec3 p = ray.origin + ray.dir * shadow.t;
     vec3 lightNormal = createNormals(shadow.index).n1; // don't use smooth normals for lights
@@ -437,5 +437,5 @@ void main(void) {
     color = reflectance[i]*color + emittance[i];
   }
 
-  fragColor = clamp(vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0),vec4(0), vec4(1));
+  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

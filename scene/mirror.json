@@ -3,7 +3,7 @@
   "static_props": [
   ],
   "worldTransforms": [
-    {"rotate":[{"angle": 0.3, "axis": [0,1,0]},{"angle": 0.2, "axis": [1,0,0]}]},
+    {"rotate":[{"angle": 0.3, "axis": [0,1,0]},{"angle": 0, "axis": [1,0,0]}]},
     {"translate": [0.33,-0.2,-0.33]}
   ],
   "animated_props":    {
@@ -19,31 +19,11 @@
     },
    "l1":{
       "path": "mesh/top.obj",
-      "scale": 0.15,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [1,1.5,0.4],
+      "scale": 1,
+      "rotate": [{"angle": 1.57, "axis": [1,0,0]}],
+      "translate": [1,1.5,4],
       "reflectance": [1,1,1],
-      "emittance": [100,100,100],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    "p1":{
-      "path": "mesh/plank.obj",
-      "scale": 0.5,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [-1,0,-2],
-      "reflectance": [1,1,1],
-      "emittance": [0,10,0],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    "p2":{
-      "path": "mesh/plank.obj",
-      "scale": 0.5,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [1,0,-2],
-      "reflectance": [1,1,1],
-      "emittance": [0,0,10],
+      "emittance": [60,60,60],
       "roughness": 0.1,
       "normals": "flat"
     },
@@ -63,9 +43,9 @@
       "scale": 5,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [0,-0.75,0],
-      "reflectance": [0.5,0.5,0.5],
+      "reflectance": [0.8,0.5,0.5],
       "emittance": [0,0,0],
-      "roughness": 0.3,
+      "roughness": 1,
       "normals": "flat"
     }
   }
