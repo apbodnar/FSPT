@@ -20,7 +20,7 @@
       "translate": [0,-0.36,0],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.8,
+      "roughness": 0.01,
       "normals": "mesh",
       "texture": "texture/lighthouse.png"
     },
