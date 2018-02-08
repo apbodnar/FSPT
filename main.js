@@ -169,8 +169,12 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
 
       geometry = geometry.concat(parsed);
     }
+    let time = new Date().getTime();
     let bvh = new BVH(geometry, 4);
+    console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds");
+    time = new Date().getTime();
     let bvhArray = bvh.serializeTree();
+    console.log("BVH serialized in", (new Date().getTime() - time) / 1000.0, " seconds");
     let bvhBuffer = [];
     let trianglesBuffer = [];
     let materialBuffer = [];
@@ -186,7 +190,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
       let reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
       let bufferNode = [e.parent, e.sibling, node.split, e.left, e.right, triIndex].concat(reordered);
       if (node.leaf) {
-        let tris = node.triangles;
+        let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
           let subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
           subBuffer.forEach(function (el) {
