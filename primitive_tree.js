@@ -1,28 +1,25 @@
 (function (exports) {
   exports.BVH = class BVH {
     constructor(triangles, maxTris){
-      this.root = this.buildTree(triangles, maxTris);
+      let indices = triangles.map((_, i) => {return i});
+
+      this.root = this.buildTree(triangles, indices, maxTris);
     }
 
-    buildTree(triangles, maxTris) {
-      let root = new Node(triangles);
-      let split = root.getSplittingAxis();
-      root.sortOnAxis(split);
-      if (root.triangles.length <= maxTris) {
+    buildTree(triangles, indices, maxTris) {
+      let root = new Node(triangles, indices);
+      if (root.indices.length <= maxTris) {
         root.leaf = true;
         return root;
       }
-      let l = root.triangles.length;
-      let i = root.getSplittingIndex(split);
-      root.left = this.buildTree(triangles.slice(0, i), maxTris);
-      root.right = this.buildTree(triangles.slice(i, l), maxTris);
-      root.triangles = null;
+      root.left = this.buildTree(triangles, indices.slice(0, root.splitIndex), maxTris);
+      root.right = this.buildTree(triangles, indices.slice(root.splitIndex, root.indices.length), maxTris);
       return root;
     }
 
     serializeTree() {
       let nodes = [],
-        i = -1;
+          i = -1;
 
       function traverseTree(root, prev) {
         let parent = ++i;
@@ -70,16 +67,29 @@
   }
 
   class Node {
-    constructor(triangles){
-      this.triangles = triangles;
-      this.boundingBox = new BoundingBox(triangles);
+    constructor(triangles, indices){
+      this._triangles = triangles;
+      this._indices = [indices, indices, indices];
+      this.boundingBox = new BoundingBox(this.getTriangles());
       this.leaf = false;
       this.left = null;
       this.right = null;
-      this.split = null;
+      this.splitAxis = this.getSplittingAxis();
+      this.splitIndex = this.getSplittingIndex();
+      this.sortOnAxis();
     }
 
-    getSplittingAxis () {
+    get indices(){
+      return this.splitAxis ? this._indices[this.splitAxis] : this._indices[0];
+    }
+
+    getTriangles() {
+      return this.indices.map((v) => {
+        return this._triangles[v];
+      });
+    }
+
+    getSplittingAxis() {
       let box = this.boundingBox.getBounds();
       let bestIndex = 0;
       let bestSpan = 0;
@@ -93,22 +103,22 @@
       return bestIndex;
     }
 
-    getSplittingIndex(axis) {
-      let median = this.boundingBox.getCenter(axis);
-      for (let i = 0; i < this.triangles.length; i++) {
-        let point = this.triangles[i].boundingBox.getCenter(axis)
+    getSplittingIndex() {
+      let median = this.boundingBox.getCenter(this.splitAxis);
+      let triCache = this.getTriangles();
+      for (let i = 0; i < this.indices.length; i++) {
+        let point = triCache[i].boundingBox.getCenter(this.splitAxis);
         if (point > median) {
           return i;
         }
       }
-      return this.triangles.length / 2;
+      return this.indices.length / 2;
     }
 
-    sortOnAxis(axis) {
-      this.split = axis;
-      this.triangles.sort(function (t1, t2) {
-        let c1 = t1.boundingBox.getCenter(axis);
-        let c2 = t2.boundingBox.getCenter(axis);
+    sortOnAxis() {
+      this.indices.sort((i1, i2) => {
+        let c1 = this._triangles[i1].boundingBox.getCenter(this.splitAxis);
+        let c2 = this._triangles[i2].boundingBox.getCenter(this.splitAxis);
         if (c1 < c2) {
           return -1;
         }

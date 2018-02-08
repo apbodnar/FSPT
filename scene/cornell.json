@@ -34,11 +34,11 @@
     },
 	{
       "path": "mesh/top.obj",
-      "scale": 0.25,
+      "scale": 0.1,
       "rotate": [{"angle": 1.57, "axis": [0,1,0]}],
       "translate": [0,0.495,-0.5],
       "reflectance": [0,0,0],
-      "emittance": [30,30,30],
+      "emittance": [60,60,60],
 	  "roughness": 1,
 	  "normals": "flat"
     },
