@@ -50,7 +50,7 @@
       "path": "mesh/top.obj",
       "scale": 1,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [1,2,1],
+      "translate": [4,8,4],
       "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
       "emittance": [10, 10, 10],
       "roughness": 0.9

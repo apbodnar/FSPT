@@ -149,8 +149,8 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getAA(){
-  float theta = rand(coords + vec2(tick)) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx - vec2(tick)));
+  float theta = rand(coords*2.0) * M_PI * 2.0;
+  float sqrt_r = sqrt(rand(coords.yx*2.3));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
@@ -376,7 +376,7 @@ float albedo(vec3 color){
 
 vec3 envColor(vec3 dir){
   vec2 c = vec2(atan(dir.z, dir.x) / 6.283185, dir.y * - 0.5 + 0.5);
-  return texture(envTex, c).rgb;
+  return pow(texture(envTex, c).rgb, vec3(2.2));
 }
 
 vec3 getDirectEmmission(vec3 origin, vec3 normal){
@@ -420,8 +420,8 @@ void main(void) {
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
     ray.origin = origin + macroNormal * EPSILON;
     ray.dir = cosineWeightedRandomVec(macroNormal, origin);
-    vec3 texRef = texture(atlasTex, texCoord).rgb;
-    vec3 direct = getDirectEmmission(ray.origin, macroNormal);
+    vec3 texRef = pow(texture(atlasTex, texCoord).rgb, vec3(2.2));
+    vec3 direct = pow(getDirectEmmission(ray.origin, macroNormal), vec3(2.2));
     emittance[i] = direct;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}

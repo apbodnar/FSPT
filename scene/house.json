@@ -1,5 +1,6 @@
 {
-  "environment": [[10,10,10],[0.0,0.4,0.8]],
+  "environment": [[10,10,10],[0.0,0.6,1.2]],
+  "tiltShift": [],
   "samples": 2000,
   "atlasRes": 4096,
   "static_props": [
@@ -9,7 +10,7 @@
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [35,25,35],
       "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
-      "emittance": [500, 200, 120],
+      "emittance": [700, 280, 200],
       "roughness": 0.9,
       "metal": true
     },
