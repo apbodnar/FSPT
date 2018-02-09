@@ -1,27 +1,24 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
-    <title>Blinn Phong Ping Pong</title>
-    <link rel="stylesheet" type="text/css" href="application.css">
-    <script src="vector.js" type="module"></script>
-    <script src="utility.js" type="module"></script>
-    <script src="obj_loader.js" type="module"></script>
-    <script src="texture_packer.js" type="module"></script>
-    <script src="primitive_tree.js" type="module"></script>
-</head>
-<body>
-<h3 id="banner"></h3>
-<form id="scene-params">
-    <label for="counter">Current Samples</label><br>
-    <input id="counter" type="number" readonly><br>
-    <label for="max-samples">Max Samples</label><br>
-    <input id="max-samples" type="number" value="2000">
-</form>
-<canvas id="trace"></canvas>
-
-<!--<script src="test_primitive_tree.js" type="text/javascript"></script>-->
-<!-- <script src="test_texture_packer.js" type="text/javascript"></script> -->
-<script src="main.js" type="module"></script>
-</body>
+    <head>
+        <meta charset="UTF-8">
+        <title>Blinn Phong Ping Pong</title>
+        <link rel="stylesheet" type="text/css" href="application.css">
+        <script type="module" src="vector.js"></script>
+        <script type="module" src="utility.js"></script>
+        <script type="module" src="obj_loader.js"></script>
+        <script type="module" src="texture_packer.js"></script>
+        <script type="module" src="primitive_tree.js"></script>
+    </head>
+    <body>
+        <h3 id="banner"></h3>
+        <form id="scene-params">
+            <label for="counter">Current Samples</label><br>
+            <input id="counter" type="number" readonly><br>
+            <label for="max-samples">Max Samples</label><br>
+            <input id="max-samples" type="number" value="2000">
+        </form>
+        <canvas id="trace"></canvas>
+        <script type="module" src="main.js"></script>
+    </body>
 </html>

@@ -159,20 +159,6 @@ export class Node {
     }
     return this.indices.length / 2;
   }
-
-  sortOnAxis() {
-    this.indices.sort((i1, i2) => {
-      let c1 = this._triangles[i1].boundingBox.getCenter(this.splitAxis);
-      let c2 = this._triangles[i2].boundingBox.getCenter(this.splitAxis);
-      if (c1 < c2) {
-        return -1;
-      }
-      if (c1 > c2) {
-        return 1;
-      }
-      return 0;
-    });
-  }
 }
 
 export class Triangle {

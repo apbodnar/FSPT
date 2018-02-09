@@ -5,6 +5,5 @@ uniform sampler2D fbTex;
 out vec4 fragColor;
 
 void main(void) {
-  vec2 size = vec2(textureSize(fbTex, 0));
-  fragColor = texture(fbTex,gl_FragCoord.xy/size);
+  fragColor = pow(texelFetch(fbTex, ivec2(gl_FragCoord), 0), vec4(0.4545454));
 }
