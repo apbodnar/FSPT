@@ -22,7 +22,6 @@ uniform vec3 rightMin;
 uniform vec3 leftMax;
 uniform vec3 leftMin;
 uniform vec2 lightRanges[20];
-uniform vec2 randoms[32];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D bvhTex;
@@ -150,8 +149,8 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getAA(){
-  float theta = rand(coords + randoms[1]) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx + randoms[0]));
+  float theta = rand(coords + vec2(tick)) * M_PI * 2.0;
+  float sqrt_r = sqrt(rand(coords.yx - vec2(tick)));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
