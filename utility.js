@@ -1,5 +1,4 @@
-(function (exports) {
-  exports.loadAll = function (urls, callback) {
+ export function loadAll(urls, callback) {
     let counter = urls.length;
     let resHash = {};
     urls.forEach(function (url) {
@@ -29,18 +28,18 @@
         req.send();
       }
     });
-  };
+  }
 
-  exports.getText = function (path, callback) {
+  export function getText(path, callback) {
     let req = new XMLHttpRequest();
     req.addEventListener("load", function (res) {
       callback.apply(null, [res.target.responseText]);
     });
     req.open("GET", path, true);
     req.send();
-  };
+  }
 
-  exports.uploadDataUrl = function(path, blob, callback){
+  export function uploadDataUrl(path, blob, callback){
     let req = new XMLHttpRequest();
     req.addEventListener("load", function (res) {
       callback.apply(null, [res]);
@@ -48,4 +47,4 @@
     req.open("POST", path, true);
     req.send(blob);
   }
-})(this);
+

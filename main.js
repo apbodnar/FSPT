@@ -1,3 +1,9 @@
+import * as Utility from '/utility.js'
+import * as ObjLoader from '/obj_loader.js'
+import {TexturePacker} from '/texture_packer.js'
+import {BVH} from '/primitive_tree.js'
+import {Vec3} from '/vector.js'
+
 function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   "use strict";
   let gl;
@@ -12,7 +18,6 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   let sampleInput = document.getElementById('max-samples');
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
-  let randomNumbers = new Float32Array(64);
   let atlasRes = 2048;
   let envTrans = [0,0,1];
   let moving = false;
@@ -67,7 +72,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "randoms", "envTex",
+        "tick", "dims", "eye", "envTex",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -162,11 +167,10 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
         uvTransforms = texturePacker.addTexture(createFlatTexture(prop.reflectance));
       }
       prop.uvTransforms = uvTransforms;
-      let parsed = parseMesh(assets[prop.path], prop, scene.worldTransforms);
+      let parsed = ObjLoader.parseMesh(assets[prop.path], prop, scene.worldTransforms);
       if(Vec3.dot(prop.emittance, [1,1,1]) > 0){
         lights.push(parsed);
       }
-
       geometry = geometry.concat(parsed);
     }
     let time = new Date().getTime();
@@ -192,7 +196,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
       if (node.leaf) {
         let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
-          let subBuffer = [].concat(tris[j].v1, tris[j].v2, tris[j].v3);
+          let subBuffer = [].concat(tris[j].verts[0], tris[j].verts[1], tris[j].verts[2]);
           subBuffer.forEach(function (el) {
             trianglesBuffer.push(el)
           });
@@ -214,7 +218,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
           });
         }
         for (let j = 0; j < tris.length; j++) {
-          let subBuffer = [].concat(tris[j].uv1, tris[j].uv2, tris[j].uv3);
+          let subBuffer = [].concat(tris[j].uvs[0], tris[j].uvs[1], tris[j].uvs[2]);
           subBuffer.forEach(function (el) {
             uvBuffer.push(el)
           });
@@ -228,7 +232,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
       lightRanges.push(lightBuffer.length / 9);
       for(let j=0; j<lights[i].length; j++){
         let t = lights[i][j];
-        [].concat(t.v1,t.v2,t.v3).forEach(function(e){
+        [].concat(t.verts[0], t.verts[1], t.verts[2]).forEach(function(e){
           lightBuffer.push(e);
         });
       }
@@ -436,7 +440,6 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3fv(program.uniforms.envTrans, envTrans);
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
-    gl.uniform2fv(program.uniforms.randoms, randomNumbers);
     gl.uniform3fv(program.uniforms.eye, eye);
     gl.uniform3fv(program.uniforms.rightMax, corners.rightMax);
     gl.uniform3fv(program.uniforms.leftMin, corners.leftMin);
@@ -476,11 +479,6 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  function writeRandoms(){
-    for (let i=0; i< randomNumbers.length; i++){
-      randomNumbers[i] = Math.random();
-    }
-  }
 
   function tick() {
     let max = parseInt(sampleInput.value);
@@ -493,15 +491,11 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
 
     if(max && pingpong < max) {
       for (let i = 0; i < 1; i++) {
-        writeRandoms()
         drawTracer(moving ? 0 : pingpong);
         pingpong++;
         writeCounter(pingpong);
       }
       drawQuad(moving ? 0 : pingpong);
-      if (!(pingpong % 1000)) {
-        console.log(pingpong);
-      }
     }
   }
 
@@ -533,7 +527,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     tick();
   }
 
-  getText(scenePath, function (res) {
+  Utility.getText(scenePath, function (res) {
     // Use a set to prevent multiple requests
     let pathSet = new Set([
       "shader/tracer.vs",
@@ -550,11 +544,11 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
         pathSet.add(e.texture);
       }
     });
-    if(typeof scene.environment == 'string'){
+    if(typeof scene.environment === 'string'){
       pathSet.add(scene.environment);
     }
     writeBanner("Compiling scene");
-    loadAll(Array.from(pathSet), start);
+    Utility.loadAll(Array.from(pathSet), start);
   });
 }
 
