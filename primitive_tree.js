@@ -46,12 +46,13 @@ export class BVH {
   }
 
   _constructCachedIndexList(indices, axis, index){
+    // Avoid re sorting by plucking from pre sorted buffers
     let leftIndices = [[],[],[]];
     leftIndices[axis] = indices[axis].slice(0, index);
     let rightIndices = [[],[],[]];
     rightIndices[axis] = indices[axis].slice(index, indices[axis].length);
     let setLeft = new Set(leftIndices[axis]);
-    let remainingAxes = [0, 1, 2].filter((e) => {return e != axis});
+    let remainingAxes = [0, 1, 2].filter((e) => {return e !== axis});
     remainingAxes.forEach((a) => {
       indices[a].forEach((i) => {
         if(setLeft.has(i)){
@@ -77,14 +78,16 @@ export class BVH {
       return 0;
     });
   }
-};
+}
 
 export class BoundingBox {
-  constructor(triangles) {
-    let tris = Array.isArray(triangles) ? triangles : [triangles];
+  // if indices are passed, assume triangles is ALL triangles
+  constructor(triangles, indices = null) {
     this._box = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
-    for (let j = 0; j < tris.length; j++) {
-      let vals = [].concat(tris[j].verts[0], tris[j].verts[1], tris[j].verts[2]);
+    let length = indices ? indices.length : triangles.length;
+    for (let j = 0; j < length; j++) {
+      let idx = indices ? indices[j] : j;
+      let vals = [].concat(triangles[idx].verts[0], triangles[idx].verts[1], triangles[idx].verts[2]);
       for (let i = 0; i < vals.length; i++) {
         this._box[(i % 3) * 2] = Math.min(vals[i], this._box[(i % 3) * 2]);
         this._box[(i % 3) * 2 + 1] = Math.max(vals[i], this._box[(i % 3) * 2 + 1]);
@@ -110,13 +113,12 @@ export class Node {
   constructor(triangles, indices){
     this._triangles = triangles;
     this._indices = indices;
-    this.boundingBox = new BoundingBox(this.getTriangles());
+    this.boundingBox = new BoundingBox(triangles, indices[0]);
     this.leaf = false;
     this.left = null;
     this.right = null;
     this.splitAxis = this.getSplittingAxis();
     this.splitIndex = this.getSplittingIndex();
-    //this.sortOnAxis();
   }
 
   get indices(){
@@ -124,6 +126,7 @@ export class Node {
   }
 
   getTriangles() {
+    // Avoid using this until final export
     return this.indices.map((v) => {
       return this._triangles[v];
     });
@@ -150,9 +153,9 @@ export class Node {
 
   getSplittingIndex() {
     let median = this.boundingBox.getCenter(this.splitAxis);
-    let triCache = this.getTriangles();
-    for (let i = 0; i < this.indices.length; i++) {
-      let point = triCache[i].boundingBox.getCenter(this.splitAxis);
+    let idxCache = this.indices;
+    for (let i = 0; i < idxCache.length; i++) {
+      let point = this._triangles[idxCache[i]].boundingBox.getCenter(this.splitAxis);
       if (point > median) {
         return i;
       }
@@ -167,7 +170,7 @@ export class Triangle {
     this.indices = [i1, i2, i3];
     this.uvs = [uv1, uv2, uv3];
     this.normals = null;
-    this.boundingBox = new BoundingBox(this);
+    this.boundingBox = new BoundingBox([this]);
     this.transforms = transforms;
   }
 }

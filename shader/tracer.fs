@@ -374,9 +374,13 @@ float albedo(vec3 color){
   return sqrt(dot(vec3(0.299, 0.587, 0.114) * color*color, vec3(1)));
 }
 
+vec3 applyGamma(vec3 color) {
+  return pow(color, vec3(2.2));
+}
+
 vec3 envColor(vec3 dir){
   vec2 c = vec2(atan(dir.z, dir.x) / 6.283185, dir.y * - 0.5 + 0.5);
-  return pow(texture(envTex, c).rgb, vec3(2.2));
+  return applyGamma(texture(envTex, c).rgb);
 }
 
 vec3 getDirectEmmission(vec3 origin, vec3 normal){
@@ -420,8 +424,8 @@ void main(void) {
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
     ray.origin = origin + macroNormal * EPSILON;
     ray.dir = cosineWeightedRandomVec(macroNormal, origin);
-    vec3 texRef = pow(texture(atlasTex, texCoord).rgb, vec3(2.2));
-    vec3 direct = pow(getDirectEmmission(ray.origin, macroNormal), vec3(2.2));
+    vec3 texRef = applyGamma(texture(atlasTex, texCoord).rgb);
+    vec3 direct = getDirectEmmission(ray.origin, macroNormal);
     emittance[i] = direct;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
