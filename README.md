@@ -3,7 +3,7 @@
 I made this to explore photo-realistic rendering in web browsers. Feel free to fork and open a PR. I'm a graphics hobbyist; I welcome constructive feedback.
  
 Requirements:
-* An up-to-date desktop browser that supports WebGL 2
+* An up-to-date desktop browser that supports WebGL 2 AND ES6 module export + import
 * A top-end discrete GPU (for now)
 
 TODOs (Not Exhaustive):

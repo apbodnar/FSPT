@@ -53,15 +53,17 @@ export class BVH {
     rightIndices[axis] = indices[axis].slice(index, indices[axis].length);
     let setLeft = new Set(leftIndices[axis]);
     let remainingAxes = [0, 1, 2].filter((e) => {return e !== axis});
-    remainingAxes.forEach((a) => {
-      indices[a].forEach((i) => {
-        if(setLeft.has(i)){
-          leftIndices[a].push(i);
+
+    for(let i = 0; i < remainingAxes.length; i++){
+      for(let j = 0; j < indices[remainingAxes[i]].length; j++){
+        let idx = indices[remainingAxes[i]][j];
+        if(setLeft.has(idx)){
+          leftIndices[remainingAxes[i]].push(idx);
         } else {
-          rightIndices[a].push(i)
+          rightIndices[remainingAxes[i]].push(idx);
         }
-      });
-    });
+      }
+    }
     return {left: leftIndices, right: rightIndices};
   }
 
@@ -84,13 +86,15 @@ export class BoundingBox {
   // if indices are passed, assume triangles is ALL triangles
   constructor(triangles, indices = null) {
     this._box = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
-    let length = indices ? indices.length : triangles.length;
-    for (let j = 0; j < length; j++) {
-      let idx = indices ? indices[j] : j;
-      let vals = [].concat(triangles[idx].verts[0], triangles[idx].verts[1], triangles[idx].verts[2]);
-      for (let i = 0; i < vals.length; i++) {
-        this._box[(i % 3) * 2] = Math.min(vals[i], this._box[(i % 3) * 2]);
-        this._box[(i % 3) * 2 + 1] = Math.max(vals[i], this._box[(i % 3) * 2 + 1]);
+    let numTris = indices ? indices.length : triangles.length;
+    for (let i = 0; i < numTris; i++) {
+      let idx = indices ? indices[i] : i;
+      for (let j = 0; j < triangles[idx].verts.length; j++){
+        let vert = triangles[idx].verts[j];
+        for(let k = 0; k < vert.length; k++){
+          this._box[k * 2] = Math.min(vert[k], this._box[k * 2]);
+          this._box[k * 2 + 1] = Math.max(vert[k], this._box[k * 2 + 1]);
+        }
       }
     }
     this._centroid = [
