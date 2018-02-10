@@ -149,8 +149,8 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getAA(){
-  float theta = rand(coords*2.0) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx*2.3));
+  float theta = rand(coords*vec2(0.1245123, 2.231545)) * M_PI * 2.0;
+  float sqrt_r = sqrt(rand(coords.yx*vec2(2.3, 0.87627836)));
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
 
