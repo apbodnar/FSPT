@@ -8,6 +8,7 @@ const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
 const float M_PI = 3.14159265;
+const float INV_PI = 1.0 / M_PI;
 const uint FROM_PARENT = uint(0);
 const uint FROM_SIBLING = uint(1);
 const uint FROM_CHILD = uint(2);
@@ -367,7 +368,7 @@ float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, vec3 no
   vec3 span = ray.origin - p;
   float rr = dot(span, span);
   //magic number is 1 / Tau, the inverted solid angle of a hemisphere
-  return dot(ray.dir, normal) * (a/rr) * dot(lightNormal, normalize(ray.origin - p));
+  return (a/rr) * dot(lightNormal, normalize(ray.origin - p)) * INV_PI;
 }
 
 float albedo(vec3 color){
@@ -383,13 +384,13 @@ vec3 envColor(vec3 dir){
   return applyGamma(texture(envTex, c).rgb);
 }
 
-vec3 getDirectEmmission(vec3 origin, vec3 normal){
+vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   vec3 intensity = vec3(0);
   vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
   Triangle light = randomLight(origin.xz, range);
   vec3 lightPoint = randomPointOnTriangle(light, origin);
-  vec3 dir = normalize(lightPoint - origin);
-  Ray ray = Ray(origin, dir);
+  lightDir = normalize(lightPoint - origin);
+  Ray ray = Ray(origin, lightDir);
   Hit shadow = traverseTree(ray);
   // Gross float equality hack
   if(createTriangle(shadow.index).v1 == light.v1){
@@ -418,15 +419,20 @@ void main(void) {
     if(result.index < 0.0){ reflectance[i] = vec3(1); emittance[i] = envColor(ray.dir); break; }
     Triangle tri = createTriangle(result.index);
     Material mat = createMaterial(result.index);
+
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
+    bool specular = schlick(ray.dir, microNormal) > rand(origin.zy);
     ray.origin = origin + macroNormal * EPSILON;
-    ray.dir = cosineWeightedRandomVec(macroNormal, origin);
+    vec3 incident = ray.dir;
+    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal, origin);
     vec3 texRef = applyGamma(texture(atlasTex, texCoord).rgb);
-    vec3 direct = getDirectEmmission(ray.origin, macroNormal);
-    emittance[i] = direct;
+    vec3 lightDir;
+    vec3 direct = getDirectEmmission(ray.origin, macroNormal, lightDir);
+    float weight = specular ? ggxWeight(microNormal, incident, lightDir, mat.roughness) : max(dot(lightDir, macroNormal), 0.0);
+    emittance[i] = direct * weight;
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
