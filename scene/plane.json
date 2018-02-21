@@ -31,20 +31,20 @@
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.5,
+      "scale": 0.1,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [1,2,1],
-      "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
-      "emittance": [10,10,10],
+      "reflectance": [0, 0, 0],
+      "emittance": [1000,1000,1000],
       "roughness": 0.9
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.5,
+      "scale": 0.1,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [-1,2,-1],
-      "reflectance": [1, 0.9764705882352941, 0.7686274509803921],
-      "emittance": [10,10,10],
+      "reflectance": [0, 0, 0],
+      "emittance": [1000,1000,1000],
       "roughness": 0.9
     },
     {
