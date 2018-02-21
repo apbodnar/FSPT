@@ -21,6 +21,9 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   let atlasRes = 2048;
   let envTrans = [0,0,1];
   let moving = false;
+  let isFramed = !!window.frameElement;
+  let active = !isFramed;
+
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -489,7 +492,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
       requestAnimationFrame(tick);
     }
 
-    if(max && pingpong < max) {
+    if(max && pingpong < max && active) {
       for (let i = 0; i < 1; i++) {
         drawTracer(moving ? 0 : pingpong);
         pingpong++;
@@ -514,6 +517,8 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   }
 
   function start(res) {
+    window.addEventListener("mouseover",function(){ active = true; });
+    window.addEventListener("mouseout",function(){ active = !isFramed; });
     let canvas = document.getElementById("trace");
     initGL(canvas);
     initPrograms(res);
