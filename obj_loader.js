@@ -1,5 +1,5 @@
-import {Triangle} from '/primitive_tree.js'
-import {Vec3} from '/vector.js'
+import {Triangle} from './primitive_tree.js'
+import {Vec3} from './vector.js'
 
 export function parseMesh(objText, transforms, worldTransforms) {
   let lines = objText.split('\n');

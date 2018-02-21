@@ -1,8 +1,8 @@
-import * as Utility from '/utility.js'
-import * as ObjLoader from '/obj_loader.js'
-import {TexturePacker} from '/texture_packer.js'
-import {BVH} from '/primitive_tree.js'
-import {Vec3} from '/vector.js'
+import * as Utility from './utility.js'
+import * as ObjLoader from './obj_loader.js'
+import {TexturePacker} from './texture_packer.js'
+import {BVH} from './primitive_tree.js'
+import {Vec3} from './vector.js'
 
 function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   "use strict";
