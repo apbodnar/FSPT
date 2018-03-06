@@ -402,6 +402,15 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   return intensity;
 }
 
+vec3 getIndirectLight(Ray ray) {
+  Hit result = traverseTree(ray);
+  vec3 origin = ray.origin + ray.dir * result.t;
+  if(result.index < 0.0){ return vec3(0); }
+  Triangle tri = createTriangle(result.index);
+  Material mat = createMaterial(result.index);
+  return mat.emittance;
+}
+
 void main(void) {
   vec3 screen = getScreen() * scale ;
   vec3 aa = vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x * scale;
@@ -431,8 +440,9 @@ void main(void) {
     vec3 texRef = applyGamma(texture(atlasTex, texCoord).rgb);
     vec3 lightDir;
     vec3 direct = getDirectEmmission(ray.origin, macroNormal, lightDir);
+    vec3 indirect = specular ? getIndirectLight(ray) : vec3(0);
     float weight = specular ? ggxWeight(microNormal, incident, lightDir, mat.roughness) : max(dot(lightDir, macroNormal), 0.0);
-    emittance[i] = direct * weight;
+    emittance[i] = direct * weight + indirect * (1.0 - mat.roughness);
     reflectance[i] = texRef;
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
   }
