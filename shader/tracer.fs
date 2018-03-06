@@ -402,52 +402,53 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   return intensity;
 }
 
-vec3 getIndirectLight(Ray ray) {
-  Hit result = traverseTree(ray);
-  vec3 origin = ray.origin + ray.dir * result.t;
-  if(result.index < 0.0){ return vec3(0); }
-  Triangle tri = createTriangle(result.index);
-  Material mat = createMaterial(result.index);
-  return mat.emittance;
-}
-
 void main(void) {
   vec3 screen = getScreen() * scale ;
   vec3 aa = vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x * scale;
   Ray ray = Ray(eye + aa, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
+  vec3 indirect[NUM_BOUNCES];
   vec3 emittance[NUM_BOUNCES];
   vec3 reflectance[NUM_BOUNCES];
   Hit result = Hit(MAX_T, -1.0);
   vec3 color = vec3(0);
+  bool specular = true;
   int bounces = 0;
+  float roughness = 1.0;
   for(int i=0; i < NUM_BOUNCES; ++i){
+    bool oldSpec = specular;
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
     bounces++;
     if(result.index < 0.0){ reflectance[i] = vec3(1); emittance[i] = envColor(ray.dir); break; }
     Triangle tri = createTriangle(result.index);
     Material mat = createMaterial(result.index);
-
+    indirect[i] = specular ? mat.emittance * (1.0 - roughness * roughness) : vec3(0);
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
-    bool specular = schlick(ray.dir, microNormal) > rand(origin.zy);
-    ray.origin = origin + macroNormal * EPSILON;
+    specular = schlick(ray.dir, microNormal) > rand(origin.zy);
     vec3 incident = ray.dir;
-    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal, origin);
-    vec3 texRef = applyGamma(texture(atlasTex, texCoord).rgb);
+    ray.origin = origin + macroNormal * EPSILON;
     vec3 lightDir;
     vec3 direct = getDirectEmmission(ray.origin, macroNormal, lightDir);
-    vec3 indirect = specular ? getIndirectLight(ray) : vec3(0);
-    float weight = specular ? ggxWeight(microNormal, incident, lightDir, mat.roughness) : max(dot(lightDir, macroNormal), 0.0);
-    emittance[i] = direct * weight + indirect * (1.0 - mat.roughness);
-    reflectance[i] = texRef;
-    if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
+    float weight = 0.0;
+    if(specular) {
+      ray.dir = reflect(ray.dir, microNormal);
+      weight = ggxWeight(microNormal, incident, lightDir, mat.roughness) * roughness * roughness;
+    } else {
+      ray.dir = cosineWeightedRandomVec(macroNormal, origin);
+      weight = max(dot(lightDir, macroNormal), 0.0);
+    }
+    roughness = mat.roughness;
+    vec3 textureColor = applyGamma(texture(atlasTex, texCoord).rgb);
+    emittance[i] = direct * weight;
+    reflectance[i] = textureColor;
+    if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(textureColor)){break;}
   }
   for(int i=bounces-1; i>=0; --i){
-    color = reflectance[i]*(emittance[i] + color);
+    color = reflectance[i]*(emittance[i] + color + (i + 1 >= NUM_BOUNCES ? vec3(0) : indirect[i+1]));
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
