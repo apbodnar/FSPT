@@ -112,7 +112,7 @@ float ggxWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   float ndh = dot(normal, facetNormal);
   float ndh2 = ndh*ndh;
   float denom = ndh2 * (a2 - 1.0) + 1.0;
-  return a2 / (M_PI * denom * denom);
+  return max(a2 / (M_PI * denom * denom), 0.0);
 }
 
 float schlick(vec3 dir, vec3 normal){
@@ -416,19 +416,18 @@ void main(void) {
   int bounces = 0;
   float roughness = 1.0;
   for(int i=0; i < NUM_BOUNCES; ++i){
-    bool oldSpec = specular;
     result = traverseTree(ray);
     vec3 origin = ray.origin + ray.dir * result.t;
     bounces++;
     if(result.index < 0.0){ reflectance[i] = vec3(1); emittance[i] = envColor(ray.dir); break; }
     Triangle tri = createTriangle(result.index);
     Material mat = createMaterial(result.index);
-    indirect[i] = specular ? mat.emittance * (1.0 - roughness * roughness) : vec3(0);
+    indirect[i] = specular ? mat.emittance : vec3(0);
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
     vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
-    specular = schlick(ray.dir, microNormal) > rand(origin.zy);
+    specular = mat.metal > 0.0 ? true : schlick(ray.dir, microNormal) > rand(origin.zy);
     vec3 incident = ray.dir;
     ray.origin = origin + macroNormal * EPSILON;
     vec3 lightDir;
@@ -436,7 +435,7 @@ void main(void) {
     float weight = 0.0;
     if(specular) {
       ray.dir = reflect(ray.dir, microNormal);
-      weight = ggxWeight(microNormal, incident, lightDir, mat.roughness) * roughness * roughness;
+      weight = ggxWeight(microNormal, incident, lightDir, mat.roughness);
     } else {
       ray.dir = cosineWeightedRandomVec(macroNormal, origin);
       weight = max(dot(lightDir, macroNormal), 0.0);
@@ -445,6 +444,7 @@ void main(void) {
     vec3 textureColor = applyGamma(texture(atlasTex, texCoord).rgb);
     emittance[i] = direct * weight;
     reflectance[i] = textureColor;
+    indirect[i] = indirect[i] * ggxWeight(microNormal, incident, ray.dir, mat.roughness);
     if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(textureColor)){break;}
   }
   for(int i=bounces-1; i>=0; --i){

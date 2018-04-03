@@ -12,12 +12,23 @@
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.1,
+      "scale": 0.4,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
       "translate": [0.525,0.75,0.2],
       "reflectance": [1,1,1],
-      "emittance": [100,100,100],
+      "emittance": [50,50,50],
       "roughness": 0.1,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/plank.obj",
+      "scale": 1.2,
+      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
+      "translate": [0,0,-2],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "roughness": 0.000,
+      "metal": true,
       "normals": "flat"
     },
     {
@@ -27,7 +38,7 @@
       "translate": [0,-0.75,0],
       "reflectance": [1,0.1,0.1],
       "emittance": [0,0,0],
-      "roughness": 0.1,
+      "roughness": 0.5,
       "normals": "flat"
     }
   ]
