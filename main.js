@@ -75,7 +75,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "dims", "eye", "envTex",
+        "tick", "randBase", "dims", "eye", "envTex",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -440,6 +440,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     gl.uniform1i(program.uniforms.envTex, 8);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
+    gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3fv(program.uniforms.envTrans, envTrans);
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);

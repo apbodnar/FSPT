@@ -18,8 +18,8 @@ float seed;
 uniform int tick;
 uniform float scale;
 uniform float numLights;
+uniform float randBase;
 uniform vec3 eye;
-uniform vec3 skybox;
 uniform vec3 rightMax;
 uniform vec3 rightMin;
 uniform vec3 leftMax;
@@ -87,7 +87,7 @@ struct Hit {
 };
 
 
-float rnd() { return fract(sin(seed++)*43758.5453123); }
+float rnd() { return fract(sin(seed += 0.312489)*43758.5453123); }
 
 float rand(vec2 co){
   float a = 12.9898;
@@ -406,7 +406,7 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
 
 void main(void) {
   vec2 res = vec2(textureSize(fbTex, 0));
-  seed = float(tick) * 1953.5879 + gl_FragCoord.x * 1261.23521 + gl_FragCoord.y * M_PI;
+  seed = randBase + gl_FragCoord.x + res.x * gl_FragCoord.y;
   vec3 screen = getScreen() * scale;
   vec3 aa = vec3(getAA(), 0.0) / res.x * scale;
   Ray ray = Ray(eye + aa, normalize(screen - eye));
