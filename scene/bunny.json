@@ -21,17 +21,6 @@
       "normals": "flat"
     },
     {
-      "path": "mesh/plank.obj",
-      "scale": 1.2,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [0,0,-2],
-      "reflectance": [1,1,1],
-      "emittance": [0,0,0],
-      "roughness": 0.000,
-      "metal": true,
-      "normals": "flat"
-    },
-    {
       "path": "mesh/top.obj",
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
