@@ -28,7 +28,7 @@
       "translate": [0,-0.75,0],
       "reflectance": [1,0.1,0.1],
       "emittance": [0,0,0],
-      "roughness": 0.5,
+      "roughness": 0.1,
       "normals": "flat"
     }
   ]

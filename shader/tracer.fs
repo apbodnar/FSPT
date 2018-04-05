@@ -111,13 +111,20 @@ vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
 }
 
 // GGX PDF
-float ggxWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
+float ggPdf(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   vec3 facetNormal = normalize(lightDir - incidentDir); // half angle
   float a2 = a*a;
   float ndh = dot(normal, facetNormal);
   float ndh2 = ndh*ndh;
   float denom = ndh2 * (a2 - 1.0) + 1.0;
   return max(a2 / (M_PI * denom * denom), 0.0);
+}
+
+float misWeight(float a, float b ) {
+    float a2 = a*a;
+    float b2 = b*b;
+    float a2b2 = a2 + b2;
+    return a2 / a2b2;
 }
 
 float schlick(vec3 dir, vec3 normal){
@@ -159,7 +166,6 @@ vec2 getAA(){
   float sqrt_r = sqrt(rnd());
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
-
 
 ivec2 indexToCoords(sampler2D tex, float index, float perElement){
   ivec2 dims = textureSize(tex, 0);
@@ -445,14 +451,18 @@ void main(void) {
     vec3 incident = ray.dir;
     ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal);
     vec3 indirect = getIndirectEmission(ray, result);
+    float directPdf;
+    float indirectPdf;
     if (specular) {
-      directSamples[i] = direct * ggxWeight(microNormal, incident, lightDir, mat.roughness);
-      indirectSamples[i] = indirect  * max(dot(lightDir, macroNormal), 0.0);// * ggxWeight(microNormal, incident, ray.dir, mat.roughness);
+      directPdf = ggPdf(microNormal, incident, lightDir, mat.roughness);
+      indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
     } else {
-      directSamples[i] = direct * max(dot(lightDir, macroNormal), 0.0);
-      indirectSamples[i] = vec3(0);
+      directPdf = max(dot(lightDir, macroNormal), 0.0);
+      indirectPdf = 0.0;
     }
     vec3 textureColor = applyGamma(texture(atlasTex, texCoord).rgb);
+    directSamples[i] = direct * directPdf;
+    indirectSamples[i] = indirect * indirectPdf;
     reflectance[i] = textureColor;
     if(dot(mat.emissivity, vec3(1)) > 0.0 || rnd() > albedo(textureColor)){break;}
   }

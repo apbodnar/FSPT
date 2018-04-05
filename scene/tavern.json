@@ -7,7 +7,7 @@
       "translate": [0,0,-3],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.1,
+      "roughness": 0.5,
       "normals": "mesh"
     },
     {
