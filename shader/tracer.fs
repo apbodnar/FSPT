@@ -454,7 +454,7 @@ void main(void) {
     float directPdf;
     float indirectPdf;
     if (specular) {
-      directPdf = ggPdf(microNormal, incident, lightDir, mat.roughness);
+      directPdf = ggPdf(macroNormal, incident, lightDir, mat.roughness);
       indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
     } else {
       directPdf = max(dot(lightDir, macroNormal), 0.0);

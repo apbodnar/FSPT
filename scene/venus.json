@@ -1,23 +1,23 @@
 {
-  "environment": "texture/field.jpg",
+  "environment": [[0.3,0.3,0.3],[0.4,0.6,0.8]],
   "props": [
     {
       "path": "mesh/venus.obj",
       "scale": 0.006,
       "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
       "translate": [0,0,0],
-      "reflectance": [1,1,1],
+      "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.2,
+      "roughness": 0.3,
       "normals": "smooth"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.8,
+      "scale": 0.33,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [1.525,2.75,0.2],
-      "reflectance": [1,1,1],
-      "emittance": [40,40,40],
+      "translate": [0,2.75,1],
+      "reflectance": [0,0,0],
+      "emittance": [200,200,180],
       "roughness": 0.1,
       "normals": "flat"
     },
@@ -25,7 +25,7 @@
       "path": "mesh/top.obj",
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-1.5,0],
+      "translate": [0,-1.0,0],
       "reflectance": [1,0.1,0.1],
       "emittance": [0,0,0],
       "roughness": 0.5,
