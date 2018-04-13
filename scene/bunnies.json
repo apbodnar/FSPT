@@ -1,16 +1,26 @@
 {
-  "environment": [[0.3,0.3,0.3],[0.0,0.2,0.4]],
+  "environment": "texture/field.jpg",
   "atlasRes": 2048,
   "samples": 1000,
   "static_props": [
     {
-      "path": "mesh/top.obj",
-      "scale": 4,
+      "path": "mesh/plank.obj",
+      "scale":2,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-0.3,0],
+      "translate": [1,-0.3,0],
       "reflectance": [1,0.4,0.4],
       "emittance": [0,0,0],
-      "roughness": 0.2
+      "roughness": 0.1
+    },
+    {
+      "path": "mesh/plank.obj",
+      "scale": 2,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [-1,-0.3,0],
+      "reflectance": [0.9,0.9,0.9],
+      "emittance": [0,0,0],
+      "roughness": 0.15,
+      "metal": true
     },
     {
       "path": "mesh/dragon.obj",
@@ -19,8 +29,9 @@
       "translate": [0,-0.2,-0.5],
       "reflectance": [0.9,0.7,0.2],
       "emittance": [0,0,0],
-      "roughness": 0.05,
-      "normals": "smooth"
+      "roughness": 0.15,
+      "normals": "smooth",
+      "metal": true
     }
   ],
   "animated_props": {
@@ -28,8 +39,8 @@
       "path": "mesh/bunny_big.obj",
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [0.6,-0.2,0],
-      "reflectance": [0.9,0.9,0.9],
+      "translate": [0.05,-0.2,0],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
       "roughness": 0.01,
       "normals": "smooth"
@@ -41,7 +52,7 @@
       "translate": [-0.5,-0.2,0],
       "reflectance":  [0.5,0.5,9],
       "emittance": [0,0,0],
-      "roughness": 0.9,
+      "roughness": 0.75,
       "normals": "smooth",
       "metal": true
     },
@@ -49,10 +60,10 @@
       "path": "mesh/bunny_big.obj",
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [0.05,-0.2,0],
+      "translate": [0.6,-0.2,0],
       "reflectance":  [0.5,1,0.5],
       "emittance": [0,0,0],
-      "roughness": 0.4,
+      "roughness": 0.3,
       "normals": "smooth",
       "diffuse": true
     },
@@ -63,7 +74,7 @@
       "translate": [1,2,1],
       "reflectance": [0, 0, 0],
       "emittance": [20, 20, 20],
-      "roughness": 0.9
+      "roughness": 0.95
     }
   }
 }

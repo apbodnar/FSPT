@@ -1,21 +1,21 @@
 {
-  "environment": [[0.3,0.3,0.3],[0.0,0.2,0.4]],
+  "environment": "texture/field.jpg",
   "props": [
     {
-      "path": "mesh/bunny.obj",
-      "scale": 4,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0.1,-0.7,0],
+      "path": "mesh/venus.obj",
+      "scale": 0.006,
+      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
+      "translate": [0,0,0],
       "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.1,
+      "roughness": 0.2,
       "normals": "smooth"
     },
     {
       "path": "mesh/top.obj",
-      "scale": 0.4,
+      "scale": 0.8,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0.525,0.75,0.2],
+      "translate": [1.525,2.75,0.2],
       "reflectance": [1,1,1],
       "emittance": [40,40,40],
       "roughness": 0.1,
@@ -25,10 +25,10 @@
       "path": "mesh/top.obj",
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-0.75,0],
+      "translate": [0,-1.5,0],
       "reflectance": [1,0.1,0.1],
       "emittance": [0,0,0],
-      "roughness": 0.1,
+      "roughness": 0.5,
       "normals": "flat"
     }
   ]

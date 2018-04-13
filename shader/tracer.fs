@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 5;
+const int NUM_BOUNCES = 4;
 const float MAX_T = 100000.0;
 const float n1 = 1.0;
 const float n2 = 1.4;
@@ -13,11 +13,13 @@ const uint FROM_PARENT = uint(0);
 const uint FROM_SIBLING = uint(1);
 const uint FROM_CHILD = uint(2);
 
+float seed;
+
 uniform int tick;
 uniform float scale;
 uniform float numLights;
+uniform float randBase;
 uniform vec3 eye;
-uniform vec3 skybox;
 uniform vec3 rightMax;
 uniform vec3 rightMin;
 uniform vec3 leftMax;
@@ -50,7 +52,7 @@ struct Normals {
 
 struct Material {
   vec3 reflectance;
-  vec3 emittance;
+  vec3 emissivity;
   float roughness;
   float metal;
   float diffuse;
@@ -84,6 +86,9 @@ struct Hit {
   float index;
 };
 
+
+float rnd() { return fract(sin(seed += 0.312489)*43758.5453123); }
+
 float rand(vec2 co){
   float a = 12.9898;
   float b = 78.233;
@@ -94,8 +99,8 @@ float rand(vec2 co){
 }
 
 // GGX importance-sampled microfacet
-vec3 ggxRandomImportantNormal(vec3 oNormal, float a, vec3 seed){
-  vec2 xi = vec2(rand(seed.xy), rand(seed.xz));
+vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
+  vec2 xi = vec2(rnd(), rnd());
   float phi = 2.0f * M_PI * xi.x;
   float theta = acos(sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f)));
   float sinTheta = sin(theta);
@@ -106,13 +111,20 @@ vec3 ggxRandomImportantNormal(vec3 oNormal, float a, vec3 seed){
 }
 
 // GGX PDF
-float ggxWeight(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
+float ggPdf(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   vec3 facetNormal = normalize(lightDir - incidentDir); // half angle
   float a2 = a*a;
   float ndh = dot(normal, facetNormal);
   float ndh2 = ndh*ndh;
   float denom = ndh2 * (a2 - 1.0) + 1.0;
-  return a2 / (M_PI * denom * denom);
+  return max(a2 / (M_PI * denom * denom), 0.0);
+}
+
+float misWeight(float a, float b ) {
+    float a2 = a*a;
+    float b2 = b*b;
+    float a2b2 = a2 + b2;
+    return a2 / a2b2;
 }
 
 float schlick(vec3 dir, vec3 normal){
@@ -120,9 +132,9 @@ float schlick(vec3 dir, vec3 normal){
   return r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
 }
 
-vec3 cosineWeightedRandomVec(vec3 normal, vec3 seed){
- float r = sqrt(rand(seed.xy));
- float theta = 2.0 * M_PI * rand(seed.zx);
+vec3 cosineWeightedRandomVec(vec3 normal){
+ float r = sqrt(rnd());
+ float theta = 2.0 * M_PI * rnd();
  float x = r * cos(theta);
  float y = r * sin(theta);
  vec3 u = normalize(cross(normal,vec3(0.0,0.0,1.0)));
@@ -150,11 +162,10 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 vec2 getAA(){
-  float theta = rand(coords*vec2(0.1245123, 2.231545)) * M_PI * 2.0;
-  float sqrt_r = sqrt(rand(coords.yx*vec2(2.3, 0.87627836)));
+  float theta = rnd() * M_PI * 2.0;
+  float sqrt_r = sqrt(rnd());
   return vec2(sqrt_r * cos(theta), sqrt_r * sin(theta));
 }
-
 
 ivec2 indexToCoords(sampler2D tex, float index, float perElement){
   ivec2 dims = textureSize(tex, 0);
@@ -332,19 +343,19 @@ Hit traverseTree(Ray ray){
   }
 }
 
-vec3 randomPointOnTriangle(Triangle tri, vec3 seed){
+vec3 randomPointOnTriangle(Triangle tri){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
-  float u = rand(seed.xz);
-  float v = rand(seed.zy);
+  float u = rnd();
+  float v = rnd();
   bool over = u + v > 1.0;
   u = over ? 1.0 - u : u;
   v = over ? 1.0 - v : v;
   return tri.v1 + e1 * v + e2 * u;
 }
 
-Triangle randomLight(vec2 seed, vec2 range){
-  float index = floor(range.x + rand(coords.yx + seed.yx) * ((range.y - range.x) + 1.0));
+Triangle randomLight(vec2 range){
+  float index = floor(range.x + rnd() * ((range.y - range.x) + 1.0));
   return createLight(index);
 }
 
@@ -363,12 +374,9 @@ float triangleArea(Triangle tri){
   return length(n) * 0.5;
 }
 
-float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, vec3 normal){
+float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, float t){
   float a = triangleArea(tri);
-  vec3 span = ray.origin - p;
-  float rr = dot(span, span);
-  //magic number is 1 / Tau, the inverted solid angle of a hemisphere
-  return (a/rr) * dot(lightNormal, normalize(ray.origin - p)) * INV_PI;
+  return (a / (t * t)) * dot(lightNormal, -ray.dir) * INV_PI;
 }
 
 float albedo(vec3 color){
@@ -384,11 +392,11 @@ vec3 envColor(vec3 dir){
   return applyGamma(texture(envTex, c).rgb);
 }
 
-vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
+vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   vec3 intensity = vec3(0);
-  vec2 range = lightRanges[uint(rand(coords.xy + origin.xy) * numLights)];
-  Triangle light = randomLight(origin.xz, range);
-  vec3 lightPoint = randomPointOnTriangle(light, origin);
+  vec2 range = lightRanges[uint(rnd() * numLights)];
+  Triangle light = randomLight(range);
+  vec3 lightPoint = randomPointOnTriangle(light);
   lightDir = normalize(lightPoint - origin);
   Ray ray = Ray(origin, lightDir);
   Hit shadow = traverseTree(ray);
@@ -397,47 +405,70 @@ vec3 getDirectEmmission(vec3 origin, vec3 normal, inout vec3 lightDir){
     Material mat = createMaterial(shadow.index);
     vec3 p = ray.origin + ray.dir * shadow.t;
     vec3 lightNormal = createNormals(shadow.index).n1; // don't use smooth normals for lights
-    intensity += max(mat.emittance * attenuationFactor(ray, light, p, lightNormal, normal) * numLights, vec3(0));
+    intensity += max(mat.emissivity * attenuationFactor(ray, light, p, lightNormal, shadow.t) * numLights, vec3(0));
   }
   return intensity;
 }
 
+vec3 getIndirectEmission(Ray ray, out Hit result){
+  result = traverseTree(ray);
+  if(result.index < 0.0){ return vec3(0); }
+  return createMaterial(result.index).emissivity;
+}
+
 void main(void) {
-  vec3 screen = getScreen() * scale ;
-  vec3 aa = vec3(getAA(), 0.0)/ vec2(textureSize(fbTex, 0)).x * scale;
+  vec2 res = vec2(textureSize(fbTex, 0));
+  seed = randBase + gl_FragCoord.x + res.x * gl_FragCoord.y;
+  vec3 screen = getScreen() * scale;
+  vec3 aa = vec3(getAA(), 0.0) / res.x * scale;
   Ray ray = Ray(eye + aa, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  vec3 emittance[NUM_BOUNCES];
+  vec3 indirectSamples[NUM_BOUNCES];
+  vec3 directSamples[NUM_BOUNCES];
   vec3 reflectance[NUM_BOUNCES];
-  Hit result = Hit(MAX_T, -1.0);
+  Hit result = traverseTree(ray);
   vec3 color = vec3(0);
   int bounces = 0;
   for(int i=0; i < NUM_BOUNCES; ++i){
-    result = traverseTree(ray);
-    vec3 origin = ray.origin + ray.dir * result.t;
+    if(result.index < 0.0){
+      reflectance[i] = vec3(1);
+      directSamples[i] = envColor(ray.dir);
+      indirectSamples[i] = vec3(0);
+      break;
+    }
     bounces++;
-    if(result.index < 0.0){ reflectance[i] = vec3(1); emittance[i] = envColor(ray.dir); break; }
+    vec3 origin = ray.origin + ray.dir * result.t;
     Triangle tri = createTriangle(result.index);
     Material mat = createMaterial(result.index);
-
     vec3 weights = barycentricWeights(tri, origin);
     vec2 texCoord = barycentricTexCoord(weights, createTexCoords(result.index)) + 0.5 / vec2(textureSize(atlasTex, 0));
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index));
-    vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness, origin);
-    bool specular = schlick(ray.dir, microNormal) > rand(origin.zy);
+    vec3 microNormal = ggxRandomImportantNormal(macroNormal, mat.roughness);
     ray.origin = origin + macroNormal * EPSILON;
-    vec3 incident = ray.dir;
-    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal, origin);
-    vec3 texRef = applyGamma(texture(atlasTex, texCoord).rgb);
     vec3 lightDir;
-    vec3 direct = getDirectEmmission(ray.origin, macroNormal, lightDir);
-    float weight = specular ? ggxWeight(microNormal, incident, lightDir, mat.roughness) : max(dot(lightDir, macroNormal), 0.0);
-    emittance[i] = direct * weight;
-    reflectance[i] = texRef;
-    if(dot(mat.emittance, vec3(1)) > 0.0 || rand(origin.zy) > albedo(texRef)){break;}
+    vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
+    bool specular = mat.metal > 0.0 ? true : schlick(ray.dir, microNormal) > rnd();
+    vec3 incident = ray.dir;
+    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal);
+    vec3 indirect = getIndirectEmission(ray, result);
+    float directPdf;
+    float indirectPdf;
+    if (specular) {
+      directPdf = ggPdf(microNormal, incident, lightDir, mat.roughness);
+      indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
+    } else {
+      directPdf = max(dot(lightDir, macroNormal), 0.0);
+      indirectPdf = 0.0;
+    }
+    vec3 textureColor = applyGamma(texture(atlasTex, texCoord).rgb);
+    directSamples[i] = direct * directPdf;
+    indirectSamples[i] = indirect * indirectPdf;
+    reflectance[i] = textureColor;
+    if(dot(mat.emissivity, vec3(1)) > 0.0 || rnd() > albedo(textureColor)){break;}
   }
-  for(int i=bounces-1; i>=0; --i){
-    color = reflectance[i]*(emittance[i] + color);
+
+  for(int i=bounces; i>=0; --i){
+    color = reflectance[i]*(directSamples[i] + color + indirectSamples[i]);
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
