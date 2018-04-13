@@ -116,7 +116,8 @@ export function parseMesh(objText, transforms, worldTransforms) {
     } else if(array[0] === 'vt'){
       let uv = vals.map(function(coord){return parseFloat(coord) || 0});
       let tuv = transformUV(uv, transforms.uvTransforms);
-      uvs.push(tuv);
+
+      uvs.push(tuv.splice(0,2));
     } else if(array[0] === 'vn'){
       meshNormals.push(vals.map(parseFloat))
     }
