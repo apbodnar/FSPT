@@ -4,7 +4,7 @@ import {TexturePacker} from './texture_packer.js'
 import {BVH} from './primitive_tree.js'
 import {Vec3} from './vector.js'
 
-function PathTracer(scenePath, sceneName, resolution, frameNumber) {
+function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
   "use strict";
   let gl;
   let programs = {};
@@ -518,6 +518,9 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
   }
 
   function start(res) {
+    if(reference){
+      res["shader/tracer.fs"] = res["shader/ref.fs"];
+    }
     window.addEventListener("mouseover",function(){ active = true; });
     window.addEventListener("mouseout",function(){ active = !isFramed; });
     let canvas = document.getElementById("trace");
@@ -538,6 +541,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber) {
     let pathSet = new Set([
       "shader/tracer.vs",
       "shader/tracer.fs",
+      "shader/ref.fs",
       "shader/draw.vs",
       "shader/draw.fs",
       scenePath
@@ -563,6 +567,8 @@ let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[
 let sceneMatch = window.location.search.match(/scene=([a-zA-Z_]+)/);
 let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?frame=' + frameNumber : 'scene/bunny.json?frame=0';
 let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
+let refMatch = window.location.search.match(/reference=([a-zA-Z_]+)/);
+let reference = Array.isArray(refMatch) && refMatch.length > 0 && refMatch[1] === 'true';
 let resolutionMatch = window.location.search.match(/res=(\d+)/);
 let resolution = Array.isArray(resolutionMatch) ? parseFloat(resolutionMatch[1]) : window.innerHeight;
-new PathTracer(scenePath, sceneName, resolution, frameNumber);
+new PathTracer(scenePath, sceneName, resolution, frameNumber, reference);

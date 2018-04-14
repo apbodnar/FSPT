@@ -1,5 +1,4 @@
 {
-  "environment": "texture/field.jpg",
   "atlasRes": 2048,
   "samples": 1000,
   "static_props": [

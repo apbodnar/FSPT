@@ -124,7 +124,7 @@ float misWeight(float a, float b ) {
     float a2 = a*a;
     float b2 = b*b;
     float a2b2 = a2 + b2;
-    return a2 / a2b2;
+    return max(a2 / a2b2, EPSILON);
 }
 
 float schlick(vec3 dir, vec3 normal){
@@ -376,7 +376,7 @@ float triangleArea(Triangle tri){
 
 float attenuationFactor(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, float t){
   float a = triangleArea(tri);
-  return (a / (t * t)) * dot(lightNormal, -ray.dir) * INV_PI;
+  return (a / (t * t)) * dot(lightNormal, -ray.dir) * INV_PI * 2.0;
 }
 
 float albedo(vec3 color){
@@ -454,8 +454,10 @@ void main(void) {
     float directPdf;
     float indirectPdf;
     if (specular) {
-      directPdf = ggxPdf(macroNormal, incident, lightDir, mat.roughness);
+      directPdf = max(dot(ray.dir, lightDir)* ggxPdf(macroNormal, incident, lightDir, mat.roughness), 0.0);
       indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
+      directPdf = misWeight(directPdf, indirectPdf);
+      indirectPdf = misWeight(indirectPdf, directPdf);
     } else {
       directPdf = max(dot(lightDir, macroNormal), 0.0);
       indirectPdf = 0.0;

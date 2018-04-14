@@ -86,9 +86,9 @@ export function parseMesh(objText, transforms, worldTransforms) {
     // Use mesh normals or calculate them
     if(transforms.normals === "mesh"){
       tri.normals = [
-        applyVectorTransforms(meshNormals[indices[0][2] - 1], true),
-        applyVectorTransforms(meshNormals[indices[1][2] - 1], true),
-        applyVectorTransforms(meshNormals[indices[2][2] - 1], true)
+        Vec3.normalize(applyVectorTransforms(meshNormals[indices[0][2] - 1], true)),
+        Vec3.normalize(applyVectorTransforms(meshNormals[indices[1][2] - 1], true)),
+        Vec3.normalize(applyVectorTransforms(meshNormals[indices[2][2] - 1], true))
       ]
     } else {
       let normal = getNormal(tri);
