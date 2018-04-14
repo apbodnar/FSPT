@@ -110,22 +110,23 @@ export function parseMesh(objText, transforms, worldTransforms) {
     if (array[0] === 'v') {
       vertices.push(vals.map(parseFloat))
     } else if (array[0] === 'f') {
-      //debugger;
-      vals = vals.map(function(s){return s.split('/').map(parseFloat)})
+      // Hack to give the mesh a point UV for flat color
+      if(uvs.length === 0){
+        uvs = [transformUV([0, 0], transforms.uvTransforms)];
+      }
+      vals = vals.map(function(s){return s.split('/').map(parseFloat)});
       parseFace(vals);
     } else if(array[0] === 'vt'){
-      let uv = vals.map(function(coord){return parseFloat(coord) || 0});
+      let uv = transforms.texture ? vals.map(function(coord){return parseFloat(coord) || 0}) : [0, 0];
       let tuv = transformUV(uv, transforms.uvTransforms);
 
+      // Don't support 3D textures
       uvs.push(tuv.splice(0,2));
     } else if(array[0] === 'vn'){
       meshNormals.push(vals.map(parseFloat))
     }
   }
   //for the mesh to have a vt attribute for atlas reads
-  if(uvs.length === 0){
-    uvs.push([0, 0]);
-  }
   let original = triangles.length;
   if (transforms.normals === "smooth") {
     for (let i = 0; i < triangles.length; i++) {

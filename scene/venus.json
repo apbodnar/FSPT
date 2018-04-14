@@ -1,23 +1,83 @@
 {
-  "environment": [[0.3,0.3,0.3],[0.4,0.6,0.8]],
+  "environment": [[0.3,0.3,0.3],[0.3,0.3,0.3]],
   "props": [
     {
       "path": "mesh/venus.obj",
-      "scale": 0.006,
+      "scale": 0.003,
       "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [0,0,0],
+      "translate": [-0.6,0.72,0],
+      "reflectance": [0.9,0.9,0.9],
+      "emittance": [0,0,0],
+      "roughness": 0.1,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/pillar.obj",
+      "scale": 0.2,
+      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
+      "translate": [-0.6,-1,0],
+      "reflectance": [0.1,0.1,0.9],
+      "emittance": [0,0,0],
+      "roughness": 0.01,
+      "normals": "mesh"
+    },
+    {
+      "path": "mesh/venus.obj",
+      "scale": 0.003,
+      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
+      "translate": [0,0.72,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "roughness": 0.3,
       "normals": "smooth"
     },
     {
+      "path": "mesh/pillar.obj",
+      "scale": 0.2,
+      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
+      "translate": [0,-1,0],
+      "reflectance": [0.1,0.9,0.1],
+      "emittance": [0,0,0],
+      "roughness": 0.01,
+      "normals": "mesh"
+    },
+    {
+      "path": "mesh/venus.obj",
+      "scale": 0.003,
+      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
+      "translate": [0.6,0.72,0],
+      "reflectance": [0.9,0.9,0.9],
+      "emittance": [0,0,0],
+      "roughness": 0.5,
+      "normals": "smooth"
+    },
+    {
+      "path": "mesh/pillar.obj",
+      "scale": 0.2,
+      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
+      "translate": [0.6,-1,0],
+      "reflectance": [0.9,0.1,0.1],
+      "emittance": [0,0,0],
+      "roughness": 0.01,
+      "normals": "mesh"
+    },
+    {
       "path": "mesh/top.obj",
-      "scale": 0.33,
+      "scale": 0.5,
       "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0,2.75,1],
+      "translate": [-2,2.75,1],
       "reflectance": [0,0,0],
-      "emittance": [200,200,180],
+      "emittance": [200,100,100],
+      "roughness": 0.1,
+      "normals": "flat"
+    },
+    {
+      "path": "mesh/top.obj",
+      "scale": 0.5,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [2,2.75,1],
+      "reflectance": [0,0,0],
+      "emittance": [100,100,200],
       "roughness": 0.1,
       "normals": "flat"
     },
@@ -26,10 +86,11 @@
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [0,-1.0,0],
-      "reflectance": [1,0.1,0.1],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.5,
-      "normals": "flat"
+      "roughness": 0.9,
+      "normals": "flat",
+      "texture": "texture/floor.jpg"
     }
   ]
 }

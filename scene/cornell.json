@@ -1,5 +1,4 @@
 {
-  "environment": "texture/pano.jpg",
   "props": [
     {
       "path": "mesh/dragon.obj",
@@ -34,22 +33,12 @@
     },
 	{
       "path": "mesh/top.obj",
-      "scale": 0.1,
+      "scale": 0.2,
       "rotate": [{"angle": 1.57, "axis": [0,1,0]}],
       "translate": [0,0.495,-0.5],
       "reflectance": [0,0,0],
       "emittance": [80,80,80],
-	  "roughness": 1,
-	  "normals": "flat"
-    },
-	{
-      "path": "mesh/octohedron.obj",
-      "scale": 0.06,
-      "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [0,-0.42,0],
-      "reflectance": [0,0,0],
-      "emittance": [0.5,0.5,5],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     },
     {
@@ -59,7 +48,7 @@
       "translate": [0,0.5,-0.5],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     },
     {
@@ -69,7 +58,7 @@
       "translate": [0,-0.5,-0.5],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     },
     {
@@ -79,7 +68,7 @@
       "translate": [-0.5,0,-0.5],
       "reflectance": [0.9,0.1,0.1],
       "emittance": [0,0,0],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     },
     {
@@ -89,7 +78,7 @@
       "translate": [0.5,0,-0.5],
       "reflectance": [0.1,0.9,0.1],
       "emittance": [0,0,0],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     },
     {
@@ -99,7 +88,7 @@
       "translate": [0,0,-1],
       "reflectance": [0.8,0.8,0.8],
       "emittance": [0,0,0],
-	  "roughness": 1,
+	  "roughness": 0.1,
 	  "normals": "flat"
     }
   ]

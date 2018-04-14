@@ -111,7 +111,7 @@ vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
 }
 
 // GGX PDF
-float ggPdf(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
+float ggxPdf(vec3 normal, vec3 incidentDir, vec3 lightDir, float a){
   vec3 facetNormal = normalize(lightDir - incidentDir); // half angle
   float a2 = a*a;
   float ndh = dot(normal, facetNormal);
@@ -454,7 +454,7 @@ void main(void) {
     float directPdf;
     float indirectPdf;
     if (specular) {
-      directPdf = ggPdf(macroNormal, incident, lightDir, mat.roughness);
+      directPdf = ggxPdf(macroNormal, incident, lightDir, mat.roughness);
       indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
     } else {
       directPdf = max(dot(lightDir, macroNormal), 0.0);
