@@ -1,9 +1,9 @@
 #version 300 es
 precision highp float;
-const int NUM_BOUNCES = 4;
+const int NUM_BOUNCES = 5;
 const float MAX_T = 100000.0;
 const float n1 = 1.0;
-const float n2 = 1.4;
+const float n2 = 1.6;
 const float EPSILON = 0.000001;
 const float sr = n1/n2;
 const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
@@ -19,6 +19,7 @@ uniform int tick;
 uniform float scale;
 uniform float numLights;
 uniform float randBase;
+uniform float indirectClamp;
 uniform vec3 eye;
 uniform vec3 rightMax;
 uniform vec3 rightMin;
@@ -51,11 +52,11 @@ struct Normals {
 };
 
 struct Material {
-  vec3 reflectance;
   vec3 emissivity;
   float roughness;
   float metal;
   float diffuse;
+  float dielectric;
 };
 
 struct Ray {
@@ -175,13 +176,15 @@ ivec2 indexToCoords(sampler2D tex, float index, float perElement){
 
 Material createMaterial(float index){
   ivec2 base = indexToCoords(matTex, index, 3.0);
+  vec4 first = texelFetch(matTex, base, 0);
+  vec4 second = texelFetch(matTex, base + ivec2(1,0), 0);
   vec4 third = texelFetch(matTex, base + ivec2(2,0), 0);
   return Material(
-    texelFetch(matTex, base + ivec2(1,0), 0).rgb,
-    texelFetch(matTex, base, 0).rgb,
-	  third.r,
-    third.g,
-    third.b
+    first.rgb,
+	  second.r,
+    second.g,
+    second.b,
+    third.r
   );
 }
 
@@ -447,21 +450,29 @@ void main(void) {
     ray.origin = origin + macroNormal * EPSILON;
     vec3 lightDir;
     vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
-    bool specular = mat.metal > 0.0 ? true : schlick(ray.dir, microNormal) > rnd();
+    float inside = sign(dot(-ray.dir, macroNormal));
+    bool specular = mat.metal > 0.0 ? true : schlick(ray.dir, inside * microNormal) > rnd();
+    bool refracted = mat.dielectric > 0.0 && !specular;
     vec3 incident = ray.dir;
-    ray.dir = specular ? reflect(ray.dir, microNormal) : cosineWeightedRandomVec(macroNormal);
-    vec3 indirect = getIndirectEmission(ray, result);
     float directPdf;
     float indirectPdf;
     if (specular) {
+      ray.dir = reflect(ray.dir, microNormal);
       directPdf = max(dot(ray.dir, lightDir)* ggxPdf(macroNormal, incident, lightDir, mat.roughness), 0.0);
       indirectPdf = max(dot(ray.dir, macroNormal), 0.0);
       directPdf = misWeight(directPdf, indirectPdf);
       indirectPdf = misWeight(indirectPdf, directPdf);
+    } else if(refracted) {
+      ray.origin = -inside * macroNormal * EPSILON + origin;
+      ray.dir = refract(incident,inside * microNormal, pow(sr, inside));
+      directPdf = 0.0;
+      indirectPdf = 1.0;
     } else {
+      ray.dir = cosineWeightedRandomVec(macroNormal);
       directPdf = max(dot(lightDir, macroNormal), 0.0);
       indirectPdf = 0.0;
     }
+    vec3 indirect = getIndirectEmission(ray, result);
     vec3 textureColor = applyGamma(texture(atlasTex, texCoord).rgb);
     directSamples[i] = direct * directPdf;
     indirectSamples[i] = indirect * indirectPdf;

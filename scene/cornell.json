@@ -7,7 +7,7 @@
       "translate": [0,-0.25,-0.8],
       "reflectance": [0.5,0.5,0.8],
       "emittance": [0,0,0],
-	  "roughness": 0.3,
+	  "roughness": 0.15,
 	  "normals": "smooth"
     },
 	{
@@ -36,9 +36,9 @@
       "path": "mesh/top.obj",
       "scale": 0.2,
       "rotate": [{"angle": 1.57, "axis": [0,1,0]}],
-      "translate": [0,0.495,-0.5],
+      "translate": [0,0.4999,-0.5],
       "reflectance": [0,0,0],
-      "emittance": [80,80,80],
+      "emittance": [40,40,40],
 	  "roughness": 0.1,
 	  "normals": "flat"
     },

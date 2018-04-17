@@ -29,12 +29,12 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 ## Experiments
 
-![alt text](images/venus2.png)
+![alt text](images/venus3.png)
+![alt text](images/cornell.png)
 ![alt text](images/lighthouse.png)
 ![alt text](images/hands.png)
 ![alt text](images/monks.png)
 ![alt text](images/pot.png)
-![alt text](images/dragon.png)
 ![alt text](images/fairy.png)
 ![alt text](images/sib.png)
 

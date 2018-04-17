@@ -23,6 +23,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
   let sampleInput = document.getElementById('max-samples');
   let sampleOutput = document.getElementById("counter");
   let lightRanges = [];
+  let indirectClamp = Infinity;
   let atlasRes = 2048;
   let envTrans = [0,0,1];
   let moving = false;
@@ -80,7 +81,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "randBase", "dims", "eye", "envTex",
+        "tick", "randBase", "dims", "eye", "envTex", "indirectClamp",
         "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "atlasTex",
         "scale", "rightMax", "rightMin", "leftMax", "leftMin", "lightRanges", "numLights"
       ],
@@ -211,7 +212,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
         }
         for (let j = 0; j < tris.length; j++) {
           let transforms = tris[j].transforms;
-          let subBuffer = [].concat(transforms.emittance, transforms.reflectance, [Math.pow(transforms.roughness, 2), transforms.metal, transforms.diffuse]);
+          let subBuffer = [].concat(transforms.emittance, [Math.pow(transforms.roughness, 2), transforms.metal, transforms.diffuse], [transforms.dielectric, 0, 0]);
           subBuffer.forEach(function (el) {
             materialBuffer.push(el)
           });
@@ -445,6 +446,7 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
     gl.uniform1i(program.uniforms.envTex, 8);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
+    gl.uniform1f(program.uniforms.indirectClamp, indirectClamp);
     gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform2f(program.uniforms.dims, gl.viewportWidth, gl.viewportHeight);
     gl.uniform3fv(program.uniforms.envTrans, envTrans);

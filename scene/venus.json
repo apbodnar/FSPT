@@ -6,21 +6,22 @@
       "scale": 0.003,
       "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
       "translate": [-0.6,0.72,0],
-      "reflectance": [0.9,0.9,0.9],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
       "roughness": 0.1,
       "normals": "smooth",
-      "metal": true
+      "dielectric": true
     },
     {
       "path": "mesh/pillar.obj",
       "scale": 0.2,
       "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
       "translate": [-0.6,-1,0],
-      "reflectance": [0.1,0.1,0.9],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.01,
-      "normals": "mesh"
+      "roughness": 0.1,
+      "normals": "mesh",
+      "dielectric": true
     },
     {
       "path": "mesh/venus.obj",
@@ -38,10 +39,11 @@
       "scale": 0.2,
       "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
       "translate": [0,-1,0],
-      "reflectance": [0.1,0.9,0.1],
+      "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.01,
-      "normals": "mesh"
+      "roughness": 0.3,
+      "normals": "mesh",
+      "metal": true
     },
     {
       "path": "mesh/venus.obj",
@@ -50,18 +52,17 @@
       "translate": [0.6,0.72,0],
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.5,
-      "normals": "smooth",
-      "metal": true
+      "roughness": 0.3,
+      "normals": "smooth"
     },
     {
       "path": "mesh/pillar.obj",
       "scale": 0.2,
       "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
       "translate": [0.6,-1,0],
-      "reflectance": [0.9,0.1,0.1],
+      "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.01,
+      "roughness": 0.3,
       "normals": "mesh"
     },
     {

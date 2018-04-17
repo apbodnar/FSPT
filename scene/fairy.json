@@ -1,5 +1,5 @@
 {
-  "environment": "texture/pano.jpg",
+  "environment": "texture/field.jpg",
   "props": [
     {
       "path": "mesh/fairy.obj",
