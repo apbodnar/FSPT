@@ -420,7 +420,7 @@ void main(void) {
   vec2 res = vec2(textureSize(fbTex, 0));
   seed = randBase + gl_FragCoord.x + res.x * gl_FragCoord.y;
   vec3 screen = getScreen() * scale;
-  vec3 aa = vec3(getAA(), 0.0) / res.x * scale;
+  vec3 aa = vec3(getAA() / res, 0.0) * scale;
   Ray ray = Ray(eye + aa, normalize(screen - eye));
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   vec3 indirectSamples[NUM_BOUNCES];
@@ -470,7 +470,7 @@ void main(void) {
   }
 
   for(int i=bounces; i>=0; --i){
-    color = reflectance[i]*(directSamples[i] + color + indirectSamples[i]);
+    color = reflectance[i]*(directSamples[i] + color + clamp(indirectSamples[i], vec3(0), vec3(32)));
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);

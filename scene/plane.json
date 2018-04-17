@@ -1,5 +1,5 @@
 {
-  "environment": [[10,10,10],[0.0,0.4,0.8]],
+  "environment": "texture/field.jpg",
   "props": [
     {
       "path": "mesh/happy.obj",
@@ -8,17 +8,19 @@
       "translate": [0,-0.6,0],
       "reflectance": [0.997644, 0.4, 0.258816],
       "emittance": [0,0,0],
-      "roughness": 0.99
+      "roughness": 0.6,
+      "normals": "smooth"
     },
     {
       "path": "mesh/happy.obj",
       "scale": 6,
       "rotate": [{"angle": 1, "axis": [0,1,0]}],
       "translate": [-0.5,-0.6,0],
-      "reflectance": [0.8, 0.8, 0.8],
+      "reflectance": [1,0.766,0.336],
       "emittance": [0,0,0],
       "roughness": 0.3,
-      "metal": true
+      "metal": true,
+      "normals": "smooth"
     },
     {
       "path": "mesh/happy.obj",
@@ -27,7 +29,8 @@
       "translate": [0.5,-0.6,0],
       "reflectance": [0.8, 0.8, 0.8],
       "emittance": [0,0,0],
-      "roughness": 0.2
+      "roughness": 0.2,
+      "normals": "smooth"
     },
     {
       "path": "mesh/top.obj",
@@ -52,9 +55,10 @@
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [0,-0.3,0],
-      "reflectance": [1,1,0.1],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.2
+      "roughness": 0.2,
+      "texture": "texture/floor.jpg"
     }
   ]
 }

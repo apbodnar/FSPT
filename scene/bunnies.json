@@ -1,4 +1,5 @@
 {
+  "environment": "texture/field.jpg",
   "atlasRes": 2048,
   "samples": 1000,
   "static_props": [
@@ -26,9 +27,9 @@
       "scale": 0.11,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [0,-0.2,-0.5],
-      "reflectance": [0.9,0.7,0.2],
+      "reflectance": [1,0.766,0.336],
       "emittance": [0,0,0],
-      "roughness": 0.15,
+      "roughness": 0.2,
       "normals": "smooth",
       "metal": true
     }
@@ -68,11 +69,11 @@
     },
     "l1": {
       "path": "mesh/top.obj",
-      "scale": 1,
+      "scale": 0.5,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [1,2,1],
       "reflectance": [0, 0, 0],
-      "emittance": [20, 20, 20],
+      "emittance": [40, 40, 40],
       "roughness": 0.95
     }
   }

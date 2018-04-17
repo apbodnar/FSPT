@@ -1,5 +1,5 @@
 {
-  "environment": [[0.3,0.3,0.3],[0.3,0.3,0.3]],
+  "environment": "texture/field.jpg",
   "props": [
     {
       "path": "mesh/venus.obj",
@@ -9,7 +9,8 @@
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "roughness": 0.1,
-      "normals": "smooth"
+      "normals": "smooth",
+      "metal": true
     },
     {
       "path": "mesh/pillar.obj",
@@ -29,7 +30,8 @@
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "roughness": 0.3,
-      "normals": "smooth"
+      "normals": "smooth",
+      "metal": true
     },
     {
       "path": "mesh/pillar.obj",
@@ -49,7 +51,8 @@
       "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "roughness": 0.5,
-      "normals": "smooth"
+      "normals": "smooth",
+      "metal": true
     },
     {
       "path": "mesh/pillar.obj",

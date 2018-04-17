@@ -11,7 +11,12 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
   let textures = {};
   let framebuffers = [];
   let scale = 1;
-  let corners = {rightMax: [1, 1, 0], leftMin: [-1, -1, 0], leftMax: [-1, 1, 0], rightMin: [1, -1, 0]};
+  let corners = {
+    rightMax: [resolution[0]/resolution[1], 1, 0],
+    leftMin: [-resolution[0]/resolution[1], -1, 0],
+    leftMax: [-resolution[0]/resolution[1], 1, 0],
+    rightMin: [resolution[0]/resolution[1], -1,  0]
+  };
   let eye = new Float32Array([0, 0, 2 * scale]);
   let pingpong = 0;
   let clear = false;
@@ -35,8 +40,8 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
 
   function initGL(canvas) {
     gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
-    gl.viewportWidth = canvas.width = resolution; // square render target
-    gl.viewportHeight = canvas.height = resolution;
+    gl.viewportWidth = canvas.width = resolution[0]; // square render target
+    gl.viewportHeight = canvas.height = resolution[1];
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
   }
 
@@ -562,6 +567,17 @@ function PathTracer(scenePath, sceneName, resolution, frameNumber, reference) {
   });
 }
 
+function getResolution(){
+  let resolutionMatch = window.location.search.match(/res=(\d+)(x(\d+))?/);
+  if(Array.isArray(resolutionMatch) && resolutionMatch[1] && resolutionMatch[3]){
+    return [resolutionMatch[1], resolutionMatch[3]];
+  } else if(Array.isArray(resolutionMatch) && resolutionMatch[1]) {
+    return [resolutionMatch[1], resolutionMatch[1]];
+  } else {
+    return [window.innerWidth, window.innerHeight];
+  }
+}
+
 let frameNumberMatch = window.location.search.match(/frame=(\d+)/);
 let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[1]) : -1;
 let sceneMatch = window.location.search.match(/scene=([a-zA-Z_]+)/);
@@ -569,6 +585,5 @@ let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?fr
 let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
 let refMatch = window.location.search.match(/reference=([a-zA-Z_]+)/);
 let reference = Array.isArray(refMatch) && refMatch.length > 0 && refMatch[1] === 'true';
-let resolutionMatch = window.location.search.match(/res=(\d+)/);
-let resolution = Array.isArray(resolutionMatch) ? parseFloat(resolutionMatch[1]) : window.innerHeight;
+let resolution = getResolution();
 new PathTracer(scenePath, sceneName, resolution, frameNumber, reference);
