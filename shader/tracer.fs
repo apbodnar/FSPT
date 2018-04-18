@@ -2,11 +2,9 @@
 precision highp float;
 const int NUM_BOUNCES = 5;
 const float MAX_T = 100000.0;
-const float n1 = 1.0;
-const float n2 = 1.6;
+const float N1 = 1.0;
+const float N2 = 1.6;
 const float EPSILON = 0.000001;
-const float sr = n1/n2;
-const float r0 = ((n1 - n2)/(n1 + n2))*((n1 - n2)/(n1 + n2));
 const float M_PI = 3.14159265;
 const float INV_PI = 1.0 / M_PI;
 const uint FROM_PARENT = uint(0);
@@ -90,15 +88,6 @@ struct Hit {
 
 float rnd() { return fract(sin(seed += 0.312489)*43758.5453123); }
 
-float rand(vec2 co){
-  float a = 12.9898;
-  float b = 78.233;
-  float c = 43758.5453;
-  float dt= dot(co ,vec2(a,b) + float(tick) * 0.0194161103);
-  float sn= mod(dt,M_PI);
-  return fract(sin(sn) * c);
-}
-
 // GGX importance-sampled microfacet
 vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
   vec2 xi = vec2(rnd(), rnd());
@@ -128,9 +117,21 @@ float misWeight(float a, float b ) {
     return max(a2 / a2b2, EPSILON);
 }
 
-float schlick(vec3 dir, vec3 normal){
-  float dh = 1.0 - dot(-dir,normal);
-  return r0 + (1.0 - r0)*dh*dh*dh*dh*dh;
+float schlick(vec3 dir, vec3 normal, float n1, float n2){
+  float r0 = (n1-n2) / (n1+n2);
+  r0 *= r0;
+  float cosX = -dot(normal, dir);
+  if (n1 > n2)
+  {
+      float n = n1/n2;
+      float sinT2 = n*n*(1.0-cosX*cosX);
+      // Total internal reflection
+      if (sinT2 > 1.0)
+          return 1.0;
+      cosX = sqrt(1.0-sinT2);
+  }
+  float x = 1.0-cosX;
+  return r0+(1.0-r0)*x*x*x*x*x;
 }
 
 vec3 cosineWeightedRandomVec(vec3 normal){
@@ -451,7 +452,8 @@ void main(void) {
     vec3 lightDir;
     vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
     float inside = sign(dot(-ray.dir, macroNormal));
-    bool specular = mat.metal > 0.0 ? true : schlick(ray.dir, inside * microNormal) > rnd();
+    vec2 ns = inside > 0.0 ? vec2(N1, N2) : vec2(N2, N1);
+    bool specular = mat.metal > 0.0 ? true : schlick(ray.dir, inside * microNormal, ns.x, ns.y) > rnd();
     bool refracted = mat.dielectric > 0.0 && !specular;
     vec3 incident = ray.dir;
     float directPdf;
@@ -464,7 +466,7 @@ void main(void) {
       indirectPdf = misWeight(indirectPdf, directPdf);
     } else if(refracted) {
       ray.origin = -inside * macroNormal * EPSILON + origin;
-      ray.dir = refract(incident,inside * microNormal, pow(sr, inside));
+      ray.dir = refract(incident,inside * microNormal, ns.x / ns.y);
       directPdf = 0.0;
       indirectPdf = 1.0;
     } else {

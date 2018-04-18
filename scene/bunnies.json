@@ -27,11 +27,11 @@
       "scale": 0.11,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [0,-0.2,-0.5],
-      "reflectance": [1,0.766,0.336],
+      "reflectance": [1,1,1],
       "emittance": [0,0,0],
       "roughness": 0.2,
       "normals": "smooth",
-      "metal": true
+      "dielectric": true
     }
   ],
   "animated_props": {
@@ -50,9 +50,9 @@
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [-0.5,-0.2,0],
-      "reflectance":  [0.5,0.5,9],
+      "reflectance":  [1,0.766,0.336],
       "emittance": [0,0,0],
-      "roughness": 0.75,
+      "roughness": 0.15,
       "normals": "smooth",
       "metal": true
     },
