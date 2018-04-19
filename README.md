@@ -29,16 +29,18 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 ## Experiments
 
+![alt text](images/clear.png)
 ![alt text](images/venus3.png)
 ![alt text](images/cornell.png)
+![alt text](images/sib.png)
 ![alt text](images/lighthouse.png)
 ![alt text](images/hands.png)
 ![alt text](images/monks.png)
 ![alt text](images/pot.png)
-![alt text](images/fairy.png)
-![alt text](images/sib.png)
+
 
 "Lighthouse.obj" and "Tugboat.obj" by 'Poly by Google' is licensed under CC BY 2.0
+"2B" by Kimchi_Lord is licensed under CC Attribution-NonCommercial-NoDerivs
 
 ## Forking
 
