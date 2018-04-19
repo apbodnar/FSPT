@@ -7,13 +7,13 @@ Requirements:
 * A top-end discrete GPU (for now)
 
 TODOs (Not Exhaustive):
-* Remove biased specular hacks
-* Fully implement specular and diffuse BRDFs
-* Refraction with configurable IoR
+* Fully implement microfacet BRDF
+* Configurable IoR
 * Better BVH construction (SAH) and traversal.
 * Rewrite scene file structure.
 * Actually support asset standards. OBJ, MTL, etc...
 * Tiled rendering
+* Make faster
 
 ## Demo
 
@@ -59,52 +59,86 @@ A scene config file like `bunnies.json` looks like:
 
 ```
 {
-  "environment": "texture/pano.jpg",
+  "environment": "texture/field.jpg",
   "atlasRes": 2048,
-  "props": [
+  "samples": 1000,
+  "static_props": [
     {
-      "path": "mesh/bunny_big.obj",
-      "scale": 0.2,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [0.4,-0.2,0],
-      "reflectance": [0.9,0.9,0.9],
+      "path": "mesh/plank.obj",
+      "scale":2,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [1,-0.3,0],
+      "reflectance": [1,0.4,0.4],
       "emittance": [0,0,0],
-      "roughness": 0.05,
-      "normals": "smooth"
+      "roughness": 0.1
     },
     {
-      "path": "mesh/bunny_big.obj",
-      "scale": 0.2,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [-0.4,-0.2,0],
-      "reflectance": [0.9, 0.9, 0.9],
+      "path": "mesh/plank.obj",
+      "scale": 2,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [-1,-0.3,0],
+      "reflectance": [0.9,0.9,0.9],
       "emittance": [0,0,0],
-      "roughness": 0.001,
+      "roughness": 0.15,
+      "metal": true
+    },
+    {
+      "path": "mesh/dragon.obj",
+      "scale": 0.11,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [0,-0.2,-0.5],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "roughness": 0.2,
+      "normals": "smooth",
+      "dielectric": true
+    }
+  ],
+  "animated_props": {
+    "p1": {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.18,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [0.05,-0.2,0],
+      "reflectance": [1,1,1],
+      "emittance": [0,0,0],
+      "roughness": 0.01,
+      "normals": "smooth"
+    },
+    "p2": {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.18,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [-0.5,-0.2,0],
+      "reflectance":  [1,0.766,0.336],
+      "emittance": [0,0,0],
+      "roughness": 0.15,
       "normals": "smooth",
       "metal": true
     },
-    {
-      "path": "mesh/top.obj",
-      "scale": 0.4,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [1,2,1],
-      "reflectance": [0,0,0],
-      "emittance": [100,100,100],
-      "roughness": 0.9
-    },
-    {
-      "path": "mesh/top.obj",
-      "scale": 4,
-      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-0.3,0],
-      "reflectance": [0.9,0.2,0.4],
+    "p3": {
+      "path": "mesh/bunny_big.obj",
+      "scale": 0.18,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [0.6,-0.2,0],
+      "reflectance":  [0.5,1,0.5],
       "emittance": [0,0,0],
-      "roughness": 0.01,
-      "metal": true
+      "roughness": 0.3,
+      "normals": "smooth",
+      "diffuse": true
+    },
+    "l1": {
+      "path": "mesh/top.obj",
+      "scale": 0.5,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [1,2,1],
+      "reflectance": [0, 0, 0],
+      "emittance": [40, 40, 40],
+      "roughness": 0.95
     }
-  ]
+  }
 }
 ```
+`animated_props` will be interpreted as static props unless the server is https://github.com/apbodnar/FSPT-server
 
 Any prop with a non zero emittance will be treated as a light source. Any prop without a `texture` will use its reflectance as a solid color. More rotations can be applied by adding more into the array.
-If you wish to use your own OBJs, make sure you add the texture to the scene file and that it has at least one `vt` attribute.
