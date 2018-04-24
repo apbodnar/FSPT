@@ -10,6 +10,7 @@ const float INV_PI = 1.0 / M_PI;
 const uint FROM_PARENT = uint(0);
 const uint FROM_SIBLING = uint(1);
 const uint FROM_CHILD = uint(2);
+const float EXPLICIT_COS_THRESHOLD = -0.1;
 
 float seed;
 
@@ -402,6 +403,9 @@ vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   Triangle light = randomLight(range);
   vec3 lightPoint = randomPointOnTriangle(light);
   lightDir = normalize(lightPoint - origin);
+  if( dot(lightDir, normal) < EXPLICIT_COS_THRESHOLD ){
+    return intensity;
+  }
   Ray ray = Ray(origin, lightDir);
   Hit shadow = traverseTree(ray);
   // Gross float equality hack
