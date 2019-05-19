@@ -1,6 +1,9 @@
 {
   "environment": "environment/misty_pines_4k.RGBE.PNG",
   "atlasRes": 1,
+  "cameraPos": [-1.333,0.346,4.021],
+  "cameraDir": [0.255,-0.160,-0.954],
+  "fovScale": 0.2,
   "props": [
     {
       "path": "asset_packs/misc/bunny.obj",
@@ -10,28 +13,8 @@
       "diffuse": [1,1,1],
       "emittance": [0,0,0],
       "roughness": 0.2,
-      "ior": 10000,
+      "ior": 1.4,
       "normals": "smooth"
-    },
-    {
-      "path": "asset_packs/misc/triangle.obj",
-      "scale": 1,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [1.525,1.75,0.2],
-      "diffuse": [0,0,0],
-      "emittance": [50,100,50],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    {
-      "path": "asset_packs/misc/triangle.obj",
-      "scale": 1,
-      "rotate": [{"angle": 0.754, "axis": [0,0,1]}],
-      "translate": [-0.5,0.5,0],
-      "diffuse": [0,0,0],
-      "emittance": [10,10,10],
-      "roughness": 0.1,
-      "normals": "flat"
     },
     {
       "path": "asset_packs/misc/top.obj",
@@ -50,8 +33,9 @@
       "translate": [0,0.25,-1],
       "diffuse": [0.1,0.1,1],
       "emittance": [0,0,0],
-      "roughness": 0.3,
-      "normals": "flat"
+      "roughness": 0.05,
+      "normals": "flat",
+	  "ior": "10"
     }
   ]
 }

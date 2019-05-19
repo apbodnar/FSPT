@@ -10,35 +10,56 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let programs = {};
   let textures = {};
   let framebuffers = [];
-  let scale = 0.5;
-  let envTheta = 0.0;
-  let exposure = 1.0;
-  let dir = [0,0,-1];
-  let eye = [0, 0, 2];
-  let bvh = null;
+  let bvh;
   let pingpong = 0;
-  let focalDepthElement = document.getElementById("focal-depth");
-  let apertureSizeElement = document.getElementById("aperture-size");
-  let lensFeatures = [1 - 1 / focalDepthElement.value, apertureSizeElement.value];
-  let sampleInput = document.getElementById('max-samples');
-  let sampleOutput = document.getElementById("counter");
-  let whitePointSlider = document.getElementById("white-point");
-  let saturation = 1;
-  let whitePoint = whitePointSlider.value;
+  let scale;
+  let envTheta;
+  let exposure;
+  let dir;
+  let eye;
+  let focalDepthElement;
+  let apertureSizeElement;
+  let expElement;
+  let satElement;
+  let lensFeatures;
+  let sampleInput;
+  let sampleOutput;
+  let whitePointSlider;
+  let saturation;
+  let whitePoint;
   let lightRanges = [];
   let indirectClamp = 128;
   let atlasRes = 2048;
   let moving = false;
   let isFramed = !!window.frameElement;
   let active = !isFramed;
-
+  const maxT = 1e6;
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
   }
-
-  function writeCounter(message) {
-    sampleOutput.value = parseInt(message);
+  
+  function initGlobals(scene) {
+	focalDepthElement = document.getElementById("focal-depth");
+	apertureSizeElement = document.getElementById("aperture-size");
+	sampleInput = document.getElementById('max-samples');
+	sampleOutput = document.getElementById("counter");
+	whitePointSlider = document.getElementById("white-point");
+	expElement = document.getElementById("exposure");
+	satElement = document.getElementById("saturation");
+	
+	
+	saturation = satElement.value;
+	whitePoint = whitePointSlider.value;
+	
+	sampleInput.value = scene.samples || 2000;
+	
+	scale = scene.fovScale || 0.5;
+	envTheta = scene.environmentTheta || 0;;
+	exposure = scene.exposure || 1.0;
+	dir = scene.cameraDir || [0,0,-1];
+	eye = scene.cameraPos || [0, 0, 2];
+	lensFeatures = [1 - 1 / focalDepthElement.value, apertureSizeElement.value];
   }
 
   function initGL(canvas) {
@@ -167,7 +188,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let diffuseIndex = null;
     let roughnessIndex = null;
     let normalIndex = null;
-	  let specularIndex = null;
+	let specularIndex = null;
     if (group.material["map_kd"]) {
       let assetUrl = basePath + "/" + group.material["map_kd"];
       diffuseIndex = texturePacker.addTexture(assets[assetUrl]);
@@ -182,7 +203,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 	  }
 
     if (group.material["map_pmr"]) {
-	    let assetUrl = basePath + "/" + group.material["map_pmr"];
+	  let assetUrl = basePath + "/" + group.material["map_pmr"];
       roughnessIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (group.material["pmr"]) {
       roughnessIndex = texturePacker.addTexture(createFlatTexture(group.material["pmr"]));
@@ -197,12 +218,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
        specularIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (group.material["kem"]) {
       specularIndex = texturePacker.addTexture(createFlatTexture(group.material["kem"]));
-   } else {
+    } else {
        specularIndex = texturePacker.addTexture(createFlatTexture([0, 0, 0]));
     }
 
     if (group.material["map_bump"]) {
-	    let assetUrl = basePath + "/" + group.material["map_bump"];
+	  let assetUrl = basePath + "/" + group.material["map_bump"];
       normalIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (transforms.normal) {
       normalIndex = texturePacker.addTexture(assets[transforms.normal]);
@@ -212,7 +233,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     material.diffuseIndex = diffuseIndex;
     material.roughnessIndex = roughnessIndex;
     material.normalIndex = normalIndex;
-	  material.specularIndex = specularIndex;
+	material.specularIndex = specularIndex;
     material.ior = transforms.ior || 1.3;
     material.dielectric = transforms.dielectric;
     material.emittance = transforms.emittance;
@@ -244,7 +265,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let groups = parsed.groups;
 
 	  if(parsed.urls && parsed.urls.size > 0){
-		  console.log("Downloading: \n", Array.from(parsed.urls).join('\n'));
+		console.log("Downloading: \n", Array.from(parsed.urls).join('\n'));
 	    let newTextures = await Utility.loadAll(Array.from(parsed.urls));
 	    assets = Object.assign(assets, newTextures);
 	  }
@@ -262,7 +283,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     let time = new Date().getTime();
     let maxTris = 4;
-	  console.log("Building BVH:",geometry.length,"triangles");
+	console.log("Building BVH:",geometry.length,"triangles");
     bvh = new BVH(geometry, maxTris);
     console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds");
     time = new Date().getTime();
@@ -376,23 +397,23 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let e2 = Vec3.sub(tri.verts[2], tri.verts[0]);
       let p = Vec3.cross(dir, e2);
       let det = Vec3.dot(e1, p);
-      if(det > -epsilon && det < epsilon){return Infinity}
+      if(det > -epsilon && det < epsilon){return maxT}
       let invDet = 1.0 / det;
       let t = Vec3.sub(eye, tri.verts[0]);
       let u = Vec3.dot(t, p) * invDet;
-      if(u < 0 || u > 1){return Infinity}
+      if(u < 0 || u > 1){return maxT}
       let q = Vec3.cross(t, e1);
       let v = Vec3.dot(dir, q) * invDet;
-      if(v < 0 || u + v > 1){return Infinity}
+      if(v < 0 || u + v > 1){return maxT}
       t = Vec3.dot(e2, q) * invDet;
       if(t > epsilon){
         return t;
       }
-      return Infinity;
+      return maxT;
     }
 	
     function processLeaf(root){
-      let res = Infinity;
+      let res = maxT;
 	  let tris = root.getTriangles();
       for(let i=0; i<tris.length; i++){
         let tmp = rayTriangleIntersect(tris[i])
@@ -420,14 +441,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       tmin = Math.max(tmin, Math.min(tz1, tz2));
       tmax = Math.min(tmax, Math.max(tz1, tz2));
       
-      return tmax >= tmin && tmax >= 0 ? tmin : Infinity;
+      return tmax >= tmin && tmax >= 0 ? tmin : maxT;
     }
     
     function closestNode(nLeft, nRight){
       let tLeft = rayBoxIntersect(nLeft.boundingBox);
       let tRight = rayBoxIntersect(nRight.boundingBox);
-      let left = tLeft < Infinity ? nLeft : null;
-      let right = tRight < Infinity ? nRight : null;
+      let left = tLeft < maxT ? nLeft : null;
+      let right = tRight < maxT ? nRight : null;
       if(tLeft < tRight){
         return [{node: left, t: tLeft}, {node: right, t: tRight}]
       }
@@ -447,8 +468,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       return closest;
     }
 	
-    let dist = findTriangles(bvh.root, Infinity);
+    let dist = findTriangles(bvh.root, maxT);
     lensFeatures[0] = 1 - 1 / dist;
+	focalDepthElement.value = dist.toFixed(3);
   }
 
   function initAtlas(assets, texturePacker){
@@ -512,8 +534,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let cameraDirElement = document.getElementById("camera-dir");
     let eyePosElement = document.getElementById("eye-pos");
 	let thetaElement = document.getElementById("env-theta");
-    let expElement = document.getElementById("exposure");
-	let satElement = document.getElementById("saturation");
     let xi, yi;
     let mode = false;
 
@@ -609,6 +629,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
           pingpong = 0;
           break;
       }
+	  eyePosElement.value = String(eye.map((comp) => { return comp.toFixed(3) }));
 	  shootAutoFocusRay();
     }, false);
   }
@@ -691,7 +712,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       pingpong++;
       drawTracer(moving ? 0 : pingpong);
       pingpong++;
-      writeCounter(pingpong);
+      sampleOutput.value = pingpong;
     }
 	drawQuad(moving ? 0 : pingpong);
   }
@@ -754,8 +775,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     scenePath
   ]);
   let scene = JSON.parse(sceneRes);
-  envTheta = scene.environmentTheta || 0;
-  sampleInput.value = scene.samples || 2000;
+  initGlobals(scene);
   mergeSceneProps(scene).forEach(function (e) {
     pathSet.add(e.path);
     if(typeof e.diffuse === 'string'){

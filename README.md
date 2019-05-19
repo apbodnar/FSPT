@@ -7,23 +7,28 @@ Requirements:
 * A top-end discrete GPU (for now)
 
 Features:
+* Image based lighting
+* Area lights with light sampling (currently incorrect)
 * Alpha textures / transparency
 * Refraction
 * Bokeh depth of field with variable aperture size
 * Varible focus depth and auto-focus
-* PBR material maps. Metallicness, roughness, emissivity. 
+* Normal maps
+* PBR material maps. Metallicness, roughness, emissivity.
 * Post processing: exposure, saturation
 
 TODOs (Not Exhaustive):
+* Refactor texture packing to be far, far less wasteful of memory (current worst case could use megabytes where bytes are needed)
 * Fix light sampling
 * HDRi importance sampling
 * Parallelize BVH construction and texture packing with web workers
 * Verify Microfacet BxDF correctness
 * Faster BVH construction and traversal.
 * Make metallic and roughness more flexible
+* Pick a standard material model. Possibly allow merging and swizzling of metrial channels.
 * Better support for asset standards. OBJ, MTL, etc...
 * Tiled rendering
-* Refactor texture packing to be far, far less wasteful of memory
+* Put ray generation in a separate shader aka camera shaders.
 
 ## Demo
 
@@ -32,16 +37,14 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 **Light sampling is currently broken**
 
+Try messing with the mouse, scrolling, and WASD + RF keys.  Be sure to adjust the exposure and saturation.
+
 [Bunny](http://apbodnar.github.io/FSPT/index.html?scene=bunny&res=400)
-
-[Dolls](http://apbodnar.github.io/FSPT/index.html?scene=wood&res=400)
-
-[Bunnies?](http://apbodnar.github.io/FSPT/index.html?scene=bunnies&res=400)
-
 
 ## Experiments
 
 ![alt text](images/beach.png)
+![alt text](images/lego.png)
 ![alt text](images/chess.png)
 ![alt text](images/kokeshi.png)
 ![alt text](images/nier.png)
@@ -62,8 +65,6 @@ Depending on the port used, open a url like: http://localhost:8000/?scene=bunnie
 `scene` is the base filename of the scene json file you wish to render.  
 `res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / `<scalar>`.  
 `mode` sets the desired features.  For alpha use `mode=alpha`. For light sampling `mode=nee`. For both use `mode=alpha_nee`.  Light sampling slows down rendering but can vastly speed up convergence if using area lights. Alpha slows rendering greatly.
-
-Try messing with the mouse, scrolling, and WASD + RF keys.
 
 A scene config file like `cath.json` looks like:
 

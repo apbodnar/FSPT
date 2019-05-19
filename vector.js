@@ -16,11 +16,11 @@ export class Vec3 {
     return [v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]];
   }
 
-  static mult(v1, v2){
+  static mult(v1, v2) {
     return [v1[0] * v2[0], v1[1] * v2[1], v1[2] * v2[2]];
   }
 
-  static sqrt(v){
+  static sqrt(v) {
     return [Math.sqrt(v[0]), Math.sqrt(v[1]), Math.sqrt(v[1])]
   }
 
@@ -76,7 +76,8 @@ export class Vec3 {
     let oc = 1.0 - c;
     let mat = [oc * x * x + c, oc * x * y - z * s, oc * z * x + y * s,
       oc * x * y + z * s, oc * y * y + c, oc * y * z - x * s,
-      oc * z * x - y * s, oc * y * z + x * s, oc * z * z + c];
+      oc * z * x - y * s, oc * y * z + x * s, oc * z * z + c
+    ];
     return Vec3.matVecMultiply(v, mat);
   }
 
