@@ -45,6 +45,7 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 ![alt text](images/chess.png)
 ![alt text](images/kokeshi.png)
 ![alt text](images/nier.png)
+![alt text](images/icons.png)
 ![alt text](images/pink.png)
 ![alt text](images/table.png)
 ![alt text](images/ori.png)
