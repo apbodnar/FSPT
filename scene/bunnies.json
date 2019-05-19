@@ -1,80 +1,59 @@
 {
-  "environment": "texture/field.jpg",
-  "atlasRes": 2048,
+  "environment": "environment/old_depot_2k.RGBE.PNG",
+  "atlasRes": 1,
   "samples": 1000,
   "static_props": [
     {
-      "path": "mesh/plank.obj",
+      "path": "asset_packs/misc/plank.obj",
       "scale":2,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [1,-0.3,0],
-      "reflectance": [1,0.4,0.4],
+      "diffuse": [1,0.4,0.4],
       "emittance": [0,0,0],
       "roughness": 0.1
     },
     {
-      "path": "mesh/plank.obj",
+      "path": "asset_packs/misc/plank.obj",
       "scale": 2,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
       "translate": [-1,-0.3,0],
-      "reflectance": [0.9,0.9,0.9],
+      "diffuse": [0.9,0.9,0.9],
       "emittance": [0,0,0],
       "roughness": 0.15,
-      "metal": true
-    },
-    {
-      "path": "mesh/dragon.obj",
-      "scale": 0.11,
-      "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [0,-0.2,-0.5],
-      "reflectance": [1,1,1],
-      "emittance": [0,0,0],
-      "roughness": 0.2,
-      "normals": "smooth",
-      "dielectric": true
+      "ior": 10000
     }
   ],
   "animated_props": {
     "p1": {
-      "path": "mesh/bunny_big.obj",
+      "path": "asset_packs/misc/bunny_big.obj",
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [0.05,-0.2,0],
-      "reflectance": [1,1,1],
+      "diffuse": [1,1,1],
       "emittance": [0,0,0],
-      "roughness": 0.01,
+      "roughness": 0.2,
       "normals": "smooth"
     },
     "p2": {
-      "path": "mesh/bunny_big.obj",
+      "path": "asset_packs/misc/bunny_big.obj",
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [-0.5,-0.2,0],
-      "reflectance":  [1,0.766,0.336],
+      "diffuse":  [1,0.766,0.336],
       "emittance": [0,0,0],
       "roughness": 0.15,
       "normals": "smooth",
-      "metal": true
+      "ior": 100000
     },
     "p3": {
-      "path": "mesh/bunny_big.obj",
+      "path": "asset_packs/misc/bunny_big.obj",
       "scale": 0.18,
       "rotate": [{"angle": 0, "axis": [0,1,0]}],
       "translate": [0.6,-0.2,0],
-      "reflectance":  [0.5,1,0.5],
+      "diffuse":  [0.5,1,0.5],
       "emittance": [0,0,0],
       "roughness": 0.3,
-      "normals": "smooth",
-      "diffuse": true
-    },
-    "l1": {
-      "path": "mesh/top.obj",
-      "scale": 0.5,
-      "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [1,2,1],
-      "reflectance": [0, 0, 0],
-      "emittance": [40, 40, 40],
-      "roughness": 0.95
+      "normals": "smooth"
     }
   }
 }

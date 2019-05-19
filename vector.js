@@ -36,6 +36,10 @@ export class Vec3 {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
   }
 
+  static lerp(v1, v2, sigma) {
+    return Vec3.add(v1, Vec3.scale(Vec3.sub(v2, v1), sigma));
+  }
+
   static rotateX(v, a) {
     let x = v[0],
       y = v[1],

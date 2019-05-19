@@ -1,14 +1,15 @@
- export function loadAll(urls, callback) {
+export async function loadAll(urls) {
+  return new Promise(resolve => {
     let counter = urls.length;
     let resHash = {};
     urls.forEach(function (url) {
-      if (url.match(/^texture\//)) {
+      if (url.toLowerCase().match(/(\.png$)|(\.jpg$)|(\.jpeg$)/)) {
         let img = new Image();
         img.onload = function () {
           counter--;
           resHash[url] = img;
           if (counter === 0) {
-            callback.apply(null, [resHash]);
+            resolve(resHash);
           }
         };
         img.src = url;
@@ -18,7 +19,7 @@
           counter--;
           resHash[url] = res.target.responseText;
           if (counter === 0) {
-            callback.apply(null, [resHash]);
+            resolve(resHash);
           }
         });
         req.addEventListener("error", function () {
@@ -28,23 +29,26 @@
         req.send();
       }
     });
-  }
+  });
+}
 
-  export function getText(path, callback) {
+export async function getText(path) {
+  return new Promise(resolve => {
     let req = new XMLHttpRequest();
     req.addEventListener("load", function (res) {
-      callback.apply(null, [res.target.responseText]);
+      resolve(res.target.responseText);
     });
     req.open("GET", path, true);
     req.send();
-  }
+  });
+}
 
-  export function uploadDataUrl(path, blob, callback){
-    let req = new XMLHttpRequest();
-    req.addEventListener("load", function (res) {
-      callback.apply(null, [res]);
-    });
-    req.open("POST", path, true);
-    req.send(blob);
-  }
+export function uploadDataUrl(path, blob, callback){
+  let req = new XMLHttpRequest();
+  req.addEventListener("load", function (res) {
+    callback.apply(null, [res]);
+  });
+  req.open("POST", path, true);
+  req.send(blob);
+}
 

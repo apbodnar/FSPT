@@ -1,28 +1,42 @@
 {
-  "environment": [[10,10,10],[0.0,0.4,0.8]],
+  "environment": "environment/aerodynamics_workshop_4k.RGBE.PNG",
+  "environmentTheta": -1.57,
   "samples": 2000,
+  "atlasRes": 2048,
   "static_props": [
     {
-      "path": "mesh/top.obj",
-      "scale": 1,
-      "rotate": [{"angle": 0.01, "axis": [0,1,1]}],
-      "translate": [10,10,-10],
-      "reflectance": [0.5,0.5,0.5],
-      "emittance": [2000,2000,2000],
-      "roughness": 1,
-      "normals": "flat"
-    }
-  ],
-  "animated_props":    {
-    "b1": {
-      "path": "mesh/model.obj",
-      "scale": 1,
-      "rotate": [{"angle": 0.0, "axis": [0,1,1]}],
-      "translate": [0,-1,0],
-      "reflectance": [0.5,0.5,0.5],
+      "path": "asset_packs/wrench/scene.obj",
+      "scale": 0.2,
+      "rotate": [{"angle": -0.78, "axis": [0,0,1]}, {"angle": 0, "axis": [0,1,0]}],
+      "translate": [0,0,0],
+      "diffuse": [0.3,0.3,0.3],
       "emittance": [0,0,0],
-      "roughness": 1,
+      "normals": "mesh",
+      "roughness": 0.45,
+      "ior": 1.4,
+      "skips": ["material"]
+    },
+    {
+      "path": "asset_packs/misc/triangle.obj",
+      "scale": 1,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [1.525,2,2],
+      "diffuse": [1,1,1],
+      "emittance": [200,200,200],
+      "roughness": 0.1,
       "normals": "flat"
+    },
+    {
+      "path": "asset_packs/misc/top.obj",
+      "scale": 8,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [0,-2,0],
+      "emittance": [0,0,0],
+      "roughness": 0.7,
+      "normals": "flat",
+      "ior": 1.6,
+      "diffuse": "asset_packs/dungeon/ground1Color.png",
+      "normal": "asset_packs/dungeon/ground1Normal.png"
     }
-  }
+  ]
 }

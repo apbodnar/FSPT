@@ -1,1 +1,6 @@
 .idea/
+/asset_packs/*
+/scene/*
+/shader/ref.fs
+/environment/*
+!/scene/GITKEEP

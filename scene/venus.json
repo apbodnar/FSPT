@@ -1,100 +1,43 @@
 {
-  "environment": "texture/field.jpg",
-  "props": [
+  "environment": "environment/artist_workshop_4k.RGBE.PNG",
+  "samples": 2000,
+  "atlasRes": 2048,
+  "static_props": [
     {
-      "path": "mesh/venus.obj",
-      "scale": 0.003,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [-0.6,0.72,0],
-      "reflectance": [1,1,1],
+      "path": "asset_packs/shea/scene.obj",
+      "scale": 0.03,
+      "rotate": [{"angle": 0, "axis": [0,1,0]}],
+      "translate": [0,0,0],
+      "diffuse": [0.3,0.3,0.3],
       "emittance": [0,0,0],
-      "roughness": 0.1,
-      "normals": "smooth",
-      "dielectric": true
-    },
-    {
-      "path": "mesh/pillar.obj",
-      "scale": 0.2,
-      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
-      "translate": [-0.6,-1,0],
-      "reflectance": [1,1,1],
-      "emittance": [0,0,0],
-      "roughness": 0.1,
       "normals": "mesh",
-      "dielectric": true
+      "roughness": 0.35,
+      "ior": 1.4,
+      "skips": [""]
     },
-    {
-      "path": "mesh/venus.obj",
-      "scale": 0.003,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [0,0.72,0],
-      "reflectance": [0.9,0.9,0.9],
+	{
+      "path": "asset_packs/knuckles/scene.obj",
+      "scale": 0.000005,
+      "rotate": [{"angle": 1.57, "axis": [1,0,0]},{"angle": -1.57, "axis": [0,1,0]}],
+      "translate": [0.3,0.93,0.6],
+      "diffuse": [0.3,0.3,0.3],
       "emittance": [0,0,0],
-      "roughness": 0.3,
-      "normals": "smooth",
-      "metal": true
-    },
-    {
-      "path": "mesh/pillar.obj",
-      "scale": 0.2,
-      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
-      "translate": [0,-1,0],
-      "reflectance": [0.9,0.9,0.9],
-      "emittance": [0,0,0],
-      "roughness": 0.3,
       "normals": "mesh",
-      "metal": true
+      "roughness": 0.35,
+      "ior": 1.4,
+      "skips": [""]
     },
     {
-      "path": "mesh/venus.obj",
-      "scale": 0.003,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [0.6,0.72,0],
-      "reflectance": [0.9,0.9,0.9],
-      "emittance": [0,0,0],
-      "roughness": 0.3,
-      "normals": "smooth"
-    },
-    {
-      "path": "mesh/pillar.obj",
-      "scale": 0.2,
-      "rotate": [{"angle": 0.01, "axis": [0,1,0]}],
-      "translate": [0.6,-1,0],
-      "reflectance": [0.9,0.9,0.9],
-      "emittance": [0,0,0],
-      "roughness": 0.3,
-      "normals": "mesh"
-    },
-    {
-      "path": "mesh/top.obj",
-      "scale": 0.5,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [-2,2.75,1],
-      "reflectance": [0,0,0],
-      "emittance": [100,50,50],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    {
-      "path": "mesh/top.obj",
-      "scale": 0.5,
-      "rotate": [{"angle": 0, "axis": [0,0,1]}],
-      "translate": [2,2.75,1],
-      "reflectance": [0,0,0],
-      "emittance": [50,50,100],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    {
-      "path": "mesh/top.obj",
+      "path": "asset_packs/misc/top.obj",
       "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-1.0,0],
-      "reflectance": [1,1,1],
+      "translate": [0,0.001,0],
       "emittance": [0,0,0],
-      "roughness": 0.9,
+      "roughness": 0.3,
       "normals": "flat",
-      "texture": "texture/floor.jpg"
+      "ior": 1.4,
+	  "diffuse": "asset_packs/dungeon/Wood_Tiles_001_basecolor.jpg",
+      "normal": "asset_packs/dungeon/Wood_Tiles_001_normal.jpg"
     }
   ]
 }
