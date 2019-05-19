@@ -3,4 +3,4 @@
 /scene/*
 /shader/ref.fs
 /environment/*
-!/scene/GITKEEP
+!\.gitkeep

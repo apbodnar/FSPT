@@ -23,6 +23,7 @@ TODOs (Not Exhaustive):
 * Make metallic and roughness more flexible
 * Better support for asset standards. OBJ, MTL, etc...
 * Tiled rendering
+* Refactor texture packing to be far, far less wasteful of memory
 
 ## Demo
 
@@ -57,75 +58,49 @@ I recommend using Node's `http-server`
 
 Depending on the port used, open a url like: http://localhost:8000/?scene=bunnies&res=800
 
-`scene` is the base filename of the scene json file you wish to render.
-
-`res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / <scalar>.
-
-`mode` set the desired features.  For alpha use `mode=alpha`. For light sampling `mode=nee`. For both use `mode=alpha_nee`.  Light sampling slows down rendering but can vastly speed up convergence if using area lights.
+`scene` is the base filename of the scene json file you wish to render.  
+`res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / `<scalar>`.  
+`mode` sets the desired features.  For alpha use `mode=alpha`. For light sampling `mode=nee`. For both use `mode=alpha_nee`.  Light sampling slows down rendering but can vastly speed up convergence if using area lights. Alpha slows rendering greatly.
 
 Try messing with the mouse, scrolling, and WASD + RF keys.
 
-A scene config file like `bunnies.json` looks like:
+A scene config file like `cath.json` looks like:
 
 ```
 {
+  "environment": "environment/aristea_wreck_4k.RGBE.PNG",
+  "environmentTheta": -1.57,
   "samples": 2000,
-  "environment": "texture/woodsr.jpg",
+  "atlasRes": 2048,
   "static_props": [
     {
-      "path": "mesh/top.obj",
-      "scale": 1,
-      "rotate": [{"angle": 0.5, "axis": [1,0,0]}],
-      "translate": [0,4.75,5.4],
-      "diffuse": [1,1,1],
-      "emittance": [80,80,80],
-      "roughness": 0.1,
-      "normals": "flat"
-    },
-    {
-      "path": "mesh/top.obj",
-      "scale": 6,
-      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-0.2,0],
-      "emittance": [0,0,0],
-      "roughness": 0.1,
-      "normals": "flat",
-      "diffuse": "asset_packs/dungeon/ground1Color.png",
-      "normal": "asset_packs/dungeon/ground1Normal.png"
-    },
-	{
-	  "path": "mesh/top.obj",
-      "scale": 6,
-      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
-      "translate": [0,2.8,-3],
-      "diffuse": [0.1,1,0.5],
-      "emittance": [0,0,0],
-      "ior": 2,
-	  "roughness": "asset_packs/dungeon/ground1Specular.png"
-    },
-    {
-      "path": "asset_packs/dra/dra.obj",
-      "scale": 0.004,
-      "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [1,0,0],
+      "path": "asset_packs/girl/scene.obj",
+      "scale": 0.4,
+      "rotate": [{"angle": -1.57, "axis": [0,1,0]}],
+      "translate": [0,-4,0],
       "diffuse": [0.3,0.3,0.3],
       "emittance": [0,0,0],
       "normals": "mesh",
-      "roughness": 0.3,
-      "ior": 1.5
-    }
-  ],
-  "animated_props": {
-    "b1": {
-      "path": "asset_packs/morrigan/Morrigan.obj",
-      "scale": 0.014,
-      "rotate": [{"angle": 0, "axis": [0,1,0]}],
-      "translate": [-1,-0.21,0],
+      "roughness": 0.35,
+      "ior": 1.4,
+      "skips": ["material"]
+    },
+    {
+      "path": "asset_packs/misc/top.obj",
+      "scale": 8,
+      "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
+      "translate": [0,-4,0],
       "emittance": [0,0,0],
-      "roughness": 0.3,
-      "normals": "mesh",
-      "ior": 1.3
+      "roughness": 0.2,
+      "normals": "flat",
+      "ior": 1.6,
+      "diffuse": "asset_packs/dungeon/ground1Color.png",
+      "normal": "asset_packs/dungeon/ground1Normal.png"
     }
-  }
+  ]
 }
 ```
+`environment` is the epath to the HDRi environment map  
+`environmentTheta` is the angle by which the environment is rotated about the y-axis  
+`samples` is number of samples per pixels  
+`atlasRes` is the resolutionof the texture array used for all textures and materials in the scene
