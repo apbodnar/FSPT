@@ -25,7 +25,7 @@ TODOs (Not Exhaustive):
 * Verify Microfacet BxDF correctness
 * Faster BVH construction and traversal.
 * Make metallic and roughness more flexible
-* Pick a standard material model. Possibly allow merging and swizzling of metrial channels.
+* Pick a standard material model. Possibly allow merging and swizzling of material channels.
 * Better support for asset standards. OBJ, MTL, etc...
 * Tiled rendering
 * Put ray generation in a separate shader aka camera shaders.
@@ -105,4 +105,4 @@ A scene config file like `cath.json` looks like:
 `environment` is the epath to the HDRi environment map  
 `environmentTheta` is the angle by which the environment is rotated about the y-axis  
 `samples` is number of samples per pixels  
-`atlasRes` is the resolutionof the texture array used for all textures and materials in the scene
+`atlasRes` is the resolution of the texture array used for all textures and materials in the scene

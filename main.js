@@ -18,6 +18,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let framebuffers = [];
   let bvh;
   let pingpong = 0;
+  let dirty = true;
   let scale;
   let envTheta;
   let exposure;
@@ -54,7 +55,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     expElement = document.getElementById("exposure");
     satElement = document.getElementById("saturation");
 
-
     saturation = satElement.value;
     whitePoint = whitePointSlider.value;
 
@@ -74,8 +74,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       antialias: false,
       powerPreference: "high-performance"
     });
-    gl.viewportWidth = canvas.width = resolution[0]; // square render target
-    gl.viewportHeight = canvas.height = resolution[1];
+    canvas.width = resolution[0]; // square render target
+    canvas.height = resolution[1];
   }
 
   function getShader(gl, str, id) {
@@ -150,7 +150,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       parseInt(color[1] * 255) + "," +
       parseInt(color[2] * 255) + ",1)";
     ctx.fillRect(0, 0, 1, 1);
-    return canvas
+    canvas.currentSrc = ctx.fillStyle;
+    return canvas;
   }
 
   function createEnvironmentMapImg(image) {
@@ -289,6 +290,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         });
       });
     }
+    
+    console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
     let maxTris = 4;
@@ -511,8 +514,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-
-    gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, atlasRes, atlasRes, texturePacker.imageSet.length, 0, gl.RGBA,
+    let actualAtlasRes = texturePacker.setAndGetResolution();
+    gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, actualAtlasRes, actualAtlasRes, texturePacker.imageSet.length, 0, gl.RGBA,
       gl.UNSIGNED_BYTE, texturePacker.getPixels()
     );
   }
@@ -530,7 +533,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, gl.viewportWidth, gl.viewportHeight, 0, gl.RGBA, gl.FLOAT, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, resolution[0], resolution[1], 0, gl.RGBA, gl.FLOAT, null);
     return t;
   }
 
@@ -579,7 +582,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     canvasElement.addEventListener("mousemove", function(e) {
       if (mode) {
         moving = true;
-        pingpong = 0;
+        dirty = true;
         let rx = (xi - e.layerX) / 180.0;
         let ry = (yi - e.layerY) / 180.0;
         dir = Vec3.normalize(Vec3.rotateY(dir, rx));
@@ -596,18 +599,18 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       mode = false;
       moving = false;
       if (e.which === 1) {
-        pingpong = 0;
+        dirty = true;
       }
       shootAutoFocusRay();
     }, false);
     canvasElement.addEventListener('mousewheel', function(e) {
       scale -= e.wheelDelta / 1200 * scale;
-      pingpong = 0;
+      dirty = true;
     }, false);
 
     thetaElement.addEventListener('input', function(e) {
       envTheta = parseFloat(e.target.value);
-      pingpong = 0;
+      dirty = true;
     }, false);
 
     expElement.addEventListener('input', function(e) {
@@ -625,12 +628,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     focalDepthElement.addEventListener("input", function(e) {
       lensFeatures[0] = 1 - (1 / parseFloat(e.target.value));
-      pingpong = 0;
+      dirty = true;
     }, false);
 
     apertureSizeElement.addEventListener("input", function(e) {
       lensFeatures[1] = parseFloat(e.target.value);
-      pingpong = 0;
+      dirty = true;
     }, false);
 
     document.addEventListener("keypress", function(e) {
@@ -638,27 +641,27 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       switch (e.key) {
         case 'w':
           addTranslation(Vec3.scale(dir, 0.1));
-          pingpong = 0;
+          dirty = true;
           break;
         case 'a':
           addTranslation(Vec3.scale(strafe, -0.1));
-          pingpong = 0;
+          dirty = true;
           break;
         case 's':
           addTranslation(Vec3.scale(dir, -0.1));
-          pingpong = 0;
+          dirty = true;
           break;
         case 'd':
           addTranslation(Vec3.scale(strafe, 0.1));
-          pingpong = 0;
+          dirty = true;
           break;
         case 'r':
           addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), -0.1));
-          pingpong = 0;
+          dirty = true;
           break;
         case 'f':
           addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), 0.1));
-          pingpong = 0;
+          dirty = true;
           break;
       }
       eyePosElement.value = String(eye.map((comp) => {
@@ -682,8 +685,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform1i(program.uniforms.normTex, 4);
     gl.uniform1i(program.uniforms.lightTex, 5);
     gl.uniform1i(program.uniforms.uvTex, 6);
-    gl.uniform1i(program.uniforms.texArray, 7);
-    gl.uniform1i(program.uniforms.envTex, 8);
+    gl.uniform1i(program.uniforms.envTex, 7);
+    gl.uniform1i(program.uniforms.texArray, 8);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform1f(program.uniforms.indirectClamp, indirectClamp);
@@ -693,24 +696,24 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform3fv(program.uniforms.eye, eye);
     gl.uniform3fv(program.uniforms.cameraDir, dir);
-    gl.activeTexture(gl.TEXTURE8);
-    gl.bindTexture(gl.TEXTURE_2D, textures.env);
-    gl.activeTexture(gl.TEXTURE7);
-    gl.bindTexture(gl.TEXTURE_2D_ARRAY, textures.array);
-    gl.activeTexture(gl.TEXTURE6);
-    gl.bindTexture(gl.TEXTURE_2D, textures.uvs);
-    gl.activeTexture(gl.TEXTURE5);
-    gl.bindTexture(gl.TEXTURE_2D, textures.lights);
-    gl.activeTexture(gl.TEXTURE4);
-    gl.bindTexture(gl.TEXTURE_2D, textures.normals);
-    gl.activeTexture(gl.TEXTURE3);
-    gl.bindTexture(gl.TEXTURE_2D, textures.materials);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, textures.bvh);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, textures.triangles);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[(i + 1) % 2]);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, textures.triangles);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, textures.bvh);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, textures.materials);
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, textures.normals);
+    gl.activeTexture(gl.TEXTURE5);
+    gl.bindTexture(gl.TEXTURE_2D, textures.lights);    
+    gl.activeTexture(gl.TEXTURE6);
+    gl.bindTexture(gl.TEXTURE_2D, textures.uvs);
+    gl.activeTexture(gl.TEXTURE7);
+    gl.bindTexture(gl.TEXTURE_2D, textures.env);
+    gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, textures.array);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i % 2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
@@ -718,7 +721,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   function drawQuad(i) {
     let program = programs.draw;
     gl.useProgram(program);
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+    gl.viewport(0, 0, resolution[0], resolution[1]);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
     gl.uniform1f(program.uniforms.saturation, saturation);
@@ -731,24 +734,48 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   let currentTile = 0;
+  let numTilesX = 2;
+  let numTilesY = 2;
 
   function tick() {
     let max = parseInt(sampleInput.value);
-    if (pingpong >= max && frameNumber >= 0) {
+    if (dirty) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[1]);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      pingpong = 0;
+      currentTile = 0;
+      dirty = false;
+      console.log("Cleared")
+    }
+
+	
+    if (max && pingpong < max && active) {
+      let tileX = currentTile % numTilesX;
+      let tileY = Math.floor(currentTile / numTilesX);
+      let offsetX = Math.floor(resolution[0] * tileX / numTilesX);
+      let offsetY = Math.floor(resolution[1] * tileY / numTilesY);
+      let width = Math.ceil(resolution[0] / numTilesX);
+      let height = Math.ceil(resolution[1] / numTilesY);
+      //console.log(tileX, tileY, offsetX, offsetY, width, height, dirty);
+      gl.viewport(offsetX, offsetY, width, height);
+      drawTracer(moving ? 0 : pingpong);
+      currentTile++;
+      drawQuad(pingpong);
+      if(currentTile === numTilesX * numTilesY){
+        currentTile = 0;
+        pingpong++;
+        sampleOutput.value = pingpong;
+      }
+    }
+	
+	if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();
       return
     } else {
       requestAnimationFrame(tick);
     }
-
-    if (max && pingpong < max && active) {
-      drawTracer(moving ? 0 : pingpong);
-      pingpong++;
-      drawTracer(moving ? 0 : pingpong);
-      pingpong++;
-      sampleOutput.value = pingpong;
-    }
-    drawQuad(moving ? 0 : pingpong);
   }
 
   function uploadOutput() {
@@ -837,7 +864,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
 function getResolution() {
   let resolutionMatch = window.location.search.match(/res=(\d+)(x*)(\d+)?/);
-  console.log(resolutionMatch);
   if (Array.isArray(resolutionMatch) && resolutionMatch[1] && resolutionMatch[3]) {
     return [resolutionMatch[1], resolutionMatch[3]];
   } else if (Array.isArray(resolutionMatch) && resolutionMatch[1] && resolutionMatch[2]) {

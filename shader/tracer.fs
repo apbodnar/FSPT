@@ -29,9 +29,9 @@ uniform vec3 cameraDir;
 uniform vec2 lightRanges[20];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
+uniform sampler2D normTex;
 uniform sampler2D bvhTex;
 uniform sampler2D matTex;
-uniform sampler2D normTex;
 uniform sampler2D lightTex;
 uniform sampler2D uvTex;
 uniform sampler2D envTex;
@@ -561,7 +561,7 @@ void main(void) {
     vec2 texCoord = barycentricTexCoord(weights, texCoords);
 	vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
 	vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
-    vec3 texDiffuse = texRaw.rgb;
+  vec3 texDiffuse = texRaw.rgb;
 	vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
 	float texRoughness = texMetallicRoughness.g;
 	float texEmmissiveScale = texMetallicRoughness.b;
@@ -632,6 +632,6 @@ void main(void) {
     accumulatedReflectance *= (texDiffuse / colorAlbedo);
     color += accumulatedReflectance * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
   }
-
+  
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }
