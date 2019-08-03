@@ -6,7 +6,6 @@ precision highp sampler2DArray;
 const int NUM_BOUNCES = 5;
 const float MAX_T = 100000.0;
 const float EPSILON = 0.000001;
-const float SQRT_EPSILON = sqrt(EPSILON);
 const float M_PI = 3.14159265;
 const float M_TAU = M_PI * 2.0;
 const float INV_PI = 1.0 / M_PI;
@@ -154,9 +153,8 @@ Normals createNormals(float index){
 
 TexCoords createTexCoords(float index){
   ivec2 base = indexToCoords(uvTex, index, 3.0);
-  vec4 first = texelFetch(uvTex, base, 0);
   return TexCoords(
-    first.rg,
+    texelFetch(uvTex, base, 0).rg,
     texelFetch(uvTex, base + ivec2(1,0), 0).rg,
     texelFetch(uvTex, base + ivec2(2,0), 0).rg
   );
@@ -173,31 +171,6 @@ Node createNode(float index){
 
 float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
 
-vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
-  vec2 xi = vec2(rnd(), rnd());
-  float phi = 2.0f * M_PI * xi.x;
-  float theta = atan(a * sqrt(xi.y / (1.0 - xi.y)));
-  float cosTheta = cos(theta);
-  float sinTheta = sin(theta);
-  vec3 u = normalize(cross(oNormal,vec3(0.0,0.0,1.0)));
-  vec3 v = normalize(cross(u, oNormal));
-  vec3 facet = cos(phi) * sinTheta * u + sinTheta * sin(phi) * v + cosTheta * oNormal;
-  return facet;
-}
-
-// GGX PDF
-float ggxPdf(vec3 normal, vec3 microNormal, float a){
-  float a2 = a*a;
-  float ndh = dot(normal, microNormal);
-  float denom = ndh*ndh * (a2 - 1.0) + 1.0;
-  return max(dot(normal, microNormal), 0.0) * (a2) / (M_PI * denom * denom);
-}
-
-float smith(vec3 normal, vec3 outgoing, float a) {
-  float nv = max(dot(normal, outgoing), 0.0);
-  return max((2.0 * nv) / (nv + sqrt(a*a + (1.0 - a*a) * nv * nv)), EPSILON);
-}
-
 vec2 misWeights(float a, float b ) {
     float a2 = a*a;
     float b2 = b*b;
@@ -205,32 +178,145 @@ vec2 misWeights(float a, float b ) {
     return max(vec2(a2, b2) / a2b2, vec2(EPSILON));
 }
 
-float schlick(vec3 dir, vec3 normal, float n1, float n2){
-  float r0 = (n1-n2) / (n1+n2);
-  r0 *= r0;
-  float cosX = -dot(normal, dir);
-  if (n1 > n2)
-  {
-    float n = n1/n2;
-    float sinT2 = n*n*(1.0-cosX*cosX);
-    // Total internal reflection
-    if (sinT2 > 1.0)
-       return 1.0;
-    cosX = sqrt(1.0-sinT2);
-  }
-  float x = 1.0-cosX;
-  return r0+(1.0-r0)*x*x*x*x*x;
+//-----------------------------------------------------------------------
+vec3 CosineSampleHemisphere(float u1, float u2)
+//-----------------------------------------------------------------------
+{
+	vec3 dir;
+	float r = sqrt(u1);
+	float phi = M_TAU * u2;
+	dir.x = r * cos(phi);
+	dir.y = r * sin(phi);
+	dir.z = sqrt(max(0.0, 1.0 - dir.x*dir.x - dir.y*dir.y));
+
+	return dir;
 }
 
-vec3 cosineWeightedRandomVec(vec3 normal){
-  float rr = rnd();
-  float r = sqrt(rr - EPSILON);
-  float theta = M_TAU * rnd();
-  float x = r * cos(theta);
-  float y = r * sin(theta);
-  vec3 u = normalize(cross(normal,vec3(0.0,0.0,1.0)));
-  vec3 v = normalize(cross(u, normal));
-  return x*u + y*v + sqrt(1.0 - rr)*normal;
+//-----------------------------------------------------------------------
+float SchlickFresnel(float u)
+//-----------------------------------------------------------------------
+{
+	float m = clamp(1.0 - u, 0.0, 1.0);
+	float m2 = m * m;
+	return m2 * m2*m; // pow(m,5)
+}
+
+//-----------------------------------------------------------------------
+float GTR2(float NDotH, float a)
+//-----------------------------------------------------------------------
+{
+	float a2 = a * a;
+	float t = 1.0 + (a2 - 1.0)*NDotH*NDotH;
+	return a2 / (M_PI * t*t);
+}
+
+//-----------------------------------------------------------------------
+float SmithG_GGX(float NDotv, float alphaG)
+//-----------------------------------------------------------------------
+{
+	float a = alphaG * alphaG;
+	float b = NDotv * NDotv;
+	return 1.0 / (NDotv + sqrt(a + b - a * b));
+}
+
+//-----------------------------------------------------------------------
+float UE4Pdf(vec3 incident, vec3 normal, vec2 matParams, in vec3 bsdfDir)
+//-----------------------------------------------------------------------
+{
+	vec3 n = normal;
+	vec3 V = -incident;
+	vec3 L = bsdfDir;
+
+	float specularAlpha = max(0.001, matParams.y);
+
+	float diffuseRatio = 0.5 * (1.0 - matParams.x);
+	float specularRatio = 1.0 - diffuseRatio;
+
+	vec3 halfVec = normalize(L + V);
+
+	float cosTheta = abs(dot(halfVec, n));
+	float pdfGTR2 = GTR2(cosTheta, specularAlpha) * cosTheta;
+
+	// calculate diffuse and specular pdfs and mix ratio
+	float pdfSpec = pdfGTR2 / (4.0 * abs(dot(L, halfVec)));
+	float pdfDiff = abs(dot(L, n)) * INV_PI;
+
+	// weight pdfs according to ratios
+	return diffuseRatio * pdfDiff + specularRatio * pdfSpec;
+}
+
+//-----------------------------------------------------------------------
+vec3 UE4Sample(vec3 incident, vec3 normal, vec2 matParams)
+//-----------------------------------------------------------------------
+{
+	vec3 N = normal;
+	vec3 V = -incident;
+
+	vec3 dir;
+
+	float probability = rnd();
+	float diffuseRatio = 0.5 * (1.0 - matParams.x);
+
+	float r1 = rnd();
+	float r2 = rnd();
+
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+	vec3 TangentX = normalize(cross(UpVector, N));
+	vec3 TangentY = cross(N, TangentX);
+
+	if (probability < diffuseRatio) // sample diffuse
+	{
+		dir = CosineSampleHemisphere(r1, r2);
+		dir = TangentX * dir.x + TangentY * dir.y + N * dir.z;
+	}
+	else
+	{
+		float a = max(0.001, matParams.y);
+
+		float phi = r1 * M_TAU;
+
+		float cosTheta = sqrt((1.0 - r2) / (1.0 + (a*a - 1.0) *r2));
+		float sinTheta = clamp(sqrt(1.0 - (cosTheta * cosTheta)), 0.0, 1.0);
+		float sinPhi = sin(phi);
+		float cosPhi = cos(phi);
+
+		vec3 halfVec = vec3(sinTheta*cosPhi, sinTheta*sinPhi, cosTheta);
+		halfVec = TangentX * halfVec.x + TangentY * halfVec.y + N * halfVec.z;
+
+		dir = 2.0*dot(V, halfVec)*halfVec - V;
+	}
+	return dir;
+}
+
+//-----------------------------------------------------------------------
+vec3 UE4Eval(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 matParams, in vec3 bsdfDir)
+//-----------------------------------------------------------------------
+{
+	vec3 N = normal;
+	vec3 V = -incident;
+	vec3 L = bsdfDir;
+
+	float NDotL = dot(N, L);
+	float NDotV = dot(N, V);
+	if (NDotL <= 0.0 || NDotV <= 0.0)
+		return vec3(0.0);
+
+	vec3 H = normalize(L + V);
+	float NDotH = dot(N, H);
+	float LDotH = dot(L, H);
+
+	// specular	
+	float specular = 0.5;
+	vec3 specularCol = mix(vec3(0.2), diffuseColor, matParams.x);
+	float a = max(0.001, matParams.y);
+	float Ds = GTR2(NDotH, a);
+	float FH = SchlickFresnel(LDotH);
+	vec3 Fs = mix(specularCol, vec3(1.0), FH);
+	float roughg = (matParams.y*0.5 + 0.5);
+	roughg = roughg * roughg;
+	float Gs = SmithG_GGX(NDotL, roughg) * SmithG_GGX(NDotV, roughg);
+
+	return diffuseColor * INV_PI * (1.0 - matParams.x) + Gs * Fs*Ds;
 }
 
 // Moller-Trumbore
@@ -252,7 +338,7 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
 }
 
 float rayBoxIntersect(Node node, Ray ray) {
-  vec3 inverse = 1.0 / ray.dir;//1.0 / (max(abs(ray.dir), vec3(0.0001)) * sign(ray.dir));
+  vec3 inverse = 1.0 / ray.dir;
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
   vec3 minT = min(t1, t2);
@@ -519,31 +605,23 @@ void main(void) {
     #endif
     TexCoords texCoords = createTexCoords(result.index);
     vec2 texCoord = barycentricTexCoord(weights, texCoords);
-    vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
-    vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
+	  vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
+	  vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
     vec3 texDiffuse = texRaw.rgb;
-    vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
-    float texRoughness = texMetallicRoughness.g;
-    float texEmmissiveScale = texMetallicRoughness.b;
+	  vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
+	  float texEmmissiveScale = texMetallicRoughness.b;
     vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
-    float roughness = texRoughness * texRoughness;
+    texMetallicRoughness.g *= texMetallicRoughness.g;
     seed = origin.x * randBase + origin.y * 1.396529836 + origin.z * 4761.52835;
     vec3 baryNormal;
     vec3 macroNormal = barycentricNormal(weights, createNormals(result.index), texNormal, baryNormal);
-    vec3 microNormal = ggxRandomImportantNormal(macroNormal, roughness);
     vec3 lightDir;
     ray.origin = origin + baryNormal * EPSILON * 2.0;
-    float inside = sign(dot(-ray.dir, macroNormal));
-    vec2 ns = inside > 0.0 ? vec2(1, mat.ior) : vec2(mat.ior, 1);
-    bool metallic = rnd() > (1.0 - texMetallicRoughness.r);
-    bool specular = false;
-    if (!metallic){
-      specular = schlick(ray.dir, inside * microNormal, ns.x, ns.y) > rnd();
-    }
-    texDiffuse = specular ? vec3(1.0) : texDiffuse;
+
+    //texDiffuse = specular ? vec3(1.0) : texDiffuse;
+    // TODO: make this configurable in the materials
     color += accumulatedReflectance * texEmmissive * 10.0;
-    float colorAlbedo = albedo(texDiffuse) + EPSILON;
-    if( rnd() > colorAlbedo ){ break; }
+
     #ifdef USE_EXPLICIT
     vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
     #else
@@ -551,45 +629,29 @@ void main(void) {
     #endif
     vec3 incident = ray.dir;
     float directWeight = 0.0;
-    float indirectWeight = 0.0;
-    if (specular || metallic) {
-      //specular reflection
-      ray.dir = reflect(incident, microNormal);
-      //ray.dir = dot(ray.dir,macroNormal) > 0.0 ? ray.dir : -ray.dir;
-      float indirectPdf = ggxPdf(macroNormal, microNormal, roughness);
-      #ifdef USE_EXPLICIT
-      float directPdf = ggxPdf(macroNormal, normalize(lightDir - incident), roughness);
-      vec2 weights = misWeights(directPdf, indirectPdf);
-      float sd = smith(macroNormal, lightDir, roughness);
-      float si = smith(macroNormal, ray.dir, roughness);
-      directWeight = sd * directPdf;
-      //indirectWeight = weights.y * si;
-      #else
-      float si = smith(macroNormal, ray.dir, roughness);
-      indirectWeight = si * ceil(dot(ray.dir, macroNormal)) * (dot(ray.dir, microNormal) / (dot(ray.dir, macroNormal) * dot(macroNormal, microNormal)));//ggxPdf(macroNormal, normalize(ray.dir - incident), roughness) * M_PI;//indirectPdf * si;
-      #endif
-    } else if(mat.dielectric > 0.0) {
-      //refract into material
-      ray.origin = -inside * macroNormal * EPSILON + origin * 2.0;
-      ray.dir = refract(incident,inside * microNormal, ns.x / ns.y);
-      directWeight = 0.0;
-      indirectWeight = 1.0;
+    float indirectWeight = 1.0;
+
+    vec2 matParams = texMetallicRoughness.rg;
+    ray.dir = UE4Sample(incident, macroNormal, matParams);
+    float pdf = UE4Pdf(incident, macroNormal, matParams, ray.dir);
+		vec3 throughput;
+    if(pdf > 0.0) { 
+      throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / pdf;
+      // throughput = texDiffuse * abs(dot(macroNormal, ray.dir));
     } else {
-      //lambertian scattering
-      ray.dir = cosineWeightedRandomVec(macroNormal);
-      #ifdef USE_EXPLICIT
-      directWeight = max(dot(lightDir, macroNormal), 0.0) * INV_PI;
-      indirectWeight = 0.0;
-      #else
-      indirectWeight = 1.0;
-      #endif
+      throughput = vec3(0.0);
     }
+    accumulatedReflectance *= throughput;
+
+    float colorAlbedo = albedo(throughput) + EPSILON;
+    //if( rnd() > colorAlbedo ){ break; }
+
     #ifdef USE_ALPHA
     vec3 indirect = getIndirectEmission(ray, result, mat, weights);
     #else
     vec3 indirect = getIndirectEmission(ray, result, mat);
     #endif
-    accumulatedReflectance *= (texDiffuse / colorAlbedo);
+    //accumulatedReflectance *= (texDiffuse / colorAlbedo);
     color += accumulatedReflectance * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
   }
 
