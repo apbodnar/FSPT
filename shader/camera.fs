@@ -19,7 +19,7 @@ out vec4 fragColor[2];
 float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
 
 vec3 getScreen(vec3 basisX, vec3 basisY){
-  vec2 inCam = uv * vec2((resolution.x / resolution.y), 1);
+  vec2 inCam = uv * vec2(resolution.x / resolution.y, 1);
   return inCam.x * basisX * scale + inCam.y * basisY * scale + I + P;
 }
 

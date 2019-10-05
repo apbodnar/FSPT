@@ -16,23 +16,21 @@ const float EXPLICIT_COS_THRESHOLD = -0.1;
 float seed;
 
 uniform int tick;
-uniform float scale;
 uniform float numLights;
 uniform float randBase;
-uniform float indirectClamp;
-uniform vec2 lensFeatures; // x: focal depth y: aperture size
-uniform vec3 eye;
-uniform vec3 cameraDir;
+uniform float envTheta;
 uniform vec2 lightRanges[20];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
+uniform sampler2D normTex;
 uniform sampler2D bvhTex;
 uniform sampler2D matTex;
-uniform sampler2D normTex;
 uniform sampler2D lightTex;
 uniform sampler2D uvTex;
-uniform sampler2DArray texArray;
 uniform sampler2D envTex;
+uniform sampler2D cameraPosTex;
+uniform sampler2D cameraDirTex;
+uniform sampler2DArray texArray;
 
 in vec2 coords;
 out vec4 fragColor;
@@ -285,20 +283,10 @@ Hit traverseTree(Ray ray, inout int count){
   }
 }
 
-vec3 getScreen(vec3 basisX, vec3 basisY){
-	vec2 size = vec2(textureSize(fbTex, 0));
-	vec2 pct = gl_FragCoord.xy / size;
-	vec2 inCam = (pct - vec2(0.5)) * 2.0 * vec2((size.x / size.y), 1);
-	return inCam.x * basisX * scale + inCam.y * basisY * scale + cameraDir + eye;
-}
-
 void main(void) {
   int count;
-  vec2 res = vec2(textureSize(fbTex, 0));
-  vec3 basisX = normalize(cross(cameraDir, vec3(0,1,0)));
-  vec3 basisY = normalize(cross(basisX, cameraDir));
-  vec3 screen = getScreen(basisX, basisY);
-  Ray ray = Ray(eye, normalize(screen - eye));
+  vec2 res = vec2(textureSize(fbTex, 0));;
+  Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
   Hit result = traverseTree(ray, count);
 
   if(length((gl_FragCoord.xy/res - 0.5) * 2.0) < 0.003) {
