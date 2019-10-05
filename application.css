@@ -1,5 +1,6 @@
 html, body, canvas {
     height: 100%;
+    font-family: monospace;
 }
 
 body {
@@ -11,10 +12,16 @@ body {
 }
 
 form {
-    position: fixed;
-    top: 24px;
-    left: 4px;
-    text-align: left;
+  text-align: center;
+  padding:4px;
+  position: fixed;
+  top: 24px;
+  left: 0;
+  text-align: left;
+}
+
+button {
+  display: block;
 }
 
 h3 {

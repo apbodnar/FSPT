@@ -18,14 +18,9 @@ const float EXPLICIT_COS_THRESHOLD = -0.1;
 float seed;
 
 uniform int tick;
-uniform float scale;
 uniform float numLights;
 uniform float randBase;
-uniform float indirectClamp;
 uniform float envTheta;
-uniform vec2 lensFeatures; // x: focal depth y: aperture size
-uniform vec3 eye;
-uniform vec3 cameraDir;
 uniform vec2 lightRanges[20];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
@@ -35,6 +30,8 @@ uniform sampler2D matTex;
 uniform sampler2D lightTex;
 uniform sampler2D uvTex;
 uniform sampler2D envTex;
+uniform sampler2D cameraPosTex;
+uniform sampler2D cameraDirTex;
 uniform sampler2DArray texArray;
 
 in vec2 coords;
@@ -176,19 +173,6 @@ Node createNode(float index){
 
 float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
 
-// GGX importance-sampled microfacet
-//vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
-//  vec2 xi = vec2(rnd(), rnd());
-//  float phi = 2.0f * M_PI * xi.x;
-//  float cosTheta = sqrt((1.0f - xi.y)/((a*a - 1.0f) * xi.y + 1.0f));
-//  float theta = acos(cosTheta);
-//  float sinTheta = sin(theta);
-//  vec3 u = normalize(cross(oNormal,vec3(0.0,0.0,1.0)));
-//  vec3 v = normalize(cross(u, oNormal));
-//  vec3 facet = cos(phi) * sinTheta * u + sinTheta * sin(phi) * v + cosTheta * oNormal;
-//  return facet;
-//}
-
 vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
   vec2 xi = vec2(rnd(), rnd());
   float phi = 2.0f * M_PI * xi.x;
@@ -201,7 +185,7 @@ vec3 ggxRandomImportantNormal(vec3 oNormal, float a){
   return facet;
 }
 
-// GGX PDFd
+// GGX PDF
 float ggxPdf(vec3 normal, vec3 microNormal, float a){
   float a2 = a*a;
   float ndh = dot(normal, microNormal);
@@ -457,24 +441,6 @@ Triangle randomLight(vec2 range){
   return createLight(index);
 }
 
-vec3 getScreen(vec3 basisX, vec3 basisY){
-  vec2 size = vec2(textureSize(fbTex, 0));
-  vec2 pct = gl_FragCoord.xy / size;
-  vec2 inCam = (pct - vec2(0.5)) * 2.0 * vec2((size.x / size.y), 1);
-  return inCam.x * basisX * scale + inCam.y * basisY * scale + cameraDir + eye;
-}
-
-vec3 getAA(vec3 basisX, vec3 basisY, vec2 res){
-  float theta = rnd() * M_PI * 2.0;
-  float r = sqrt(rnd()) * 1.414;
-  return r * (basisX * cos(theta) / res.x + basisY * sin(theta) / res.y);
-}
-
-vec3 getDOF(vec3 basisX, vec3 basisY){
-  float theta = rnd() * M_PI * 2.0;
-  return (cos(theta) * basisX + sin(theta) * basisY) * lensFeatures.y * sqrt(rnd());
-}
-
 float triangleArea(Triangle tri){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
@@ -528,14 +494,8 @@ vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
 #endif
 
 void main(void) {
-  vec2 res = vec2(textureSize(fbTex, 0));
-  vec3 basisX = normalize(cross(cameraDir, vec3(0,1,0)));
-  vec3 basisY = normalize(cross(basisX, cameraDir));
-  seed = randBase + gl_FragCoord.x * res.y + gl_FragCoord.y;
-  vec3 screen = getScreen(basisX, basisY);
-  vec3 aa = getAA(basisX, basisY, res) * scale;
-  vec3 dof = getDOF(basisX, basisY);
-  Ray ray = Ray(eye + dof, normalize((screen + aa + dof * lensFeatures.x) - (eye + dof)));
+  seed = randBase + gl_FragCoord.x * 1000.0 + gl_FragCoord.y;
+  Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   Material mat;
   vec3 weights;
@@ -559,12 +519,12 @@ void main(void) {
     #endif
     TexCoords texCoords = createTexCoords(result.index);
     vec2 texCoord = barycentricTexCoord(weights, texCoords);
-	vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
-	vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
-  vec3 texDiffuse = texRaw.rgb;
-	vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
-	float texRoughness = texMetallicRoughness.g;
-	float texEmmissiveScale = texMetallicRoughness.b;
+    vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
+    vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
+    vec3 texDiffuse = texRaw.rgb;
+    vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
+    float texRoughness = texMetallicRoughness.g;
+    float texEmmissiveScale = texMetallicRoughness.b;
     vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
     float roughness = texRoughness * texRoughness;
     seed = origin.x * randBase + origin.y * 1.396529836 + origin.z * 4761.52835;
@@ -632,6 +592,6 @@ void main(void) {
     accumulatedReflectance *= (texDiffuse / colorAlbedo);
     color += accumulatedReflectance * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
   }
-  
+
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

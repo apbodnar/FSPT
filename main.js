@@ -15,7 +15,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let gl;
   let programs = {};
   let textures = {};
-  let framebuffers = [];
+  let framebuffers = {screen: [], camera: {pos: null, dir: null}};
   let bvh;
   let pingpong = 0;
   let dirty = true;
@@ -110,12 +110,18 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   function initPrograms(assets) {
+    programs.camera = initProgram(
+      "shader/camera",
+      ["P", "I", "lensFeatures", "resolution", "randBase", "scale"],
+      ["corner"],
+      assets
+    );
     programs.tracer = initProgram(
       "shader/tracer",
       [
-        "tick", "randBase", "dims", "eye", "envTex", "indirectClamp", "lensFeatures",
-        "fbTex", "triTex", "bvhTex", "matTex", "normTex", "lightTex", "uvTex", "texArray", "envTheta",
-        "scale", "cameraDir", "lightRanges", "numLights"
+        "tick", "randBase", "envTex", "fbTex", "triTex", "bvhTex", "matTex",
+        "normTex", "lightTex", "uvTex", "texArray", "envTheta",
+        "lightRanges", "numLights", "cameraPosTex", "cameraDirTex"
       ],
       ["corner"],
       assets
@@ -290,7 +296,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         });
       });
     }
-    
+
     console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
@@ -524,7 +530,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let t = gl.createTexture();
     let ext = gl.getExtension('EXT_color_buffer_float');
     if (!ext) {
-      let message = "Sorry, your your device doesn't support 'EXT_color_buffer_float'";
+      let message = "Your your device doesn't support 'EXT_color_buffer_float'";
       writeBanner(message);
       throw message;
     }
@@ -537,10 +543,22 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     return t;
   }
 
-  function createFramebuffer(tex) {
+  function createScreenFramebuffer(tex) {
     let fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    return fbo;
+  }
+
+  function createCameraFramebuffer(tex) {
+    let fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex.pos, 0);
+    gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex.dir, 0);
+    gl.drawBuffers([
+      gl.COLOR_ATTACHMENT0,
+      gl.COLOR_ATTACHMENT1
+    ]);
     return fbo;
   }
 
@@ -558,8 +576,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     textures.screen = [];
     textures.screen.push(createTexture());
     textures.screen.push(createTexture());
-    framebuffers.push(createFramebuffer(textures.screen[0]));
-    framebuffers.push(createFramebuffer(textures.screen[1]));
+    textures.camera = {};
+    textures.camera.pos = createTexture();
+    textures.camera.dir = createTexture();
+    framebuffers.screen.push(createScreenFramebuffer(textures.screen[0]));
+    framebuffers.screen.push(createScreenFramebuffer(textures.screen[1]));
+    framebuffers.camera = createCameraFramebuffer(textures.camera);
   }
 
   function initEvents() {
@@ -671,6 +693,23 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     }, false);
   }
 
+  function drawCamera() {
+    let program = programs.camera;
+    gl.useProgram(program);
+    gl.viewport(0, 0, resolution[0], resolution[1]);
+    gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(program.attributes.corner);
+    gl.uniform1f(program.uniforms.scale, scale);
+    gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
+    gl.uniform2fv(program.uniforms.lensFeatures, lensFeatures);
+    gl.uniform2fv(program.uniforms.resolution, resolution);
+    gl.uniform3fv(program.uniforms.P, eye);
+    gl.uniform3fv(program.uniforms.I, dir);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, framebuffers.camera);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
   function drawTracer(i) {
     let program = programs.tracer;
     gl.useProgram(program);
@@ -686,10 +725,11 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform1i(program.uniforms.lightTex, 5);
     gl.uniform1i(program.uniforms.uvTex, 6);
     gl.uniform1i(program.uniforms.envTex, 7);
-    gl.uniform1i(program.uniforms.texArray, 8);
+    gl.uniform1i(program.uniforms.cameraPosTex, 8);
+    gl.uniform1i(program.uniforms.cameraDirTex, 9);
+    gl.uniform1i(program.uniforms.texArray, 10);
     gl.uniform1i(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
-    gl.uniform1f(program.uniforms.indirectClamp, indirectClamp);
     gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform1f(program.uniforms.envTheta, envTheta);
     gl.uniform2fv(program.uniforms.lensFeatures, lensFeatures);
@@ -707,14 +747,18 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.activeTexture(gl.TEXTURE4);
     gl.bindTexture(gl.TEXTURE_2D, textures.normals);
     gl.activeTexture(gl.TEXTURE5);
-    gl.bindTexture(gl.TEXTURE_2D, textures.lights);    
+    gl.bindTexture(gl.TEXTURE_2D, textures.lights);
     gl.activeTexture(gl.TEXTURE6);
     gl.bindTexture(gl.TEXTURE_2D, textures.uvs);
     gl.activeTexture(gl.TEXTURE7);
     gl.bindTexture(gl.TEXTURE_2D, textures.env);
     gl.activeTexture(gl.TEXTURE8);
+    gl.bindTexture(gl.TEXTURE_2D, textures.camera.pos);
+    gl.activeTexture(gl.TEXTURE9);
+    gl.bindTexture(gl.TEXTURE_2D, textures.camera.dir);
+    gl.activeTexture(gl.TEXTURE10);
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, textures.array);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[i % 2]);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[i % 2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
@@ -734,15 +778,15 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   let currentTile = 0;
-  let numTilesX = 2;
-  let numTilesY = 2;
+  let numTilesX = 1;
+  let numTilesY = 1;
 
   function tick() {
     let max = parseInt(sampleInput.value);
     if (dirty) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[0]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[0]);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[1]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[1]);
       gl.clear(gl.COLOR_BUFFER_BIT);
       pingpong = 0;
       currentTile = 0;
@@ -750,7 +794,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       console.log("Cleared")
     }
 
-	
+
     if (max && pingpong < max && active) {
       let tileX = currentTile % numTilesX;
       let tileY = Math.floor(currentTile / numTilesX);
@@ -760,6 +804,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let height = Math.ceil(resolution[1] / numTilesY);
       //console.log(tileX, tileY, offsetX, offsetY, width, height, dirty);
       gl.viewport(offsetX, offsetY, width, height);
+      drawCamera();
       drawTracer(moving ? 0 : pingpong);
       currentTile++;
       drawQuad(pingpong);
@@ -769,7 +814,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         sampleOutput.value = pingpong;
       }
     }
-	
+
 	if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();
       return
@@ -837,6 +882,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     "shader/bvh_test.fs",
     "shader/draw.vs",
     "shader/draw.fs",
+    "shader/camera.vs",
+    "shader/camera.fs",
     scenePath
   ]);
   let scene = JSON.parse(sceneRes);
