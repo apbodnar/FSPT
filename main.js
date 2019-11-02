@@ -31,9 +31,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let lensFeatures;
   let sampleInput;
   let sampleOutput;
-  let whitePointSlider;
   let saturation;
-  let whitePoint;
   let lightRanges = [];
   let indirectClamp = 128;
   let atlasRes = 2048;
@@ -51,12 +49,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     apertureSizeElement = document.getElementById("aperture-size");
     sampleInput = document.getElementById('max-samples');
     sampleOutput = document.getElementById("counter");
-    whitePointSlider = document.getElementById("white-point");
     expElement = document.getElementById("exposure");
     satElement = document.getElementById("saturation");
 
     saturation = satElement.value;
-    whitePoint = whitePointSlider.value;
 
     sampleInput.value = scene.samples || 2000;
 
@@ -128,7 +124,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     );
     programs.draw = initProgram(
       "shader/draw",
-      ["fbTex", "exposure", "whitePoint", "saturation"],
+      ["fbTex", "exposure", "saturation"],
       ["corner"],
       assets
     );
@@ -639,10 +635,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       exposure = parseFloat(e.target.value);
     }, false);
 
-    whitePointSlider.addEventListener('input', function(e) {
-      whitePoint = parseFloat(e.target.value);
-    }, false);
-
     satElement.addEventListener('input', function(e) {
       saturation = parseFloat(e.target.value);
     }, false);
@@ -770,7 +762,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.enableVertexAttribArray(program.attributes.corner);
     gl.uniform1f(program.uniforms.saturation, saturation);
     gl.uniform1f(program.uniforms.exposure, exposure);
-    gl.uniform1f(program.uniforms.whitePoint, whitePoint);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);

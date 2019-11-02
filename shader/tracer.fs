@@ -306,8 +306,7 @@ vec3 UE4Eval(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 matParams, in v
 	float LDotH = dot(L, H);
 
 	// specular	
-	float specular = 0.5;
-	vec3 specularCol = mix(vec3(0.2), diffuseColor, matParams.x);
+	vec3 specularCol = mix(vec3(0.04), diffuseColor, matParams.x);
 	float a = max(0.001, matParams.y);
 	float Ds = GTR2(NDotH, a);
 	float FH = SchlickFresnel(LDotH);
@@ -376,7 +375,7 @@ vec3 barycentricNormal(vec3 weights, Normals normals, vec3 texNormal, out vec3 u
   unmappedNormal =  weights.x * normals.n1 + weights.y * normals.n2 + weights.z * normals.n3;
   vec3 tangent = weights.x * normals.t1 + weights.y * normals.t2 + weights.z * normals.t3;
   vec3 bitangent = weights.x * normals.bt1 + weights.y * normals.bt2 + weights.z * normals.bt3;
-  return texNormal.x * tangent + texNormal.y * bitangent + texNormal.z * unmappedNormal;
+  return normalize(texNormal.x * tangent + texNormal.y * bitangent + texNormal.z * unmappedNormal);
 }
 
 vec3 barycentricWeights(Triangle tri, vec3 p){
@@ -641,9 +640,9 @@ void main(void) {
     } else {
       throughput = vec3(0.0);
     }
-    accumulatedReflectance *= throughput;
-
-    float colorAlbedo = albedo(throughput) + EPSILON;
+    
+    // clamp albedo to avoid some precision issues
+    //float colorAlbedo = i > 0 ? 0.5 : 1.0;
     //if( rnd() > colorAlbedo ){ break; }
 
     #ifdef USE_ALPHA
@@ -651,8 +650,9 @@ void main(void) {
     #else
     vec3 indirect = getIndirectEmission(ray, result, mat);
     #endif
-    //accumulatedReflectance *= (texDiffuse / colorAlbedo);
-    color += accumulatedReflectance * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
+    accumulatedReflectance *= (throughput);
+    //color += accumulatedReflectance * incident;
+    // * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
