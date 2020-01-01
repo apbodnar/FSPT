@@ -70,7 +70,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       antialias: false,
       powerPreference: "high-performance"
     });
-    canvas.width = resolution[0]; // square render target
+    canvas.width = resolution[0];
     canvas.height = resolution[1];
   }
 
@@ -216,10 +216,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       roughnessIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (group.material["pmr"]) {
       roughnessIndex = texturePacker.addTexture(createFlatTexture(group.material["pmr"]));
-    } else if (typeof transforms.roughness === 'string') {
-      roughnessIndex = texturePacker.addTexture(assets[transforms.roughness]);
+    } else if (typeof transforms.metallicRoughness === 'string') {
+      roughnessIndex = texturePacker.addTexture(assets[transforms.metallicRoughness]);
+    } else if (typeof transforms.metallicRoughness === 'object'){
+      roughnessIndex = texturePacker.addTexture(createFlatTexture(transforms.metallicRoughness));
     } else {
-      roughnessIndex = texturePacker.addTexture(createFlatTexture([0, transforms.roughness, 0]));
+      roughnessIndex = texturePacker.addTexture(createFlatTexture([0.1, 0.3, 0]));
     }
 
     if (group.material["map_kem"]) {
@@ -269,13 +271,15 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     let props = mergeSceneProps(scene);
     let texturePacker = new TexturePacker(atlasRes, props.length);
+    let bounds = {min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity]};
     for (let i = 0; i < props.length; i++) {
       let prop = props[i];
       let basePath = prop.path.split('/').slice(0, -1).join('/');
       console.log("Parsing:", prop.path);
       let parsed = await ObjLoader.parseMesh(assets[prop.path], prop, scene.worldTransforms, basePath);
       let groups = parsed.groups;
-
+      bounds.max = Vec3.max(bounds.max, parsed.bounds.max);
+      bounds.min = Vec3.min(bounds.min, parsed.bounds.min);
       if (parsed.urls && parsed.urls.size > 0) {
         console.log("Downloading: \n", Array.from(parsed.urls).join('\n'));
         let newTextures = await Utility.loadAll(Array.from(parsed.urls));
@@ -291,6 +295,19 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
           geometry.push(t)
         });
       });
+    }
+    console.log("Scene bounds:", bounds);
+    if (scene.normalize) {
+      let diff = Vec3.sub(bounds.max, bounds.min);
+      let longest = Math.max(Math.max(diff[0], diff[1]), diff[2]);
+      let centroid = Vec3.scale( Vec3.add(bounds.max, bounds.min), 0.5);
+      let scale = 2 * scene.normalize / longest;
+      console.log("Centering and scaling scene to size bounds:", scale);
+      for (let i = 0; i < geometry.length; i++) {
+        for (let j = 0; j < geometry[i].verts.length; j++) {
+          geometry[i].verts[j] = Vec3.scale(Vec3.sub(geometry[i].verts[j], centroid), scale)
+        }
+      }
     }
 
     console.log("Packed " + texturePacker.imageSet.length + " textures")
@@ -562,9 +579,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let squareBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, squareBuffer);
     let vertices = [
-      1.0, 1.0, 0.0,
-      -1.0, 1.0, 0.0,
-      1.0, -1.0, 0.0,
+      -1.0, 3.0, 0.0,
+      3.0, -1.0, 0.0,
       -1.0, -1.0, 0.0
     ];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
@@ -699,7 +715,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform3fv(program.uniforms.I, dir);
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, framebuffers.camera);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
   function drawTracer(i) {
@@ -751,7 +767,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.activeTexture(gl.TEXTURE10);
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, textures.array);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[i % 2]);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
   function drawQuad(i) {
@@ -765,7 +781,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
   let currentTile = 0;

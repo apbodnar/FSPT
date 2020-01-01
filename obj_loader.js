@@ -16,6 +16,7 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
   let materials = {};
   let skips = new Set(transforms.skips);
   let urls = null;
+  let bounds = {min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity]};
 
   function applyRotations(vert){
     transforms.rotate.forEach((r) => {vert = Vec3.rotateArbitrary(vert, r.axis, r.angle)});
@@ -133,6 +134,13 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
       ],
       transforms
     );
+    
+    for(let i=0; i<tri.verts.length; i++){
+      for(let j=0; j<tri.verts[i].length; j++){
+        bounds.max = Vec3.max(bounds.max, tri.verts[i]);
+        bounds.min = Vec3.min(bounds.min, tri.verts[i]);
+      }
+    }
 
     // Use mesh normals or calculate them
     if(transforms.normals === "mesh"){
@@ -205,5 +213,5 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
     });
   });
 
-  return new Promise(resolve => { resolve({groups: groups, urls: urls}) });
+  return new Promise(resolve => { resolve({groups: groups, urls: urls, bounds: bounds}) });
 }

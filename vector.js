@@ -39,6 +39,14 @@ export class Vec3 {
   static lerp(v1, v2, sigma) {
     return Vec3.add(v1, Vec3.scale(Vec3.sub(v2, v1), sigma));
   }
+  
+  static max(v1, v2) {
+    return [Math.max(v1[0], v2[0]), Math.max(v1[1], v2[1]), Math.max(v1[2], v2[2])]
+  }
+  
+  static min(v1, v2) {
+    return [Math.min(v1[0], v2[0]), Math.min(v1[1], v2[1]), Math.min(v1[2], v2[2])]
+  }
 
   static rotateX(v, a) {
     let x = v[0],

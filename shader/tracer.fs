@@ -642,17 +642,15 @@ void main(void) {
     }
     
     // clamp albedo to avoid some precision issues
-    //float colorAlbedo = i > 0 ? 0.5 : 1.0;
-    //if( rnd() > colorAlbedo ){ break; }
+    float colorAlbedo = i > 0 ? 0.5 : 1.0;
+    if( rnd() > colorAlbedo ){ break; }
 
     #ifdef USE_ALPHA
     vec3 indirect = getIndirectEmission(ray, result, mat, weights);
     #else
     vec3 indirect = getIndirectEmission(ray, result, mat);
     #endif
-    accumulatedReflectance *= (throughput);
-    //color += accumulatedReflectance * incident;
-    // * (direct * max(directWeight, 0.0) + clamp(indirect * max(indirectWeight, 0.0),vec3(0),vec3(6400)));
+    accumulatedReflectance *= (throughput / colorAlbedo);
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
