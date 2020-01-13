@@ -4,6 +4,9 @@ import {
   TexturePacker
 } from './texture_packer.js'
 import {
+  ProcessEnvRadiance
+} from './env_sampler.js'
+import {
   BVH
 } from './bvh.js'
 import {
@@ -15,7 +18,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let gl;
   let programs = {};
   let textures = {};
-  let framebuffers = {screen: [], camera: {pos: null, dir: null}};
+  let preprocDirs = [];
+  let framebuffers = { screen: [], camera: { pos: null, dir: null } };
   let bvh;
   let pingpong = 0;
   let dirty = true;
@@ -33,6 +37,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let sampleOutput;
   let saturation;
   let lightRanges = [];
+  let radianceBins = null;
   let indirectClamp = 128;
   let atlasRes = 2048;
   let moving = false;
@@ -95,10 +100,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.attachShader(program, fs);
     gl.linkProgram(program);
     gl.useProgram(program);
-    uniforms.forEach(function(name) {
+    uniforms.forEach(function (name) {
       program.uniforms[name] = gl.getUniformLocation(program, name);
     });
-    attributes.forEach(function(name) {
+    attributes.forEach(function (name) {
       program.attributes[name] = gl.getAttribLocation(program, name);
     });
 
@@ -116,7 +121,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       "shader/tracer",
       [
         "tick", "randBase", "envTex", "fbTex", "triTex", "bvhTex", "matTex",
-        "normTex", "lightTex", "uvTex", "texArray", "envTheta",
+        "normTex", "lightTex", "uvTex", "texArray", "envTheta", "radianceBins",
         "lightRanges", "numLights", "cameraPosTex", "cameraDirTex"
       ],
       ["corner"],
@@ -158,13 +163,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
   function createEnvironmentMapImg(image) {
     gl.getExtension('OES_texture_float_linear');
-    textures.env = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, textures.env);
+    let tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    return tex;
   }
 
   function createEnvironmentMapPixels(stops) {
@@ -183,13 +189,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     let pixels = new Float32Array(pixelsTmp);
     gl.getExtension('OES_texture_float_linear');
-    textures.env = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, textures.env);
+    let tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, 1, height, 0, gl.RGB, gl.FLOAT, pixels);
+    return tex;
   }
 
   function getMaterial(transforms, group, texturePacker, assets, basePath) {
@@ -217,8 +224,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     } else if (group.material["pmr"]) {
       roughnessIndex = texturePacker.addTexture(createFlatTexture(group.material["pmr"]));
     } else if (typeof transforms.metallicRoughness === 'string') {
-      roughnessIndex = texturePacker.addTexture(assets[transforms.metallicRoughness]);
-    } else if (typeof transforms.metallicRoughness === 'object'){
+      let img = assets[transforms.metallicRoughness];
+      img.swizzle = transforms.mrSwizzle;
+      roughnessIndex = texturePacker.addTexture(img);
+    } else if (typeof transforms.metallicRoughness === 'object') {
       roughnessIndex = texturePacker.addTexture(createFlatTexture(transforms.metallicRoughness));
     } else {
       roughnessIndex = texturePacker.addTexture(createFlatTexture([0.1, 0.3, 0]));
@@ -258,20 +267,24 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let lights = [];
     if (scene.environment) {
       if (Array.isArray(scene.environment)) {
-        createEnvironmentMapPixels(scene.environment);
+        textures.env = createEnvironmentMapPixels(scene.environment);
       } else {
-        createEnvironmentMapImg(assets[scene.environment]);
+        textures.env = createEnvironmentMapImg(assets[scene.environment]);
+        let time = new Date().getTime();
+        console.log("Processing env radiance distribution for", scene.environment);
+        radianceBins = ProcessEnvRadiance(assets[scene.environment]);
+        preprocDirs.push('#define ENV_BINS ' + radianceBins.length / 4);
+        console.log("Processing env took", (new Date().getTime() - time) / 1000.0, "seconds for", radianceBins.length / 4, "bins");
       }
     } else {
-      createEnvironmentMapPixels([
+      textures.env = createEnvironmentMapPixels([
         [0, 0, 0],
         [0, 0, 0]
       ]);
     }
-
     let props = mergeSceneProps(scene);
     let texturePacker = new TexturePacker(atlasRes, props.length);
-    let bounds = {min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity]};
+    let bounds = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     for (let i = 0; i < props.length; i++) {
       let prop = props[i];
       let basePath = prop.path.split('/').slice(0, -1).join('/');
@@ -300,7 +313,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     if (scene.normalize) {
       let diff = Vec3.sub(bounds.max, bounds.min);
       let longest = Math.max(Math.max(diff[0], diff[1]), diff[2]);
-      let centroid = Vec3.scale( Vec3.add(bounds.max, bounds.min), 0.5);
+      let centroid = Vec3.scale(Vec3.add(bounds.max, bounds.min), 0.5);
       let scale = 2 * scene.normalize / longest;
       console.log("Centering and scaling scene to size bounds:", scale);
       for (let i = 0; i < geometry.length; i++) {
@@ -337,7 +350,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
           let subBuffer = [].concat(tris[j].verts[0], tris[j].verts[1], tris[j].verts[2]);
-          subBuffer.forEach(function(el) {
+          subBuffer.forEach(function (el) {
             trianglesBuffer.push(el);
           });
         }
@@ -349,7 +362,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
             material.emittance,
             [material.ior, material.dielectric, 0]
           );
-          subBuffer.forEach(function(el) {
+          subBuffer.forEach(function (el) {
             materialBuffer.push(el);
           });
         }
@@ -358,13 +371,13 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
           for (let k = 0; k < 3; k++) {
             subBuffer = subBuffer.concat(tris[j].normals[k], tris[j].tangents[k], tris[j].bitangents[k]);
           }
-          subBuffer.forEach(function(el) {
+          subBuffer.forEach(function (el) {
             normalBuffer.push(el);
           });
         }
         for (let j = 0; j < tris.length; j++) {
           let subBuffer = [].concat(tris[j].uvs[0], tris[j].uvs[1], tris[j].uvs[2]);
-          subBuffer.forEach(function(el) {
+          subBuffer.forEach(function (el) {
             uvBuffer.push(el);
           });
         }
@@ -378,12 +391,18 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       lightRanges.push(lightBuffer.length / 9);
       for (let j = 0; j < lights[i].length; j++) {
         let t = lights[i][j];
-        [].concat(t.verts[0], t.verts[1], t.verts[2]).forEach(function(e) {
+        [].concat(t.verts[0], t.verts[1], t.verts[2]).forEach(function (e) {
           lightBuffer.push(e);
         });
       }
       lightRanges.push(lightBuffer.length / 9 - 1);
     }
+    if (lights.length > 0) {
+      preprocDirs.push('#define NUM_LIGHT_RANGES ' + lightRanges.length / 2);
+    } else {
+      preprocDirs.push('#define NUM_LIGHT_RANGES 1');
+    }
+    
 
     textures.materials = createTexture();
     let res = padBuffer(materialBuffer, 4, 3);
@@ -608,12 +627,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       eye = Vec3.add(eye, shift);
     }
 
-    canvasElement.addEventListener("mousedown", function(e) {
+    canvasElement.addEventListener("mousedown", function (e) {
       mode = e.which === 1;
       xi = e.layerX;
       yi = e.layerY;
     }, false);
-    canvasElement.addEventListener("mousemove", function(e) {
+    canvasElement.addEventListener("mousemove", function (e) {
       if (mode) {
         moving = true;
         dirty = true;
@@ -629,7 +648,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         }));
       }
     }, false);
-    canvasElement.addEventListener("mouseup", function(e) {
+    canvasElement.addEventListener("mouseup", function (e) {
       mode = false;
       moving = false;
       if (e.which === 1) {
@@ -637,36 +656,36 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       }
       shootAutoFocusRay();
     }, false);
-    canvasElement.addEventListener('mousewheel', function(e) {
+    canvasElement.addEventListener('mousewheel', function (e) {
       scale -= e.wheelDelta / 1200 * scale;
       dirty = true;
     }, false);
 
-    thetaElement.addEventListener('input', function(e) {
+    thetaElement.addEventListener('input', function (e) {
       envTheta = parseFloat(e.target.value);
       dirty = true;
     }, false);
 
-    expElement.addEventListener('input', function(e) {
+    expElement.addEventListener('input', function (e) {
       exposure = parseFloat(e.target.value);
     }, false);
 
-    satElement.addEventListener('input', function(e) {
+    satElement.addEventListener('input', function (e) {
       saturation = parseFloat(e.target.value);
     }, false);
 
 
-    focalDepthElement.addEventListener("input", function(e) {
+    focalDepthElement.addEventListener("input", function (e) {
       lensFeatures[0] = 1 - (1 / parseFloat(e.target.value));
       dirty = true;
     }, false);
 
-    apertureSizeElement.addEventListener("input", function(e) {
+    apertureSizeElement.addEventListener("input", function (e) {
       lensFeatures[1] = parseFloat(e.target.value);
       dirty = true;
     }, false);
 
-    document.addEventListener("keypress", function(e) {
+    document.addEventListener("keypress", function (e) {
       let strafe = Vec3.normalize(Vec3.cross(dir, [0, 1, 0]));
       switch (e.key) {
         case 'w':
@@ -740,10 +759,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform1f(program.uniforms.envTheta, envTheta);
-    gl.uniform2fv(program.uniforms.lensFeatures, lensFeatures);
     gl.uniform2fv(program.uniforms.lightRanges, lightRanges);
     gl.uniform3fv(program.uniforms.eye, eye);
     gl.uniform3fv(program.uniforms.cameraDir, dir);
+    gl.uniform4uiv(program.uniforms.radianceBins, radianceBins);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[(i + 1) % 2]);
     gl.activeTexture(gl.TEXTURE1);
@@ -815,14 +834,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       drawTracer(moving ? 0 : pingpong);
       currentTile++;
       drawQuad(pingpong);
-      if(currentTile === numTilesX * numTilesY){
+      if (currentTile === numTilesX * numTilesY) {
         currentTile = 0;
         pingpong++;
         sampleOutput.value = pingpong;
       }
     }
 
-	if (pingpong >= max && frameNumber >= 0) {
+    if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();
       return
     } else {
@@ -832,7 +851,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
   function uploadOutput() {
     let canvas = document.getElementById('trace');
-    canvas.toBlob(function(blob) {
+    canvas.toBlob(function (blob) {
       uploadDataUrl('/upload/' + sceneName + '/' + frameNumber, blob, (res) => {
         let newFrame = frameNumber + 1;
         window.location.href = window.location.href.replace(/frame=\d+/, 'frame=' + newFrame)
@@ -844,8 +863,13 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     return [].concat((scene.props || []), (scene.static_props || []), Object.values(scene.animated_props || []))
   }
 
+  function commitPreprocessor(assets) {
+    let shaderLines = assets["shader/tracer.fs"].split('\n');
+    shaderLines.splice(1, 0, ...preprocDirs);
+    assets["shader/tracer.fs"] = shaderLines.join('\n');
+  }
+
   async function start(res) {
-    let preprocDirs = [];
     let modeSet = new Set(mode.split('_').map(e => e.toLowerCase()));
     if (mode === 'test') {
       res["shader/tracer.fs"] = res["shader/bvh_test.fs"];
@@ -858,21 +882,18 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         console.log('Using alpha textures');
         preprocDirs.push('#define USE_ALPHA');
       }
-
-      let shaderLines = res["shader/tracer.fs"].split('\n');
-      shaderLines.splice(1, 0, ...preprocDirs);
-      res["shader/tracer.fs"] = shaderLines.join('\n');
     }
-    window.addEventListener("mouseover", function() {
+    window.addEventListener("mouseover", function () {
       active = true;
     });
-    window.addEventListener("mouseout", function() {
+    window.addEventListener("mouseout", function () {
       active = !isFramed;
     });
     let canvas = document.getElementById("trace");
     initGL(canvas);
-    initPrograms(res);
     await initBVH(res);
+    commitPreprocessor(res);
+    initPrograms(res);
     initBuffers();
     initEvents();
 
@@ -895,13 +916,13 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   ]);
   let scene = JSON.parse(sceneRes);
   initGlobals(scene);
-  mergeSceneProps(scene).forEach(function(e) {
+  mergeSceneProps(scene).forEach(function (e) {
     pathSet.add(e.path);
     if (typeof e.diffuse === 'string') {
       pathSet.add(e.diffuse);
     }
-    if (typeof e.roughness === 'string') {
-      pathSet.add(e.roughness);
+    if (typeof e.metallicRoughness === 'string') {
+      pathSet.add(e.metallicRoughness);
     }
     if (e.normal) {
       pathSet.add(e.normal);

@@ -43,7 +43,7 @@ export async function getText(path) {
   });
 }
 
-export function uploadDataUrl(path, blob, callback){
+export function uploadDataUrl(path, blob, callback) {
   let req = new XMLHttpRequest();
   req.addEventListener("load", function (res) {
     callback.apply(null, [res]);

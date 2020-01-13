@@ -3,20 +3,20 @@
  */
 
 export class TexturePacker {
-  constructor(atlasRes, numTextures){
+  constructor(atlasRes, numTextures) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.canvas.height = atlasRes;
     this.ctx = this.canvas.getContext('2d');
     this.res = atlasRes;
     this.imageSet = [];
     this.imageKeys = {};
-    this.ctx.scale(1,-1);
+    this.ctx.scale(1, -1);
     this.ctx.fillStyle = "rgba(0,0,0,0)";
     this.maxRes = 0;
   }
 
-  addTexture(image){
-    if (this.imageKeys[image.currentSrc]){
+  addTexture(image) {
+    if (this.imageKeys[image.currentSrc]) {
       return this.imageKeys[image.currentSrc]
     } else {
       this.maxRes = Math.max(this.maxRes, image.height);
@@ -25,16 +25,16 @@ export class TexturePacker {
       return this.imageKeys[image.currentSrc];
     }
   }
-  
-  resizeAndPaste(image){
+
+  resizeAndPaste(image) {
     this.ctx.globalAlpha = 0.0;
     this.ctx.clearRect(0, 0, this.res, -this.res);
     this.ctx.globalAlpha = 1.0;
     this.ctx.drawImage(image, 0, 0, this.res, -this.res);
   }
-  
+
   setAndGetResolution() {
-    if(this.maxRes < this.res) {
+    if (this.maxRes < this.res) {
       console.log("Using texture dimensions of " + this.maxRes + "px instead of specified " + this.res + "px.")
       this.res = this.maxRes;
     }
@@ -44,9 +44,22 @@ export class TexturePacker {
   getPixels() {
     let time = new Date().getTime();
     let pixels = new Uint8Array(this.res * this.res * 4 * this.imageSet.length);
-    for (let i=0; i < this.imageSet.length; i++){
-      this.resizeAndPaste(this.imageSet[i]);
+    for (let i = 0; i < this.imageSet.length; i++) {
+      let img = this.imageSet[i];
+      this.resizeAndPaste(img);
       let pixBuffer = new Uint8Array(this.ctx.getImageData(0, 0, this.res, this.res).data.buffer);
+      if (img.swizzle) {
+        console.log("Swizzling texture:", img.currentSrc, " with ", img.swizzle )
+        let tmp = [0, 0, 0, 0];
+        for (let j = 0; j < pixBuffer.length; j+=4) {
+          for (let k=0; k<4; k++) {
+            tmp[k] = pixBuffer[j+k]
+          }
+          for (let k=0; k<4; k++) {
+            pixBuffer[j+k] = tmp[img.swizzle[k]]
+          }
+        }
+      }
       let offset = i * this.res * this.res * 4;
       pixels.set(pixBuffer, offset)
     }

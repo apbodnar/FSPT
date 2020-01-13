@@ -1,10 +1,9 @@
 {
-  "environment": "environment/misty_pines_4k.RGBE.PNG",
+  "environment": "environment/aristea_wreck_4k.RGBE.PNG",
   "atlasRes": 1,
   "cameraPos": [-1.333,0.346,4.021],
   "cameraDir": [0.255,-0.160,-0.954],
   "fovScale": 0.2,
-  "normalize": 2, 
   "props": [
     {
       "path": "asset_packs/misc/bunny.obj",

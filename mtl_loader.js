@@ -11,13 +11,13 @@ export function ParseMaterials(mtlText, basePath) {
   lines.forEach((line) => {
     let tokens = line.trim().split(/[ ]+/);
     let key = tokens[0].toLowerCase();
-    if(key === 'newmtl') {
+    if (key === 'newmtl') {
       mtlName = tokens[1];
       materials[mtlName] = {};
     }
     if (mtlName) {
       let value;
-	    let isUrl = false;
+      let isUrl = false;
 
       if (scalarTokens.has(key)) {
         value = parseFloat(tokens[1])
@@ -25,11 +25,11 @@ export function ParseMaterials(mtlText, basePath) {
         value = tokens.splice(1, Infinity).map(parseFloat)
       } else if (stringTokens.has(key)) {
         value = tokens[1];
-		    isUrl = true;
+        isUrl = true;
       }
 
       if (value) {
-        if(isUrl){
+        if (isUrl) {
           urls.add(basePath + '/' + value);
         }
         materials[mtlName][key] = value;
@@ -37,5 +37,5 @@ export function ParseMaterials(mtlText, basePath) {
     }
   });
 
-  return {materials: materials, urls: urls};
+  return { materials: materials, urls: urls };
 }

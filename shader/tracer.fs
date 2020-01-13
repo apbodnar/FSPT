@@ -1,4 +1,6 @@
 #version 300 es
+//#define ENV_BINS 0
+//#define NUM_LIGHT_RANGES 0
 
 precision highp float;
 precision highp sampler2DArray;
@@ -20,7 +22,8 @@ uniform int tick;
 uniform float numLights;
 uniform float randBase;
 uniform float envTheta;
-uniform vec2 lightRanges[20];
+uniform uvec2 lightRanges[NUM_LIGHT_RANGES];
+uniform uvec4 radianceBins[ENV_BINS];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D normTex;
@@ -394,68 +397,6 @@ vec3 barycentricWeights(Triangle tri, vec3 p){
   return vec3(u, v, w);
 }
 
-#ifdef USE_ALPHA
-void processLeaf(Node leaf, Ray ray, inout Hit result, inout Material mat, inout vec3 weights){
-  float t = MAX_T;
-  float index = -1.0;
-  for(int i=0; i<4; ++i){
-    Triangle tri = createTriangle(leaf.triangles + float(i));
-    float res = rayTriangleIntersect(ray, tri);
-    if(res < result.t){
-      float index = leaf.triangles + float(i);
-      vec3 origin = ray.origin + ray.dir * res;
-      Material tempMat = createMaterial(index);
-      vec3 tempWeights = barycentricWeights(tri, origin);
-      TexCoords texCoords = createTexCoords(index);
-      vec2 texCoord = barycentricTexCoord(tempWeights, texCoords);
-      vec4 texRaw = texture(texArray, vec3(texCoord, tempMat.mapIndices.diffuse));
-      if (rnd() < texRaw.a){
-        mat = tempMat;
-        weights = tempWeights;
-        result.t = res;
-        result.index = index;
-      }
-    }
-  }
-}
-
-Hit traverseTree(Ray ray, inout Material mat, inout vec3 weights){
-  uint state = FROM_PARENT;
-  Hit result = Hit(MAX_T, -1.0);
-  Node current = nearChild(createNode(0.0), ray);
-  while(true){
-    if(state == FROM_CHILD){
-      if(current.index == 0.0){
-        return result;
-      }
-      float parentNear = nearChildIndex(createNode(current.parent), ray);
-      bool atNear = current.index == parentNear;
-      current = createNode(atNear ? current.sibling : current.parent);
-      state = atNear ? FROM_SIBLING : FROM_CHILD;
-    } else {
-      bool fromParent = state == FROM_PARENT;
-      uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-      float nextIndex = fromParent ? current.sibling : current.parent;
-      if(rayBoxIntersect(current, ray) < result.t){
-        if (current.triangles > -1.0) {
-          processLeaf(current, ray, result, mat, weights);
-        } else {
-          nextIndex = nearChildIndex(current, ray);
-          nextState = FROM_PARENT;
-        }
-      }
-      current = createNode(nextIndex);
-      state = nextState;
-    }
-  }
-}
-
-vec3 getIndirectEmission(Ray ray, out Hit result, inout Material mat, inout vec3 weights){
-  result = traverseTree(ray, mat, weights);
-  if(result.index < 0.0){ return vec3(0); }
-  return mat.emissivity;
-}
-#else
 void processLeaf(Node leaf, Ray ray, inout Hit result){
   float t = MAX_T;
   float index = -1.0;
@@ -471,7 +412,7 @@ void processLeaf(Node leaf, Ray ray, inout Hit result){
   }
 }
 
-Hit traverseTree(Ray ray){
+Hit intersectScene(Ray ray){
   uint state = FROM_PARENT;
   Hit result = Hit(MAX_T, -1.0);
   Node current = nearChild(createNode(0.0), ray);
@@ -503,12 +444,11 @@ Hit traverseTree(Ray ray){
 }
 
 vec3 getIndirectEmission(Ray ray, out Hit result, inout Material mat){
-  result = traverseTree(ray);
+  result = intersectScene(ray);
   if(result.index < 0.0){ return vec3(0); }
   mat = createMaterial(result.index);
   return mat.emissivity;
 }
-#endif
 
 vec3 randomPointOnTriangle(Triangle tri){
   vec3 e1 = tri.v2 - tri.v1;
@@ -542,11 +482,35 @@ float albedo(vec3 color){
   return dot(vec3(0.2126, 0.7152, 0.0722), color);
 }
 
-vec3 envColor(vec3 dir){
-  vec2 c = vec2(envTheta + atan(dir.z, dir.x) / M_TAU, asin(-dir.y) * INV_PI + 0.5);
+vec3 envColor(vec2 c) {
   vec4 rgbe = texture(envTex, c);
   rgbe.rgb *= pow(2.0,rgbe.a*255.0-128.0);
   return rgbe.rgb;
+}
+
+vec3 envSample(vec3 dir){
+  vec2 c = vec2(envTheta + atan(dir.z, dir.x) / M_TAU, asin(-dir.y) * INV_PI + 0.5);
+  return envColor(c);
+}
+
+vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, vec2 matParams) {
+  vec4 colorPdf = vec4(0);
+  vec4 bin = vec4(radianceBins[int(float(ENV_BINS) * rnd())]);
+  vec2 dims = vec2(textureSize(envTex, 0));
+  float nominal = float(dims.x * dims.y) / float(ENV_BINS);
+  colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y));
+  vec2 uv = vec2(envTheta, 0.0) + vec2((bin.z - bin.x) * rnd() + bin.x, (bin.w - bin.y) * rnd() + bin.y) / vec2(dims);
+  float theta = tan((uv.x - envTheta) * INV_PI * 0.5);
+  float x = cos(theta);
+  float y = sin(M_PI * (uv.y));
+  float z = sin(theta);
+  vec3 dir = vec3(x, y, z);
+  Hit shadow = intersectScene(Ray(origin, dir));
+  if (shadow.index == -1.0 || colorPdf.a > EPSILON) {
+    colorPdf.rgb = UE4Eval(incident, normal, diffuse, matParams, dir) * abs(dot(normal, dir)) / colorPdf.a;
+    colorPdf.rgb *= envColor(uv);
+  }
+  return colorPdf;
 }
 
 #ifdef USE_EXPLICIT
@@ -560,13 +524,7 @@ vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
     return intensity;
   }
   Ray ray = Ray(origin, lightDir);
-  #ifdef USE_ALPHA
-  Material mat;
-  vec3 weights;
-  Hit shadow = traverseTree(ray, mat, weights);
-  #else
-  Hit shadow = traverseTree(ray);
-  #endif
+  Hit shadow = intersectScene(ray);
   // Gross float equality hack
   if(createTriangle(shadow.index).v1 == light.v1){
     Material mat = createMaterial(shadow.index);
@@ -584,17 +542,13 @@ void main(void) {
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   Material mat;
   vec3 weights;
-  #ifdef USE_ALPHA
-  Hit result = traverseTree(ray, mat, weights);
-  #else
-  Hit result = traverseTree(ray);
+  Hit result = intersectScene(ray);
   mat = createMaterial(result.index);
-  #endif
   vec3 color = vec3(0);
   vec3 accumulatedReflectance = vec3(1);
   for(int i=0; i < NUM_BOUNCES; ++i){
     if(result.index < 0.0){
-      color += accumulatedReflectance * envColor(ray.dir);
+      //color += accumulatedReflectance * envSample(ray.dir);
       break;
     }
     vec3 origin = ray.origin + ray.dir * result.t;
@@ -631,11 +585,12 @@ void main(void) {
     float indirectWeight = 1.0;
 
     vec2 matParams = texMetallicRoughness.rg;
+    vec4 envImp =  sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, matParams);
     ray.dir = UE4Sample(incident, macroNormal, matParams);
-    float pdf = UE4Pdf(incident, macroNormal, matParams, ray.dir);
+    float bsdfPdf = UE4Pdf(incident, macroNormal, matParams, ray.dir);
 		vec3 throughput;
-    if(pdf > 0.0) { 
-      throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / pdf;
+    if(bsdfPdf > 0.0) { 
+      throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / bsdfPdf;
       // throughput = texDiffuse * abs(dot(macroNormal, ray.dir));
     } else {
       throughput = vec3(0.0);
@@ -645,12 +600,9 @@ void main(void) {
     float colorAlbedo = i > 0 ? 0.5 : 1.0;
     if( rnd() > colorAlbedo ){ break; }
 
-    #ifdef USE_ALPHA
-    vec3 indirect = getIndirectEmission(ray, result, mat, weights);
-    #else
     vec3 indirect = getIndirectEmission(ray, result, mat);
-    #endif
     accumulatedReflectance *= (throughput / colorAlbedo);
+    color += envImp.rgb;
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);

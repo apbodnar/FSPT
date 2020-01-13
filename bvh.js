@@ -1,6 +1,6 @@
 export class BVH {
-  constructor(triangles, maxTris){
-    let xIndices = triangles.map((_, i) => {return i});
+  constructor(triangles, maxTris) {
+    let xIndices = triangles.map((_, i) => { return i });
     let yIndices = Array.from(xIndices);
     let zIndices = Array.from(yIndices);
     this.maxTriangles = maxTris;
@@ -26,11 +26,11 @@ export class BVH {
 
   serializeTree() {
     let nodes = [],
-        i = -1;
+      i = -1;
 
     function traverseTree(root, prev) {
       let parent = ++i;
-      let node = {node: root, parent: prev};
+      let node = { node: root, parent: prev };
       nodes.push(node);
       if (!root.leaf) {
         node.left = traverseTree(root.left, parent);
@@ -45,26 +45,26 @@ export class BVH {
     return nodes;
   }
 
-  _constructCachedIndexList(indices, axis, index){
+  _constructCachedIndexList(indices, axis, index) {
     // Avoid re sorting by plucking from pre sorted buffers
-    let leftIndices = [[],[],[]];
+    let leftIndices = [[], [], []];
     leftIndices[axis] = indices[axis].slice(0, index);
-    let rightIndices = [[],[],[]];
+    let rightIndices = [[], [], []];
     rightIndices[axis] = indices[axis].slice(index, indices[axis].length);
     let setLeft = new Set(leftIndices[axis]);
-    let remainingAxes = [0, 1, 2].filter((e) => {return e !== axis});
+    let remainingAxes = [0, 1, 2].filter((e) => { return e !== axis });
 
-    for(let i = 0; i < remainingAxes.length; i++){
-      for(let j = 0; j < indices[remainingAxes[i]].length; j++){
+    for (let i = 0; i < remainingAxes.length; i++) {
+      for (let j = 0; j < indices[remainingAxes[i]].length; j++) {
         let idx = indices[remainingAxes[i]][j];
-        if(setLeft.has(idx)){
+        if (setLeft.has(idx)) {
           leftIndices[remainingAxes[i]].push(idx);
         } else {
           rightIndices[remainingAxes[i]].push(idx);
         }
       }
     }
-    return {left: leftIndices, right: rightIndices};
+    return { left: leftIndices, right: rightIndices };
   }
 
   _sortIndices(indices, axis) {
@@ -89,9 +89,9 @@ export class BoundingBox {
     let numTris = indices ? indices.length : triangles.length;
     for (let i = 0; i < numTris; i++) {
       let idx = indices ? indices[i] : i;
-      for (let j = 0; j < triangles[idx].verts.length; j++){
+      for (let j = 0; j < triangles[idx].verts.length; j++) {
         let vert = triangles[idx].verts[j];
-        for(let k = 0; k < vert.length; k++){
+        for (let k = 0; k < vert.length; k++) {
           this._box[k * 2] = Math.min(vert[k], this._box[k * 2]);
           this._box[k * 2 + 1] = Math.max(vert[k], this._box[k * 2 + 1]);
         }
@@ -103,7 +103,7 @@ export class BoundingBox {
       (this._box[4] + this._box[5]) / 2
     ];
   }
-  
+
   addTriangle(triangle) {
     this._box[0] = Math.min(this._box[0], triangle.boundingBox.getBounds()[0]);
     this._box[2] = Math.min(this._box[2], triangle.boundingBox.getBounds()[2]);
@@ -122,7 +122,7 @@ export class BoundingBox {
     return this._centroid[axis];
   }
 
-  getSurfaceArea(){
+  getSurfaceArea() {
     let xl = this._box[1] - this._box[0];
     let yl = this._box[3] - this._box[2];
     let zl = this._box[5] - this._box[4];
@@ -132,7 +132,7 @@ export class BoundingBox {
 }
 
 export class Node {
-  constructor(triangles, indices){
+  constructor(triangles, indices) {
     this._triangles = triangles;
     this._indices = indices;
     this.boundingBox = new BoundingBox(triangles, indices[0]);
@@ -143,7 +143,7 @@ export class Node {
     this.splitIndex = this.getSplittingIndex();
   }
 
-  get indices(){
+  get indices() {
     return this.splitAxis ? this._indices[this.splitAxis] : this._indices[0];
   }
 
@@ -189,12 +189,12 @@ export class Node {
       surfacesFront.push(bbFront.getSurfaceArea());
       surfacesBack.push(bbBack.getSurfaceArea());
     }
-	
+
     for (let i = 0; i < idxCache.length; i++) {
       let sAf = surfacesFront[i];
       let sAb = surfacesBack[surfacesBack.length - 1 - i];
       let cost = 2 + (sAf / parentSurfaceArea) * 2 * (i + 1) + (sAb / parentSurfaceArea) * 2 * (idxCache.length - 1 - i);
-      if(cost < bestCost) {
+      if (cost < bestCost) {
         bestCost = cost;
         bestIndex = i + 1;
       }
