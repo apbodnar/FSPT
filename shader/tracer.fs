@@ -495,20 +495,27 @@ vec3 envSample(vec3 dir){
 
 vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, vec2 matParams) {
   vec4 colorPdf = vec4(0);
-  vec4 bin = vec4(radianceBins[int(float(ENV_BINS) * rnd())]);
+  int idx = int(float(ENV_BINS) * rnd());
+  vec4 bin = vec4(radianceBins[idx]);
   vec2 dims = vec2(textureSize(envTex, 0));
-  float nominal = float(dims.x * dims.y) / float(ENV_BINS);
+  float nominal = (dims.x * dims.y) / float(ENV_BINS);
   colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y));
-  vec2 uv = vec2(envTheta, 0.0) + vec2((bin.z - bin.x) * rnd() + bin.x, (bin.w - bin.y) * rnd() + bin.y) / vec2(dims);
-  float theta = tan((uv.x - envTheta) * INV_PI * 0.5);
-  float x = cos(theta);
-  float y = sin(M_PI * (uv.y));
-  float z = sin(theta);
+  vec2 uv = vec2(-envTheta, 0) + vec2((bin.z - bin.x) * rnd() + bin.x, (bin.w - bin.y) * rnd() + bin.y) / dims;
+  //uv.y = 1.0 - uv.y; 
+  float theta = (uv.x) * M_TAU;
+  float phi = M_PI * uv.y;
+  float x = cos(theta) * sin(phi);
+  float y = cos(phi);
+  float z = sin(theta) * sin(phi);
   vec3 dir = vec3(x, y, z);
-  Hit shadow = intersectScene(Ray(origin, dir));
-  if (shadow.index == -1.0 || colorPdf.a > EPSILON) {
-    colorPdf.rgb = UE4Eval(incident, normal, diffuse, matParams, dir) * abs(dot(normal, dir)) / colorPdf.a;
-    colorPdf.rgb *= envColor(uv);
+  if (dot(dir, normal) > EXPLICIT_COS_THRESHOLD) {
+    Hit shadow = intersectScene(Ray(origin, dir));
+    if (shadow.index == -1.0 && colorPdf.a > EPSILON) {
+      colorPdf.rgb = UE4Eval(incident, normal, diffuse, matParams, dir) * abs(dot(normal, dir)) / colorPdf.a;
+      colorPdf.rgb *= envSample(dir) * M_TAU;
+    }
+  } else {
+    colorPdf.a = 0.0;
   }
   return colorPdf;
 }
@@ -571,9 +578,8 @@ void main(void) {
     vec3 lightDir;
     ray.origin = origin + baryNormal * EPSILON * 2.0;
 
-    //texDiffuse = specular ? vec3(1.0) : texDiffuse;
     // TODO: make this configurable in the materials
-    color += accumulatedReflectance * texEmmissive * 10.0;
+    //color += accumulatedReflectance * texEmmissive * 10.0;
 
     #ifdef USE_EXPLICIT
     vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
@@ -591,7 +597,6 @@ void main(void) {
 		vec3 throughput;
     if(bsdfPdf > 0.0) { 
       throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / bsdfPdf;
-      // throughput = texDiffuse * abs(dot(macroNormal, ray.dir));
     } else {
       throughput = vec3(0.0);
     }
@@ -601,8 +606,9 @@ void main(void) {
     if( rnd() > colorAlbedo ){ break; }
 
     vec3 indirect = getIndirectEmission(ray, result, mat);
+    color += accumulatedReflectance * envImp.rgb;
     accumulatedReflectance *= (throughput / colorAlbedo);
-    color += envImp.rgb;
+    
   }
 
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
