@@ -1,8 +1,13 @@
 #version 300 es
+
+#define INV_SQRT_OF_2PI 0.39894228040143267793994605993439  // 1.0/SQRT_OF_2PI
+#define INV_PI 0.31830988618379067153776752674503
+
 precision highp float;
 uniform sampler2D fbTex;
 uniform float exposure;
 uniform float saturation;
+uniform bool denoise;
 
 out vec4 fragColor;
 
@@ -43,8 +48,50 @@ vec3 ACESFitted(vec3 color)
     return color;
 }
 
+vec3 smartDeNoise(float sigma, float kSigma, float threshold)
+{
+    vec2 uv = gl_FragCoord.xy / vec2(textureSize(fbTex, 0));
+    float radius = round(kSigma*sigma);
+    float radQ = radius * radius;
+    
+    float invSigmaQx2 = .5 / (sigma * sigma);      // 1.0 / (sigma^2 * 2.0)
+    float invSigmaQx2PI = INV_PI * invSigmaQx2;    // 1.0 / (sqrt(PI) * sigma)
+    
+    float invThresholdSqx2 = .5 / (threshold * threshold);     // 1.0 / (sigma^2 * 2.0)
+    float invThresholdSqrt2PI = INV_SQRT_OF_2PI / threshold;   // 1.0 / (sqrt(2*PI) * sigma)
+    
+    vec3 centrPx = texture(fbTex,uv).rgb * exposure; 
+    
+    float zBuff = 0.0;
+    vec3 aBuff = vec3(0.0);
+    vec2 size = vec2(textureSize(fbTex, 0));
+    
+    for(float x=-radius; x <= radius; x++) {
+        float pt = sqrt(radQ-x*x);  // pt = yRadius: have circular trend
+        for(float y=-pt; y <= pt; y++) {
+            vec2 d = vec2(x,y)/size;
+
+            float blurFactor = exp( -dot(d , d) * invSigmaQx2 ) * invSigmaQx2;
+            
+            vec3 walkPx =  texture(fbTex,uv+d).rgb * exposure;
+
+            vec3 dC = walkPx-centrPx;
+            float deltaFactor = exp( -dot(dC, dC) * invThresholdSqx2) * invThresholdSqrt2PI * blurFactor;
+                                 
+            zBuff += deltaFactor;
+            aBuff += deltaFactor*walkPx;
+        }
+    }
+    return aBuff/zBuff;
+}
+
 void main(void) {
-  vec3 texColor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb * exposure;
+  vec3 texColor = vec3(0);
+  if(denoise) {
+    texColor = smartDeNoise(5.0, 2.0, .100).rgb;
+  } else {
+    texColor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb * exposure;
+  }
   vec3 mapped = ACESFitted(texColor);
   mapped = mix( vec3(dot(mapped, lumaCoefs)), mapped, saturation);
   fragColor = vec4(mapped, 1);

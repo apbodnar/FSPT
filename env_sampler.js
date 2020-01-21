@@ -21,8 +21,7 @@ export function ProcessEnvRadiance(img) {
         return luma(normalized);
     }
 
-    function biTreeSplitting(data, imgWidth, totalRadiance, xmin, ymin, xmax, ymax) {
-        let minRadiance = totalRadiance / 256
+    function biTreeSplitting(data, imgWidth, totalRadiance, minRadiance, xmin, ymin, xmax, ymax) {
         let boxes = []
         function biSplit(radiance, x0, y0, x1, y1) {
             if (radiance <= minRadiance || (y1 - y0) * (x1 - x0) < 2) {
@@ -61,11 +60,16 @@ export function ProcessEnvRadiance(img) {
     let pixels = ctx.getImageData(0, 0, img.width, img.height);
     let data = pixels.data;
     let totalRadiance = 0;
+    let brightestTexel = 0;
     for (let y = 0; y < img.height; y++) {
         for (let x = 0; x < img.width; x++) {
-            totalRadiance += getRadiance(data, img.width, x, y);
+            let rad = getRadiance(data, img.width, x, y);
+            brightestTexel = Math.max(rad, brightestTexel)
+            totalRadiance += rad;
         }
     }
-    let boxes = biTreeSplitting(data, img.width, totalRadiance, 0, 0, img.width, img.height);
+    let minRadiance = Math.max(totalRadiance / 64, brightestTexel)
+    console.log(minRadiance, brightestTexel)
+    let boxes = biTreeSplitting(data, img.width, totalRadiance, minRadiance, 0, 0, img.width, img.height);
     return new Uint16Array(boxes)
 }

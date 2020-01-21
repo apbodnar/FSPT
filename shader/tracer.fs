@@ -178,7 +178,7 @@ vec2 misWeights(float a, float b ) {
     float a2 = a*a;
     float b2 = b*b;
     float a2b2 = a2 + b2;
-    return max(vec2(a2, b2) / a2b2, vec2(EPSILON));
+    return vec2(a2, b2) / a2b2;
 }
 
 //-----------------------------------------------------------------------
@@ -508,15 +508,16 @@ vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, 
   float y = cos(phi);
   float z = sin(theta) * sin(phi);
   vec3 dir = vec3(x, y, z);
-  if (dot(dir, normal) > EXPLICIT_COS_THRESHOLD) {
+  float ddn = dot(dir, normal);
+  if (ddn > EXPLICIT_COS_THRESHOLD) {
     Hit shadow = intersectScene(Ray(origin, dir));
     if (shadow.index == -1.0 && colorPdf.a > EPSILON) {
       colorPdf.rgb = UE4Eval(incident, normal, diffuse, matParams, dir) * abs(dot(normal, dir)) / colorPdf.a;
-      colorPdf.rgb *= envSample(dir) * M_TAU;
+      colorPdf.rgb *= envSample(dir) * M_TAU * 4.0 * cos(asin(y));
+      //colorPdf.rgb *= ddn;
     }
-  } else {
-    colorPdf.a = 0.0;
   }
+  colorPdf.a *= UE4Pdf(incident, normal, matParams, dir);
   return colorPdf;
 }
 
@@ -550,66 +551,70 @@ void main(void) {
   Material mat;
   vec3 weights;
   Hit result = intersectScene(ray);
-  mat = createMaterial(result.index);
   vec3 color = vec3(0);
-  vec3 accumulatedReflectance = vec3(1);
-  for(int i=0; i < NUM_BOUNCES; ++i){
-    if(result.index < 0.0){
-      //color += accumulatedReflectance * envSample(ray.dir);
-      break;
+  if(result.index < 0.0){
+    color += envSample(ray.dir) * M_PI;
+  } else {
+    mat = createMaterial(result.index);
+    vec3 accumulatedReflectance = vec3(1);
+    for(int i=0; i < NUM_BOUNCES; ++i){
+      vec3 origin = ray.origin + ray.dir * result.t;
+      Triangle tri = createTriangle(result.index);
+      #ifndef USE_ALPHA
+      weights = barycentricWeights(tri, origin);
+      #endif
+      TexCoords texCoords = createTexCoords(result.index);
+      vec2 texCoord = barycentricTexCoord(weights, texCoords);
+      vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
+      vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
+      vec3 texDiffuse = texRaw.rgb;
+      vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
+      float texEmmissiveScale = texMetallicRoughness.b;
+      vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
+      texMetallicRoughness.g *= texMetallicRoughness.g;
+      seed = origin.x * randBase + origin.y * 1.396529836 + origin.z * 4761.52835;
+      vec3 baryNormal;
+      vec3 macroNormal = barycentricNormal(weights, createNormals(result.index), texNormal, baryNormal);
+      vec3 lightDir;
+      ray.origin = origin + baryNormal * EPSILON * 2.0;
+
+      // TODO: make this configurable in the materials
+      color += accumulatedReflectance * texEmmissive * 10.0;
+
+      #ifdef USE_EXPLICIT
+      vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
+      #else
+      vec3 direct = vec3(0);
+      #endif
+      vec3 incident = ray.dir;
+      float directWeight = 0.0;
+      float indirectWeight = 1.0;
+
+      vec2 matParams = texMetallicRoughness.rg;
+      vec4 envImp =  sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, matParams);
+      ray.dir = UE4Sample(incident, macroNormal, matParams);
+      float bsdfPdf = UE4Pdf(incident, macroNormal, matParams, ray.dir);
+      vec3 throughput;
+      if(bsdfPdf > 0.0) { 
+        throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / bsdfPdf;
+      } else {
+        throughput = vec3(0.0);
+      }
+      
+      // clamp albedo to avoid some precision issues
+      float colorAlbedo = i > 0 ? 0.5 : 1.0;
+      if( rnd() > colorAlbedo ){ break; }
+
+      vec3 indirect = getIndirectEmission(ray, result, mat);
+      vec2 weights = bsdfPdf + envImp.a > 0.0 ? misWeights(envImp.a, bsdfPdf) : vec2(1, 0);
+      color += accumulatedReflectance * envImp.rgb * weights.x;
+      accumulatedReflectance *= (throughput / colorAlbedo);
+      if(result.index < 0.0){
+        color += accumulatedReflectance * envSample(ray.dir) * weights.y;
+        break;
+      }
     }
-    vec3 origin = ray.origin + ray.dir * result.t;
-    Triangle tri = createTriangle(result.index);
-    #ifndef USE_ALPHA
-    weights = barycentricWeights(tri, origin);
-    #endif
-    TexCoords texCoords = createTexCoords(result.index);
-    vec2 texCoord = barycentricTexCoord(weights, texCoords);
-	  vec4 texRaw = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse));
-	  vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
-    vec3 texDiffuse = texRaw.rgb;
-	  vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
-	  float texEmmissiveScale = texMetallicRoughness.b;
-    vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
-    texMetallicRoughness.g *= texMetallicRoughness.g;
-    seed = origin.x * randBase + origin.y * 1.396529836 + origin.z * 4761.52835;
-    vec3 baryNormal;
-    vec3 macroNormal = barycentricNormal(weights, createNormals(result.index), texNormal, baryNormal);
-    vec3 lightDir;
-    ray.origin = origin + baryNormal * EPSILON * 2.0;
-
-    // TODO: make this configurable in the materials
-    //color += accumulatedReflectance * texEmmissive * 10.0;
-
-    #ifdef USE_EXPLICIT
-    vec3 direct = getDirectEmission(ray.origin, macroNormal, lightDir);
-    #else
-    vec3 direct = vec3(0);
-    #endif
-    vec3 incident = ray.dir;
-    float directWeight = 0.0;
-    float indirectWeight = 1.0;
-
-    vec2 matParams = texMetallicRoughness.rg;
-    vec4 envImp =  sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, matParams);
-    ray.dir = UE4Sample(incident, macroNormal, matParams);
-    float bsdfPdf = UE4Pdf(incident, macroNormal, matParams, ray.dir);
-		vec3 throughput;
-    if(bsdfPdf > 0.0) { 
-      throughput = UE4Eval(incident, macroNormal, texDiffuse, matParams, ray.dir) * abs(dot(macroNormal, ray.dir)) / bsdfPdf;
-    } else {
-      throughput = vec3(0.0);
-    }
-    
-    // clamp albedo to avoid some precision issues
-    float colorAlbedo = i > 0 ? 0.5 : 1.0;
-    if( rnd() > colorAlbedo ){ break; }
-
-    vec3 indirect = getIndirectEmission(ray, result, mat);
-    color += accumulatedReflectance * envImp.rgb;
-    accumulatedReflectance *= (throughput / colorAlbedo);
-    
   }
-
+  color = clamp(color, vec3(0), vec3(128));
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

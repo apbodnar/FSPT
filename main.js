@@ -32,10 +32,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let apertureSizeElement;
   let expElement;
   let satElement;
+  let denoiseElement;
   let lensFeatures;
   let sampleInput;
   let sampleOutput;
   let saturation;
+  let denoise;
   let lightRanges = [];
   let radianceBins = null;
   let indirectClamp = 128;
@@ -56,9 +58,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     sampleOutput = document.getElementById("counter");
     expElement = document.getElementById("exposure");
     satElement = document.getElementById("saturation");
-
+    denoiseElement = document.getElementById("denoise");
     saturation = satElement.value;
-
+    denoise = denoiseElement.checked;
     sampleInput.value = scene.samples || 2000;
 
     scale = scene.fovScale || 0.5;
@@ -129,7 +131,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     );
     programs.draw = initProgram(
       "shader/draw",
-      ["fbTex", "exposure", "saturation"],
+      ["fbTex", "exposure", "saturation", "denoise"],
       ["corner"],
       assets
     );
@@ -220,7 +222,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     if (group.material["map_pmr"]) {
       let assetUrl = basePath + "/" + group.material["map_pmr"];
-      roughnessIndex = texturePacker.addTexture(assets[assetUrl]);
+      let img = assets[assetUrl];
+      img.swizzle = group.material["pmr_swizzle"];
+      roughnessIndex = texturePacker.addTexture(img);
     } else if (group.material["pmr"]) {
       roughnessIndex = texturePacker.addTexture(createFlatTexture(group.material["pmr"]));
     } else if (typeof transforms.metallicRoughness === 'string') {
@@ -268,6 +272,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     if (scene.environment) {
       if (Array.isArray(scene.environment)) {
         textures.env = createEnvironmentMapPixels(scene.environment);
+        radianceBins = [0, 0, 1, 2048];
+        preprocDirs.push('#define ENV_BINS 1');
       } else {
         textures.env = createEnvironmentMapImg(assets[scene.environment]);
         let time = new Date().getTime();
@@ -402,7 +408,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     } else {
       preprocDirs.push('#define NUM_LIGHT_RANGES 1');
     }
-    
+
 
     textures.materials = createTexture();
     let res = padBuffer(materialBuffer, 4, 3);
@@ -685,6 +691,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       dirty = true;
     }, false);
 
+    denoiseElement.addEventListener("click", function (e) {
+      denoise = Number(e.target.checked);
+    }, false);
+
     document.addEventListener("keypress", function (e) {
       let strafe = Vec3.normalize(Vec3.cross(dir, [0, 1, 0]));
       switch (e.key) {
@@ -797,6 +807,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.enableVertexAttribArray(program.attributes.corner);
     gl.uniform1f(program.uniforms.saturation, saturation);
     gl.uniform1f(program.uniforms.exposure, exposure);
+    gl.uniform1i(program.uniforms.denoise, denoise);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);
@@ -833,13 +844,13 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       drawCamera();
       drawTracer(moving ? 0 : pingpong);
       currentTile++;
-      drawQuad(pingpong);
       if (currentTile === numTilesX * numTilesY) {
         currentTile = 0;
         pingpong++;
         sampleOutput.value = pingpong;
       }
     }
+    drawQuad(pingpong);
 
     if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();

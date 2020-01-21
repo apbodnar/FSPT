@@ -5,7 +5,7 @@ export function ParseMaterials(mtlText, basePath) {
   let lines = mtlText.split('\n');
   let urls = new Set();
   let scalarTokens = new Set(["ns", "ni", "d", "illium"]);
-  let vectorTokens = new Set(["ka", "kd", "kem", "ks", "ke", "pr", "pm", "pmr"]);
+  let vectorTokens = new Set(["ka", "kd", "kem", "ks", "ke", "pr", "pm", "pmr", "pmr_swizzle"]);
   let stringTokens = new Set(["map_bump", "map_kd", "map_kem", "map_ks", "map_d", "map_ns", "map_pmr"]);
   let mtlName = null;
   lines.forEach((line) => {
