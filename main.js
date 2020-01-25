@@ -963,7 +963,7 @@ function getResolution() {
 
 let frameNumberMatch = window.location.search.match(/frame=(\d+)/);
 let frameNumber = Array.isArray(frameNumberMatch) ? parseFloat(frameNumberMatch[1]) : -1;
-let sceneMatch = window.location.search.match(/scene=([a-zA-Z_]+)/);
+let sceneMatch = window.location.search.match(/scene=([a-zA-Z0-9_]+)/);
 let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?frame=' + frameNumber : 'scene/bunny.json?frame=0';
 let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
 let modeMatch = window.location.search.match(/mode=([a-zA-Z_]+)/);

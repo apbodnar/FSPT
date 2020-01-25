@@ -64,12 +64,11 @@ export function ProcessEnvRadiance(img) {
     for (let y = 0; y < img.height; y++) {
         for (let x = 0; x < img.width; x++) {
             let rad = getRadiance(data, img.width, x, y);
-            brightestTexel = Math.max(rad, brightestTexel)
+            brightestTexel = Math.max(rad, brightestTexel);
             totalRadiance += rad;
         }
     }
-    let minRadiance = Math.max(totalRadiance / 64, brightestTexel)
-    console.log(minRadiance, brightestTexel)
+    let minRadiance = Math.max(totalRadiance / 64, brightestTexel / 2);
     let boxes = biTreeSplitting(data, img.width, totalRadiance, minRadiance, 0, 0, img.width, img.height);
     return new Uint16Array(boxes)
 }
