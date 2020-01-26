@@ -3,6 +3,7 @@
 //#define NUM_LIGHT_RANGES 0
 
 precision highp float;
+precision highp int;
 precision highp sampler2DArray;
 
 const int NUM_BOUNCES = 5;
@@ -78,13 +79,13 @@ struct Ray {
 };
 
 struct Node {
-  float index;
-  float parent;
-  float sibling;
-  float split;
-  float left;
-  float right;
-  float triangles;
+  int index;
+  int parent;
+  int sibling;
+  int split;
+  int left;
+  int right;
+  int triangles;
   vec3 boxMin;
   vec3 boxMax;
 };
@@ -97,18 +98,18 @@ struct TexCoords {
 
 struct Hit {
   float t;
-  float index;
+  int index;
 };
 
 
-ivec2 indexToCoords(sampler2D tex, float index, float perElement){
+ivec2 indexToCoords(sampler2D tex, int index, int perElement){
   ivec2 dims = textureSize(tex, 0);
-  float compensated = (index + 0.03); // Hack to handle floaty errors
-  return ivec2(mod(compensated * perElement, float(dims.x)), floor((compensated * perElement)/ float(dims.x)));
+  //float compensated = (index + 0.03); // Hack to handle floaty errors
+  return ivec2((index * perElement) % dims.x,(index * perElement)/ dims.x);
 }
 
-Material createMaterial(float index){
-  ivec2 base = indexToCoords(matTex, index, 4.0);
+Material createMaterial(int index){
+  ivec2 base = indexToCoords(matTex, index, 4);
   vec4 first = texelFetch(matTex, base, 0);
   vec4 second = texelFetch(matTex, base + ivec2(1,0), 0);
   vec4 third = texelFetch(matTex, base + ivec2(2,0), 0);
@@ -121,8 +122,8 @@ Material createMaterial(float index){
   );
 }
 
-Triangle createTriangle(float index){
-  ivec2 base = indexToCoords(triTex, index, 3.0);
+Triangle createTriangle(int index){
+  ivec2 base = indexToCoords(triTex, index, 3);
   return Triangle(
     texelFetch(triTex, base, 0).rgb,
     texelFetch(triTex, base + ivec2(1,0), 0).rgb,
@@ -130,8 +131,8 @@ Triangle createTriangle(float index){
   );
 }
 
-Triangle createLight(float index){
-  ivec2 base = indexToCoords(lightTex, index, 3.0);
+Triangle createLight(int index){
+  ivec2 base = indexToCoords(lightTex, index, 3);
   return Triangle(
     texelFetch(lightTex, base, 0).rgb,
     texelFetch(lightTex, base + ivec2(1,0), 0).rgb,
@@ -139,8 +140,8 @@ Triangle createLight(float index){
   );
 }
 
-Normals createNormals(float index){
-  ivec2 base = indexToCoords(normTex, index, 9.0);
+Normals createNormals(int index){
+  ivec2 base = indexToCoords(normTex, index, 9);
   return Normals(
     texelFetch(normTex, base, 0).rgb,
     texelFetch(normTex, base + ivec2(3,0), 0).rgb,
@@ -154,8 +155,8 @@ Normals createNormals(float index){
   );
 }
 
-TexCoords createTexCoords(float index){
-  ivec2 base = indexToCoords(uvTex, index, 3.0);
+TexCoords createTexCoords(int index){
+  ivec2 base = indexToCoords(uvTex, index, 3);
   return TexCoords(
     texelFetch(uvTex, base, 0).rg,
     texelFetch(uvTex, base + ivec2(1,0), 0).rg,
@@ -163,13 +164,22 @@ TexCoords createTexCoords(float index){
   );
 }
 
-Node createNode(float index){
-  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4.0);
+Node createNode(int index){
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
   vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
   vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
   vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
-  return Node(index, first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
+  return Node(index, 
+    floatBitsToInt(first.x), 
+    floatBitsToInt(first.y), 
+    floatBitsToInt(first.z), 
+    floatBitsToInt(second.x), 
+    floatBitsToInt(second.y), 
+    floatBitsToInt(second.z), 
+    bbMin, 
+    bbMax
+  );
 }
 
 float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
@@ -350,20 +360,18 @@ float rayBoxIntersect(Node node, Ray ray) {
   return tMax >= tMin && tMax > 0.0 ? tMin : MAX_T;
 }
 
-float nearChildIndex(Node node, Ray ray) {
+int nearChildIndex(Node node, Ray ray) {
   uint axis = uint(node.split);
-  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
-  return index;
+  return ray.dir[axis] > 0.0 ? node.left : node.right;
 }
 
 Node nearChild(Node node, Ray ray) {
   return createNode(nearChildIndex(node, ray));
 }
 
-float farChildIndex(Node node, Ray ray) {
+int farChildIndex(Node node, Ray ray) {
   uint axis = uint(node.split);
-  float index = ray.dir[axis] <= 0.0 ? node.left : node.right;
-  return index;
+  return ray.dir[axis] <= 0.0 ? node.left : node.right;
 }
 
 Node farChild(Node node, Ray ray){
@@ -398,39 +406,35 @@ vec3 barycentricWeights(Triangle tri, vec3 p){
 }
 
 void processLeaf(Node leaf, Ray ray, inout Hit result){
-  float t = MAX_T;
-  float index = -1.0;
   for(int i=0; i<4; ++i){
-    Triangle tri = createTriangle(leaf.triangles + float(i));
+    Triangle tri = createTriangle(leaf.triangles + i);
     float res = rayTriangleIntersect(ray, tri);
     if(res < result.t){
-      float index = leaf.triangles + float(i);
-      vec3 origin = ray.origin + ray.dir * res;
+      result.index = leaf.triangles + i;
       result.t = res;
-      result.index = index;
     }
   }
 }
 
 Hit intersectScene(Ray ray){
   uint state = FROM_PARENT;
-  Hit result = Hit(MAX_T, -1.0);
-  Node current = nearChild(createNode(0.0), ray);
+  Hit result = Hit(MAX_T, -1);
+  Node current = nearChild(createNode(0), ray);
   while(true){
     if(state == FROM_CHILD){
-      if(current.index == 0.0){
+      if(current.index == 0){
         return result;
       }
-      float parentNear = nearChildIndex(createNode(current.parent), ray);
+      int parentNear = nearChildIndex(createNode(current.parent), ray);
       bool atNear = current.index == parentNear;
       current = createNode(atNear ? current.sibling : current.parent);
       state = atNear ? FROM_SIBLING : FROM_CHILD;
     } else {
       bool fromParent = state == FROM_PARENT;
       uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-      float nextIndex = fromParent ? current.sibling : current.parent;
+      int nextIndex = fromParent ? current.sibling : current.parent;
       if(rayBoxIntersect(current, ray) < result.t){
-        if (current.triangles > -1.0) {
+        if (current.triangles > -1) {
           processLeaf(current, ray, result);
         } else {
           nextIndex = nearChildIndex(current, ray);
@@ -445,7 +449,7 @@ Hit intersectScene(Ray ray){
 
 vec3 getIndirectEmission(Ray ray, out Hit result, inout Material mat){
   result = intersectScene(ray);
-  if(result.index < 0.0){ return vec3(0); }
+  if(result.index < 0){ return vec3(0); }
   mat = createMaterial(result.index);
   return mat.emissivity;
 }
@@ -462,7 +466,7 @@ vec3 randomPointOnTriangle(Triangle tri){
 }
 
 Triangle randomLight(vec2 range){
-  float index = floor(range.x + rnd() * ((range.y - range.x) + 1.0));
+  int index = int(range.x + rnd() * ((range.y - range.x) + 1.0));
   return createLight(index);
 }
 
@@ -511,10 +515,10 @@ vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, 
   float ddn = dot(dir, normal);
   if (ddn > EXPLICIT_COS_THRESHOLD) {
     Hit shadow = intersectScene(Ray(origin, dir));
-    if (shadow.index == -1.0 && colorPdf.a > EPSILON) {
+    if (shadow.index == -1 && colorPdf.a > EPSILON) {
       colorPdf.rgb = UE4Eval(incident, normal, diffuse, matParams, dir) * abs(dot(normal, dir)) / colorPdf.a;
       colorPdf.rgb *= envSample(dir) * M_TAU * 4.0 * cos(asin(y));
-      //colorPdf.rgb *= ddn;
+      colorPdf.rgb *= clamp(ddn, 0.0, 1.0);
     }
   }
   colorPdf.a *= UE4Pdf(incident, normal, matParams, dir);
@@ -552,7 +556,7 @@ void main(void) {
   vec3 weights;
   Hit result = intersectScene(ray);
   vec3 color = vec3(0);
-  if(result.index < 0.0){
+  if(result.index < 0){
     color += envSample(ray.dir) * M_PI;
   } else {
     mat = createMaterial(result.index);
@@ -609,7 +613,7 @@ void main(void) {
       vec2 weights = bsdfPdf + envImp.a > 0.0 ? misWeights(envImp.a, bsdfPdf) : vec2(1, 0);
       color += accumulatedReflectance * envImp.rgb * weights.x;
       accumulatedReflectance *= (throughput / colorAlbedo);
-      if(result.index < 0.0){
+      if(result.index < 0){
         color += accumulatedReflectance * envSample(ray.dir) * weights.y;
         break;
       }

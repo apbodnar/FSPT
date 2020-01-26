@@ -40,7 +40,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let denoise;
   let lightRanges = [];
   let radianceBins = null;
-  let indirectClamp = 128;
   let atlasRes = 2048;
   let moving = false;
   let isFramed = !!window.frameElement;
@@ -264,6 +263,19 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     return material;
   }
 
+  function maskBVHBuffer(bvhBuffer) {
+    // Lazily cast all values to fixed point
+    let intBuf = new Int32Array(bvhBuffer);
+    // Reinterpret the int bits as floats, then "fix" the bounding box values
+    let masked = new Float32Array(intBuf.buffer);
+    for (let i = 0; i < bvhBuffer.length; i+=12 ) {
+      for (let j = 6; j < 12; j++) {
+        masked[i + j] = bvhBuffer[i + j];
+      }
+    }
+    return masked;
+  }
+
   async function initBVH(assets) {
     let scene = JSON.parse(assets[scenePath]);
     //writeBanner("Compiling scene");
@@ -409,16 +421,16 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       preprocDirs.push('#define NUM_LIGHT_RANGES 1');
     }
 
+    textures.bvh = createTexture();
+    let res = padBuffer(bvhBuffer, 4, 3);
+    let masked = maskBVHBuffer(bvhBuffer);
+    gl.bindTexture(gl.TEXTURE_2D, textures.bvh);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, masked);
 
     textures.materials = createTexture();
-    let res = padBuffer(materialBuffer, 4, 3);
+    res = padBuffer(materialBuffer, 4, 3);
     gl.bindTexture(gl.TEXTURE_2D, textures.materials);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(materialBuffer));
-
-    textures.bvh = createTexture();
-    res = padBuffer(bvhBuffer, 4, 3);
-    gl.bindTexture(gl.TEXTURE_2D, textures.bvh);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, new Float32Array(bvhBuffer));
 
     textures.triangles = createTexture();
     res = padBuffer(trianglesBuffer, 3, 3);
