@@ -104,7 +104,6 @@ struct Hit {
 
 ivec2 indexToCoords(sampler2D tex, int index, int perElement){
   ivec2 dims = textureSize(tex, 0);
-  //float compensated = (index + 0.03); // Hack to handle floaty errors
   return ivec2((index * perElement) % dims.x,(index * perElement)/ dims.x);
 }
 
@@ -406,7 +405,7 @@ vec3 barycentricWeights(Triangle tri, vec3 p){
 }
 
 void processLeaf(Node leaf, Ray ray, inout Hit result){
-  for(int i=0; i<4; ++i){
+  for(int i=0; i<LEAF_SIZE; ++i){
     Triangle tri = createTriangle(leaf.triangles + i);
     float res = rayTriangleIntersect(ray, tri);
     if(res < result.t){
@@ -557,7 +556,7 @@ void main(void) {
   Hit result = intersectScene(ray);
   vec3 color = vec3(0);
   if(result.index < 0){
-    color += envSample(ray.dir) * M_PI;
+    color += envSample(ray.dir);
   } else {
     mat = createMaterial(result.index);
     vec3 accumulatedReflectance = vec3(1);

@@ -45,6 +45,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let isFramed = !!window.frameElement;
   let active = !isFramed;
   const maxT = 1e6;
+  const leafSize = 4;
 
   function writeBanner(message) {
     document.getElementById("banner").textContent = message;
@@ -142,7 +143,6 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let width = Math.ceil(root / perElement) * perElement;
     let height = Math.ceil(num_pixels / width);
     let numToPad = channels * width * height - buffer.length;
-    console.assert(numToPad >= 0);
     for (let i = 0; i < numToPad; i++) {
       buffer.push(-1);
     }
@@ -236,11 +236,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       roughnessIndex = texturePacker.addTexture(createFlatTexture([0.1, 0.3, 0]));
     }
 
+    // TODO rename this
     if (group.material["map_kem"]) {
       let assetUrl = basePath + "/" + group.material["map_kem"];
       specularIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (group.material["kem"]) {
       specularIndex = texturePacker.addTexture(createFlatTexture(group.material["kem"]));
+    } else if (typeof transforms.emission === 'string') {
+      specularIndex = texturePacker.addTexture(assets[transforms.emission]);
     } else {
       specularIndex = texturePacker.addTexture(createFlatTexture([0, 0, 0]));
     }
@@ -265,10 +268,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
   function maskBVHBuffer(bvhBuffer) {
     // Lazily cast all values to fixed point
-    let intBuf = new Int32Array(bvhBuffer);
     // Reinterpret the int bits as floats, then "fix" the bounding box values
-    let masked = new Float32Array(intBuf.buffer);
-    for (let i = 0; i < bvhBuffer.length; i+=12 ) {
+    let masked = new Float32Array(new Int32Array(bvhBuffer).buffer);
+    for (let i = 0; i < bvhBuffer.length; i += 12) {
       for (let j = 6; j < 12; j++) {
         masked[i + j] = bvhBuffer[i + j];
       }
@@ -344,9 +346,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
-    let maxTris = 4;
     console.log("Building BVH:", geometry.length, "triangles");
-    bvh = new BVH(geometry, maxTris);
+    bvh = new BVH(geometry, leafSize);
     console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds");
     time = new Date().getTime();
     let bvhArray = bvh.serializeTree();
@@ -906,6 +907,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         preprocDirs.push('#define USE_ALPHA');
       }
     }
+    preprocDirs.push('#define LEAF_SIZE ' + leafSize);
     window.addEventListener("mouseover", function () {
       active = true;
     });
@@ -919,7 +921,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     initPrograms(res);
     initBuffers();
     initEvents();
-
+    shootAutoFocusRay();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
     tick();
@@ -949,6 +951,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     }
     if (e.normal) {
       pathSet.add(e.normal);
+    }
+    if (e.emission) {
+      pathSet.add(e.emission);
     }
   });
   if (typeof scene.environment === 'string') {

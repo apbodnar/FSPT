@@ -47,20 +47,20 @@ struct Ray {
 };
 
 struct Node {
-  float index;
-  float parent;
-  float sibling;
-  float split;
-  float left;
-  float right;
-  float triangles;
+  int index;
+  int parent;
+  int sibling;
+  int split;
+  int left;
+  int right;
+  int triangles;
   vec3 boxMin;
   vec3 boxMax;
 };
 
 struct Hit {
   float t;
-  float index;
+  int index;
 };
 
 // Moller-Trumbore
@@ -82,14 +82,13 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   return dist > epsilon ? dist : MAX_T;
 }
 
-ivec2 indexToCoords(sampler2D tex, float index, float perElement){
+ivec2 indexToCoords(sampler2D tex, int index, int perElement){
   ivec2 dims = textureSize(tex, 0);
-	float compensated = (index+0.1); // Hack to handle floaty errors
-  return ivec2(mod(compensated * perElement, float(dims.x)), floor((compensated * perElement)/ float(dims.x)));
+  return ivec2((index * perElement) % dims.x,(index * perElement)/ dims.x);
 }
 
-Triangle createTriangle(float index){
-  ivec2 base = indexToCoords(triTex, index, 3.0);
+Triangle createTriangle(int index){
+  ivec2 base = indexToCoords(triTex, index, 3);
   return Triangle(
     texelFetch(triTex, base, 0).rgb,
     texelFetch(triTex, base + ivec2(1,0), 0).rgb,
@@ -97,13 +96,22 @@ Triangle createTriangle(float index){
   );
 }
 
-Node createNode(float index){
-  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4.0);
+Node createNode(int index){
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
   vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
   vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
   vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
-  return Node(index, first.x, first.y, first.z, second.x, second.y, second.z, bbMin, bbMax);
+  return Node(index, 
+    floatBitsToInt(first.x), 
+    floatBitsToInt(first.y), 
+    floatBitsToInt(first.z), 
+    floatBitsToInt(second.x), 
+    floatBitsToInt(second.y), 
+    floatBitsToInt(second.z), 
+    bbMin, 
+    bbMax
+  );
 }
 
 float rayBoxIntersect(Node node, Ray ray){
@@ -117,40 +125,18 @@ float rayBoxIntersect(Node node, Ray ray){
   return tMax >= tMin && tMax > 0.0 ? tMin : MAX_T;
 }
 
-//float nearChildIndex(Node node, Ray ray){
-//  Node left = createNode(node.left);
-//  Node right = createNode(node.right);
-//  uint axis = uint(node.split);
-//  float s = -sign(ray.dir[axis]);
-//  float nearestLeft = ray.dir[axis] < 0.0 ? left.boxMax[axis] : left.boxMin[axis];
-//  float nearestRight = ray.dir[axis] < 0.0 ? right.boxMax[axis] : right.boxMin[axis];
-//  float index = s * nearestLeft < s * nearestRight ? node.left : node.right;
-//  return index;
-//}
-
-float nearChildIndex(Node node, Ray ray){
+int nearChildIndex(Node node, Ray ray) {
   uint axis = uint(node.split);
-  float index = ray.dir[axis] > 0.0 ? node.left : node.right;
-  return index;
+  return ray.dir[axis] > 0.0 ? node.left : node.right;
 }
 
-float farChildIndex(Node node, Ray ray){
-  uint axis = uint(node.split);
-  float index = ray.dir[axis] >= 0.0 ? node.left : node.right;
-  return index;
-}
-
-//float nearChildIndex(Node node, Ray ray){
-//  float t1 = rayBoxIntersect(createNode(node.left), ray);
-//  float t2 = rayBoxIntersect(createNode(node.right), ray);
-//  uint axis = uint(node.split);
-//  float index = t1 < t2 ? node.left : node.right;
-//  return index;
-//}
-
-
-Node nearChild(Node node, Ray ray){
+Node nearChild(Node node, Ray ray) {
   return createNode(nearChildIndex(node, ray));
+}
+
+int farChildIndex(Node node, Ray ray) {
+  uint axis = uint(node.split);
+  return ray.dir[axis] <= 0.0 ? node.left : node.right;
 }
 
 Node farChild(Node node, Ray ray){
@@ -158,20 +144,14 @@ Node farChild(Node node, Ray ray){
 }
 
 void processLeaf(Node leaf, Ray ray, inout Hit result){
-  float t = MAX_T;
-  float index = -1.0;
-  for(int i=0; i<4; ++i){
-    Triangle tri = createTriangle(leaf.triangles + float(i));
+  for(int i=0; i<LEAF_SIZE; ++i){
+    Triangle tri = createTriangle(leaf.triangles + i);
     float res = rayTriangleIntersect(ray, tri);
     if(res < result.t){
+      result.index = leaf.triangles + i;
       result.t = res;
-      result.index = leaf.triangles + float(i);
     }
   }
-}
-
-Node siblingNode(Node node) {
-  return createNode(node.sibling);
 }
 
 //Hit traverseTree(Ray ray, inout int count){
@@ -248,46 +228,43 @@ Node siblingNode(Node node) {
 //  return result;
 //}
 
-
-Hit traverseTree(Ray ray, inout int count){
+Hit intersectScene(Ray ray, inout int count){
   uint state = FROM_PARENT;
-  Hit result = Hit(MAX_T, -1.0);
-  Node current;
-  float nextIndex = nearChildIndex(createNode(0.0), ray);
+  Hit result = Hit(MAX_T, -1);
+  Node current = nearChild(createNode(0), ray);
   while(true){
     count++;
-    current = createNode(nextIndex);
     if(state == FROM_CHILD){
-      if(current.index == 0.0){
+      if(current.index == 0){
         return result;
       }
-      Node parentNear = nearChild(createNode(current.parent), ray);
-      bool atNear = current.index == parentNear.index;
-      nextIndex = atNear ? current.sibling : current.parent;
+      int parentNear = nearChildIndex(createNode(current.parent), ray);
+      bool atNear = current.index == parentNear;
+      current = createNode(atNear ? current.sibling : current.parent);
       state = atNear ? FROM_SIBLING : FROM_CHILD;
     } else {
       bool fromParent = state == FROM_PARENT;
       uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-      nextIndex = fromParent ? current.sibling : current.parent;
+      int nextIndex = fromParent ? current.sibling : current.parent;
       if(rayBoxIntersect(current, ray) < result.t){
-        if (current.triangles > -1.0) {
-          // at leaf
+        if (current.triangles > -1) {
           processLeaf(current, ray, result);
         } else {
           nextIndex = nearChildIndex(current, ray);
           nextState = FROM_PARENT;
         }
       }
+      current = createNode(nextIndex);
       state = nextState;
     }
   }
 }
 
 void main(void) {
-  int count;
+  int count = 0;
   vec2 res = vec2(textureSize(fbTex, 0));;
   Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
-  Hit result = traverseTree(ray, count);
+  Hit result = intersectScene(ray, count);
 
   if(length((gl_FragCoord.xy/res - 0.5) * 2.0) < 0.003) {
     fragColor = vec4(1,0,0,1);

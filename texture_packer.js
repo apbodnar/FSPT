@@ -49,14 +49,14 @@ export class TexturePacker {
       this.resizeAndPaste(img);
       let pixBuffer = new Uint8Array(this.ctx.getImageData(0, 0, this.res, this.res).data.buffer);
       if (img.swizzle) {
-        console.log("Swizzling texture:", img.currentSrc, " with ", img.swizzle )
+        console.log("Swizzling texture:", img.currentSrc, " with ", img.swizzle)
         let tmp = [0, 0, 0, 0];
-        for (let j = 0; j < pixBuffer.length; j+=4) {
-          for (let k=0; k<4; k++) {
-            tmp[k] = pixBuffer[j+k]
+        for (let j = 0; j < pixBuffer.length; j += 4) {
+          for (let k = 0; k < 4; k++) {
+            tmp[k] = pixBuffer[j + k]
           }
-          for (let k=0; k<4; k++) {
-            pixBuffer[j+k] = tmp[img.swizzle[k]]
+          for (let k = 0; k < 4; k++) {
+            pixBuffer[j + k] = tmp[img.swizzle[k]]
           }
         }
       }

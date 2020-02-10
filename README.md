@@ -1,34 +1,32 @@
 # Fragment Shader Path Tracer
 
-I made this to explore photo-realistic rendering in web browsers. Feel free to fork and open a PR. I'm a graphics hobbyist; I welcome constructive feedback.
+I made this to explore photo-realistic rendering in web browsers. 
  
 Requirements:
 * An up-to-date desktop browser that supports WebGL 2 AND ES6 module export + import
 * A top-end discrete GPU (for now)
 
 Features:
+* UE4 microfacet BRDF
 * Image based lighting
 * Area lights with light sampling (currently incorrect)
-* Alpha textures / transparency
-* Refraction
 * Bokeh depth of field with variable aperture size
 * Varible focus depth and auto-focus
 * Normal maps
 * PBR material maps. Metallicness, roughness, emissivity.
-* Post processing: exposure, saturation
+* Post processing: exposure, saturation, denoising
+* HDRi importance sampling
+* "Camera shaders"
 
 TODOs (Not Exhaustive):
+* Switch to a low discrepancy generator
+* Re-add refraction
 * Refactor texture packing to be far, far less wasteful of memory (current worst case could use megabytes where bytes are needed)
-* Fix light sampling
-* HDRi importance sampling
+* Fix area light sampling
 * Parallelize BVH construction and texture packing with web workers
-* Verify Microfacet BxDF correctness
 * Faster BVH construction and traversal.
-* Make metallic and roughness more flexible
-* Pick a standard material model. Possibly allow merging and swizzling of material channels.
-* Better support for asset standards. OBJ, MTL, etc...
 * Tiled rendering
-* Put ray generation in a separate shader aka camera shaders.
+* Port to WebGPU compute shaders once widely available
 
 ## Demo
 
@@ -39,18 +37,17 @@ I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 Try messing with the mouse, scrolling, and WASD + RF keys.  Be sure to adjust the exposure and saturation.
 
-[Bunny](http://apbodnar.github.io/FSPT/index.html?scene=bunny&res=400)
+[Bunny](http://apbodnar.github.io/FSPT/index.html?scene=bunny&mode=ne&res=1280x720)
 
 ## Experiments
 
-![alt text](images/beach.png)
+![alt text](images/gi.png)
 ![alt text](images/lego.png)
-![alt text](images/chess.png)
-![alt text](images/kokeshi.png)
+![alt text](images/ape.png)
+![alt text](images/tokyo.png)
 ![alt text](images/nier.png)
-![alt text](images/icons.png)
-![alt text](images/pink.png)
-![alt text](images/table.png)
+![alt text](images/mat.png)
+![alt text](images/ajax.png)
 ![alt text](images/ori.png)
 
 ## Forking
@@ -63,41 +60,51 @@ I recommend using Node's `http-server`
 Depending on the port used, open a url like: http://localhost:8000/?scene=bunnies&res=800
 
 `scene` is the base filename of the scene json file you wish to render.  
-`res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / `<scalar>`.  
-`mode` sets the desired features.  For alpha use `mode=alpha`. For light sampling `mode=nee`. For both use `mode=alpha_nee`.  Light sampling slows down rendering but can vastly speed up convergence if using area lights. Alpha slows rendering greatly.
+`res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / `<scalar>`.
 
-A scene config file like `cath.json` looks like:
+A scene config file like `bunny.json` looks like:
 
 ```
 {
-  "environment": "environment/aristea_wreck_4k.RGBE.PNG",
-  "environmentTheta": -1.57,
-  "samples": 2000,
-  "atlasRes": 2048,
-  "static_props": [
+  "environment": "environment/autumn_meadow_2k.RGBE.PNG",
+  "environmentTheta": 1.66,
+  "cameraPos": [-0.751,0.665,1.820],
+  "cameraDir": [0.304,-0.489,-0.818],
+  "props": [
     {
-      "path": "asset_packs/girl/scene.obj",
-      "scale": 0.4,
-      "rotate": [{"angle": -1.57, "axis": [0,1,0]}],
-      "translate": [0,-4,0],
-      "diffuse": [0.3,0.3,0.3],
+      "path": "asset_packs/misc/bunny_big.obj",
+      "scale": 0.25,
+      "rotate": [{"angle": 0, "axis": [0,0,1]}],
+      "translate": [0.1,-0.7,0],
+      "diffuse": [1,1,1],
       "emittance": [0,0,0],
-      "normals": "mesh",
-      "roughness": 0.35,
+      "metallicRoughness": [0, 0.5, 0],
       "ior": 1.4,
-      "skips": ["material"]
+      "normals": "smooth"
     },
     {
-      "path": "asset_packs/misc/top.obj",
-      "scale": 8,
+      "path": "asset_packs/misc/top_mono.obj",
+      "scale": 4,
       "rotate": [{"angle": 3.1415, "axis": [0,0,1]}],
-      "translate": [0,-4,0],
+      "translate": [0,-0.75,0],      
       "emittance": [0,0,0],
-      "roughness": 0.2,
+      "diffuse": "asset_packs/dungeon/RootNode_baseColor.png",
+      "metallicRoughness": "asset_packs/dungeon/RootNode_metallicRoughness.png",
+      "normal": "asset_packs/dungeon/RootNode_normal.png",
+      "normals": "flat"
+    },
+    {
+      "path": "asset_packs/misc/top_mono.obj",
+      "scale": 4,
+      "rotate": [{"angle": -1.57, "axis": [1,0,0]}],
+      "translate": [0,0.25,-1],
+      "emittance": [0,0,0],
+      "emission": "asset_packs/dungeon/Scene_-_Root_emissive.jpeg",
+      "diffuse": "asset_packs/dungeon/Scene_-_Root_baseColor.jpeg",
+      "metallicRoughness": "asset_packs/dungeon/Scene_-_Root_metallicRoughness.png",
+      "normal": "asset_packs/dungeon/Scene_-_Root_normal.png",
       "normals": "flat",
-      "ior": 1.6,
-      "diffuse": "asset_packs/dungeon/ground1Color.png",
-      "normal": "asset_packs/dungeon/ground1Normal.png"
+	    "ior": "10"
     }
   ]
 }
@@ -106,3 +113,11 @@ A scene config file like `cath.json` looks like:
 `environmentTheta` is the angle by which the environment is rotated about the y-axis  
 `samples` is number of samples per pixels  
 `atlasRes` is the resolution of the texture array used for all textures and materials in the scene
+
+## Credits/Thanks
+
+Special thanks to github user [knightcrawler25](https://github.com/knightcrawler25/GLSL-PathTracer)'s excellent GLSL path tracer which was a useful reference for the UE4 BRDF and PDF
+
+[Mud Material](https://sketchfab.com/3d-models/mud-material-8f6c45d163b24b02a845dd47561a6efe) by SketchFab user Angelo under CC Attribution liscense.
+
+[Stylized Blue Lava Material ( Free )](https://sketchfab.com/3d-models/stylized-blue-lava-material-free-1503b4a9a03540789ca26907af3a07c8) by SketchFab user Plexus Design Türkiye under CC Attribution liscense.

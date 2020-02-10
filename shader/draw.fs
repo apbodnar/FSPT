@@ -94,5 +94,6 @@ void main(void) {
   }
   vec3 mapped = ACESFitted(texColor);
   mapped = mix( vec3(dot(mapped, lumaCoefs)), mapped, saturation);
+  mapped = pow(mapped, vec3(0.454545));
   fragColor = vec4(mapped, 1);
 }
