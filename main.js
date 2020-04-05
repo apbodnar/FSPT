@@ -348,7 +348,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let time = new Date().getTime();
     console.log("Building BVH:", geometry.length, "triangles");
     bvh = new BVH(geometry, leafSize);
-    console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds");
+    console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", bvh.depth);
     time = new Date().getTime();
     let bvhArray = bvh.serializeTree();
     console.log("BVH serialized in", (new Date().getTime() - time) / 1000.0, " seconds");
@@ -778,7 +778,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.uniform1i(program.uniforms.cameraPosTex, 8);
     gl.uniform1i(program.uniforms.cameraDirTex, 9);
     gl.uniform1i(program.uniforms.texArray, 10);
-    gl.uniform1i(program.uniforms.tick, i);
+    gl.uniform1ui(program.uniforms.tick, i);
     gl.uniform1f(program.uniforms.numLights, lightRanges.length / 2);
     gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform1f(program.uniforms.envTheta, envTheta);

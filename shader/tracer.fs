@@ -6,20 +6,17 @@ precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
-const int NUM_BOUNCES = 5;
+const int NUM_BOUNCES = 3;
 const float MAX_T = 100000.0;
 const float EPSILON = 0.000001;
 const float M_PI = 3.14159265;
 const float M_TAU = M_PI * 2.0;
 const float INV_PI = 1.0 / M_PI;
-const uint FROM_PARENT = uint(0);
-const uint FROM_SIBLING = uint(1);
-const uint FROM_CHILD = uint(2);
 const float EXPLICIT_COS_THRESHOLD = -0.1;
 
 float seed;
 
-uniform int tick;
+uniform uint tick;
 uniform float numLights;
 uniform float randBase;
 uniform float envTheta;
@@ -416,34 +413,55 @@ void processLeaf(Node leaf, Ray ray, inout Hit result){
 }
 
 Hit intersectScene(Ray ray){
-  uint state = FROM_PARENT;
   Hit result = Hit(MAX_T, -1);
-  Node current = nearChild(createNode(0), ray);
-  while(true){
-    if(state == FROM_CHILD){
-      if(current.index == 0){
-        return result;
-      }
-      int parentNear = nearChildIndex(createNode(current.parent), ray);
-      bool atNear = current.index == parentNear;
-      current = createNode(atNear ? current.sibling : current.parent);
-      state = atNear ? FROM_SIBLING : FROM_CHILD;
+	int stack[64];
+	int ptr = 0;
+	stack[ptr++] = -1;
+	int idx = 0;
+	float leftHit = 0.0;
+	float rightHit = 0.0;
+  Node current;
+	while (idx > -1)
+	{
+    current = createNode(idx);
+
+		int leftIndex = current.left;
+		int rightIndex = current.right;
+
+    leftHit = rayBoxIntersect(createNode(leftIndex), ray);
+    rightHit = rayBoxIntersect(createNode(rightIndex), ray);
+
+    if (current.triangles > -1) {
+      processLeaf(current, ray, result);
     } else {
-      bool fromParent = state == FROM_PARENT;
-      uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-      int nextIndex = fromParent ? current.sibling : current.parent;
-      if(rayBoxIntersect(current, ray) < result.t){
-        if (current.triangles > -1) {
-          processLeaf(current, ray, result);
-        } else {
-          nextIndex = nearChildIndex(current, ray);
-          nextState = FROM_PARENT;
+      if (leftHit < result.t && rightHit < result.t) {
+        int deferred = -1;
+        if (leftHit > rightHit) {
+          idx = rightIndex;
+          deferred = leftIndex;
         }
+        else {
+          idx = leftIndex;
+          deferred = rightIndex;
+        }
+
+        stack[ptr++] = deferred;
+        continue;
       }
-      current = createNode(nextIndex);
-      state = nextState;
+      else if (leftHit < result.t) {
+        idx = leftIndex;
+        continue;
+      }
+      else if (rightHit < result.t) {
+        idx = rightIndex;
+        continue;
+      }
     }
-  }
+		idx = stack[--ptr];
+	}
+
+
+	return result;
 }
 
 vec3 getIndirectEmission(Ray ray, out Hit result, inout Material mat){
@@ -451,34 +469,6 @@ vec3 getIndirectEmission(Ray ray, out Hit result, inout Material mat){
   if(result.index < 0){ return vec3(0); }
   mat = createMaterial(result.index);
   return mat.emissivity;
-}
-
-vec3 randomPointOnTriangle(Triangle tri){
-  vec3 e1 = tri.v2 - tri.v1;
-  vec3 e2 = tri.v3 - tri.v1;
-  float u = rnd();
-  float v = rnd();
-  bool over = u + v > 1.0;
-  u = over ? 1.0 - u : u;
-  v = over ? 1.0 - v : v;
-  return tri.v1 + e1 * v + e2 * u;
-}
-
-Triangle randomLight(vec2 range){
-  int index = int(range.x + rnd() * ((range.y - range.x) + 1.0));
-  return createLight(index);
-}
-
-float triangleArea(Triangle tri){
-  vec3 e1 = tri.v2 - tri.v1;
-  vec3 e2 = tri.v3 - tri.v1;
-  vec3 n = cross(e1, e2);
-  return length(n) * 0.5;
-}
-
-float solidAngle(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, float t){
-  float a = triangleArea(tri);
-  return abs((a / (t * t)) * dot(lightNormal, -ray.dir));
 }
 
 float albedo(vec3 color){
@@ -525,6 +515,34 @@ vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, 
 }
 
 #ifdef USE_EXPLICIT
+vec3 randomPointOnTriangle(Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  float u = rnd();
+  float v = rnd();
+  bool over = u + v > 1.0;
+  u = over ? 1.0 - u : u;
+  v = over ? 1.0 - v : v;
+  return tri.v1 + e1 * v + e2 * u;
+}
+
+Triangle randomLight(vec2 range){
+  int index = int(range.x + rnd() * ((range.y - range.x) + 1.0));
+  return createLight(index);
+}
+
+float triangleArea(Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  vec3 n = cross(e1, e2);
+  return length(n) * 0.5;
+}
+
+float solidAngle(Ray ray, Triangle tri, vec3 p, vec3 lightNormal, float t){
+  float a = triangleArea(tri);
+  return abs((a / (t * t)) * dot(lightNormal, -ray.dir));
+}
+
 vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
   vec3 intensity = vec3(0);
   vec2 range = lightRanges[uint(rnd() * numLights)];
@@ -548,7 +566,8 @@ vec3 getDirectEmission(vec3 origin, vec3 normal, inout vec3 lightDir){
 #endif
 
 void main(void) {
-  seed = randBase + gl_FragCoord.x * 1000.0 + gl_FragCoord.y;
+  vec2 dims = vec2(textureSize(fbTex, 0));
+  seed = randBase + gl_FragCoord.x + gl_FragCoord.y * dims.x;
   Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   Material mat;
@@ -575,7 +594,7 @@ void main(void) {
       float texEmmissiveScale = texMetallicRoughness.b;
       vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
       texMetallicRoughness.g *= texMetallicRoughness.g;
-      seed = origin.x * randBase + origin.y * 1.396529836 + origin.z * 4761.52835;
+      seed = origin.x * randBase * origin.y * 1.396529836 + origin.z * 4761.52835;
       vec3 baryNormal;
       vec3 macroNormal = barycentricNormal(weights, createNormals(result.index), texNormal, baryNormal);
       vec3 lightDir;

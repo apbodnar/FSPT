@@ -25,7 +25,7 @@ vec3 getScreen(vec3 basisX, vec3 basisY){
 
 vec3 getAA(vec3 basisX, vec3 basisY){
   float theta = rnd() * M_PI * 2.0;
-  float r = sqrt(rnd()) * 1.0;
+  float r = sqrt(rnd()) * 1.414;
   return r * (basisX * cos(theta) / resolution.x + basisY * sin(theta) / resolution.y);
 }
 

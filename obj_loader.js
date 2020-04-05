@@ -11,8 +11,6 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
   let uvs = [];
   let currentGroup = "FSPT_DEFAULT_GROUP";
   let groups = {};
-  let tangents = [];
-  let bitangents = [];
   let materials = {};
   let skips = new Set(transforms.skips);
   let urls = null;

@@ -1,12 +1,16 @@
 #version 300 es
+//#define ENV_BINS 0
+//#define NUM_LIGHT_RANGES 0
 
 precision highp float;
+precision highp int;
 precision highp sampler2DArray;
 
-const int NUM_BOUNCES = 5;
+const int NUM_BOUNCES = 3;
 const float MAX_T = 100000.0;
-const float EPSILON = 0.00001;
+const float EPSILON = 0.000001;
 const float M_PI = 3.14159265;
+const float M_TAU = M_PI * 2.0;
 const float INV_PI = 1.0 / M_PI;
 const uint FROM_PARENT = uint(0);
 const uint FROM_SIBLING = uint(1);
@@ -15,11 +19,12 @@ const float EXPLICIT_COS_THRESHOLD = -0.1;
 
 float seed;
 
-uniform int tick;
+uniform uint tick;
 uniform float numLights;
 uniform float randBase;
 uniform float envTheta;
-uniform vec2 lightRanges[20];
+uniform uvec2 lightRanges[NUM_LIGHT_RANGES];
+uniform uvec4 radianceBins[ENV_BINS];
 uniform sampler2D fbTex;
 uniform sampler2D triTex;
 uniform sampler2D normTex;
@@ -41,6 +46,33 @@ struct Triangle {
   vec3 v3;
 };
 
+struct Normals {
+  vec3 n1;
+  vec3 n2;
+  vec3 n3;
+  vec3 t1;
+  vec3 t2;
+  vec3 t3;
+  vec3 bt1;
+  vec3 bt2;
+  vec3 bt3;
+};
+
+struct MapIndices {
+  float diffuse;
+  float specular;
+  float normal;
+  float roughness;
+  float metallic;
+};
+
+struct Material {
+  MapIndices mapIndices;
+  vec3 emissivity;
+  float ior;
+  float dielectric;
+};
+
 struct Ray {
   vec3 origin;
   vec3 dir;
@@ -58,33 +90,35 @@ struct Node {
   vec3 boxMax;
 };
 
+struct TexCoords {
+  vec2 uv1;
+  vec2 uv2;
+  vec2 uv3;
+};
+
 struct Hit {
   float t;
   int index;
 };
 
-// Moller-Trumbore
-float rayTriangleIntersect(Ray ray, Triangle tri){
-  float epsilon= 0.0000001;
-  vec3 e1 = tri.v2 - tri.v1;
-  vec3 e2 = tri.v3 - tri.v1;
-  vec3 p = cross(ray.dir, e2);
-  float det = dot(e1, p);
-  if(abs(det) < epsilon){return MAX_T;}
-  float invDet = 1.0 / det;
-  vec3 t = ray.origin - tri.v1;
-  float u = dot(t, p) * invDet;
-  if(u < 0.0 || u > 1.0){return MAX_T;}
-  vec3 q = cross(t, e1);
-  float v = dot(ray.dir, q) * invDet;
-  if(v < 0.0 || u + v > 1.0){return MAX_T;}
-  float dist = dot(e2, q) * invDet;
-  return dist > epsilon ? dist : MAX_T;
-}
 
 ivec2 indexToCoords(sampler2D tex, int index, int perElement){
   ivec2 dims = textureSize(tex, 0);
   return ivec2((index * perElement) % dims.x,(index * perElement)/ dims.x);
+}
+
+Material createMaterial(int index){
+  ivec2 base = indexToCoords(matTex, index, 4);
+  vec4 first = texelFetch(matTex, base, 0);
+  vec4 second = texelFetch(matTex, base + ivec2(1,0), 0);
+  vec4 third = texelFetch(matTex, base + ivec2(2,0), 0);
+  vec4 fourth = texelFetch(matTex, base + ivec2(3,0), 0);
+  return Material(
+    MapIndices(first.x, first.y, first.z, second.x, second.y),
+    third.rgb,
+    fourth.r,
+    fourth.g
+  );
 }
 
 Triangle createTriangle(int index){
@@ -96,8 +130,41 @@ Triangle createTriangle(int index){
   );
 }
 
+Triangle createLight(int index){
+  ivec2 base = indexToCoords(lightTex, index, 3);
+  return Triangle(
+    texelFetch(lightTex, base, 0).rgb,
+    texelFetch(lightTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(lightTex, base + ivec2(2,0), 0).rgb
+  );
+}
+
+Normals createNormals(int index){
+  ivec2 base = indexToCoords(normTex, index, 9);
+  return Normals(
+    texelFetch(normTex, base, 0).rgb,
+    texelFetch(normTex, base + ivec2(3,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(6,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(1,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(4,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(7,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(2,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(5,0), 0).rgb,
+    texelFetch(normTex, base + ivec2(8,0), 0).rgb
+  );
+}
+
+TexCoords createTexCoords(int index){
+  ivec2 base = indexToCoords(uvTex, index, 3);
+  return TexCoords(
+    texelFetch(uvTex, base, 0).rg,
+    texelFetch(uvTex, base + ivec2(1,0), 0).rg,
+    texelFetch(uvTex, base + ivec2(2,0), 0).rg
+  );
+}
+
 Node createNode(int index){
-  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
   vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
   vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
@@ -114,7 +181,25 @@ Node createNode(int index){
   );
 }
 
-float rayBoxIntersect(Node node, Ray ray){
+// Moller-Trumbore
+float rayTriangleIntersect(Ray ray, Triangle tri){
+  vec3 e1 = tri.v2 - tri.v1;
+  vec3 e2 = tri.v3 - tri.v1;
+  vec3 p = cross(ray.dir, e2);
+  float det = dot(e1, p);
+  if(abs(det) < EPSILON){return MAX_T;}
+  float invDet = 1.0 / det;
+  vec3 t = ray.origin - tri.v1;
+  float u = dot(t, p) * invDet;
+  if(u < 0.0 || u > 1.0){return MAX_T;}
+  vec3 q = cross(t, e1);
+  float v = dot(ray.dir, q) * invDet;
+  if(v < 0.0 || u + v > 1.0){return MAX_T;}
+  float dist = dot(e2, q) * invDet;
+  return dist > EPSILON ? dist : MAX_T;
+}
+
+float rayBoxIntersect(Node node, Ray ray) {
   vec3 inverse = 1.0 / ray.dir;
   vec3 t1 = (node.boxMin - ray.origin) * inverse;
   vec3 t2 = (node.boxMax - ray.origin) * inverse;
@@ -154,121 +239,97 @@ void processLeaf(Node leaf, Ray ray, inout Hit result){
   }
 }
 
-//Hit traverseTree(Ray ray, inout int count){
-//  Hit result = Hit(MAX_T, -1.0);
-//  Node current;
-//  float last = -1.0;
-//  bool fromParent = true;
-//  float nextIndex = 0.0;
-//  while(true){
-//    count++;
-//    current = createNode(nextIndex);
-//    if(last == current.left || last == current.right){
-//      if(current.index == 0.0){
-//        return result;
-//      }
-//      float parentNear = nearChildIndex(createNode(current.parent), ray);
-//      bool atNear = current.index == parentNear;
-//      nextIndex = atNear ? current.sibling : current.parent;
-//    } else {
-//      nextIndex = fromParent ? current.sibling : current.parent;
-//      fromParent = false;
-//      if(rayBoxIntersect(current, ray) < result.t){
-//        if (current.triangles > -1.0) {
-//          processLeaf(current, ray, result);
-//        } else {
-//          nextIndex = nearChildIndex(current, ray);
-//          fromParent = true;
-//        }
-//      }
-//    }
-//    last = current.index;
-//  }
-//}
-
-//Hit traverseTree(Ray ray, inout int count){
-//  Hit result = Hit(MAX_T, -1.0);
-//  Node current = nearChild(createNode(0.0), ray);
-//  float near, far;
-//  float last = 0.0;
-//  while(true){
-//    if(count > 1000){
-//        break;
-//    }
-//
-//    count++;
-//    near = nearChildIndex(current, ray);
-//    far = nearChildIndex(current, ray);
-//    if (last == far) {
-//      if(current.index == 0.0){
-//        break;
-//      }
-//      last = current.index;
-//      current = createNode(current.parent);
-//      continue;
-//    }
-//
-//    float tryChild = (last == current.parent ? near : far);
-//    if (rayBoxIntersect(current, ray) < result.t) {
-//      last = current.index;
-//      if (current.triangles > -1.0) {
-//        // at leaf
-//        processLeaf(current, ray, result);
-//      }
-//      current = createNode(tryChild);
-//    } else {
-//      if(tryChild == near) {
-//        last = near;
-//      } else {
-//        last = current.index;
-//        current = createNode(current.parent);
-//      }
-//    }
-//  }
-//  return result;
-//}
-
 Hit intersectScene(Ray ray, inout int count){
-  uint state = FROM_PARENT;
+	int stack[64];
+	int ptr = 0;
+	stack[ptr++] = -1;
   Hit result = Hit(MAX_T, -1);
-  Node current = nearChild(createNode(0), ray);
-  while(true){
+	int idx = 0;
+	float leftHit = 0.0;
+	float rightHit = 0.0;
+  Node current;
+	while (idx > -1)
+	{
     count++;
-    if(state == FROM_CHILD){
-      if(current.index == 0){
-        return result;
-      }
-      int parentNear = nearChildIndex(createNode(current.parent), ray);
-      bool atNear = current.index == parentNear;
-      current = createNode(atNear ? current.sibling : current.parent);
-      state = atNear ? FROM_SIBLING : FROM_CHILD;
+    current = createNode(idx);
+
+		int leftIndex = current.left;
+		int rightIndex = current.right;
+
+    leftHit = rayBoxIntersect(createNode(leftIndex), ray);
+    rightHit = rayBoxIntersect(createNode(rightIndex), ray);
+
+    if (current.triangles > -1) {
+      processLeaf(current, ray, result);
     } else {
-      bool fromParent = state == FROM_PARENT;
-      uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-      int nextIndex = fromParent ? current.sibling : current.parent;
-      if(rayBoxIntersect(current, ray) < result.t){
-        if (current.triangles > -1) {
-          processLeaf(current, ray, result);
-        } else {
-          nextIndex = nearChildIndex(current, ray);
-          nextState = FROM_PARENT;
+      if (leftHit < result.t && rightHit < result.t) {
+        int deferred = -1;
+        if (leftHit > rightHit) {
+          idx = rightIndex;
+          deferred = leftIndex;
         }
+        else {
+          idx = leftIndex;
+          deferred = rightIndex;
+        }
+
+        stack[ptr++] = deferred;
+        continue;
       }
-      current = createNode(nextIndex);
-      state = nextState;
+      else if (leftHit < result.t) {
+        idx = leftIndex;
+        continue;
+      }
+      else if (rightHit < result.t) {
+        idx = rightIndex;
+        continue;
+      }
     }
-  }
+		idx = stack[--ptr];
+	}
+
+	//state.hitDist = t;
+	return result;
 }
 
-void main(void) {
-  int count = 0;
-  vec2 res = vec2(textureSize(fbTex, 0));;
-  Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
-  Hit result = intersectScene(ray, count);
+// Hit intersectScene(Ray ray, inout int count){
+//   uint state = FROM_PARENT;
+//   Hit result = Hit(MAX_T, -1);
+//   Node current = nearChild(createNode(0), ray);
+//   while(true){
+//     count++;
+//     if(state == FROM_CHILD){
+//       if(current.index == 0){
+//         return result;
+//       }
+//       int parentNear = nearChildIndex(createNode(current.parent), ray);
+//       bool atNear = current.index == parentNear;
+//       current = createNode(atNear ? current.sibling : current.parent);
+//       state = atNear ? FROM_SIBLING : FROM_CHILD;
+//     } else {
+//       bool fromParent = state == FROM_PARENT;
+//       uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
+//       int nextIndex = fromParent ? current.sibling : current.parent;
+//       if(rayBoxIntersect(current, ray) < result.t){
+//         if (current.triangles > -1) {
+//           processLeaf(current, ray, result);
+//         } else {
+//           nextIndex = nearChildIndex(current, ray);
+//           nextState = FROM_PARENT;
+//         }
+//       }
+//       current = createNode(nextIndex);
+//       state = nextState;
+//     }
+//   }
+// }
 
-  if(length((gl_FragCoord.xy/res - 0.5) * 2.0) < 0.003) {
-    fragColor = vec4(1,0,0,1);
-  } else {
-    fragColor = vec4(vec3(float(count - 1) * 0.001),1.0);
-  }
+void main(void) {
+  seed = randBase + gl_FragCoord.x * 1000.0 + gl_FragCoord.y;
+  Ray ray = Ray(texelFetch(cameraPosTex, ivec2(gl_FragCoord), 0).xyz, texelFetch(cameraDirTex, ivec2(gl_FragCoord), 0).xyz);
+  vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
+  int count = 0;
+  Hit result = intersectScene(ray, count);
+  vec3 color = vec3(float(1.0 / result.t));
+  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

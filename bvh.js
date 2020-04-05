@@ -5,21 +5,23 @@ export class BVH {
     let zIndices = Array.from(yIndices);
     this.maxTriangles = maxTris;
     this.triangles = triangles;
+    this.depth = 0;
     this._sortIndices(xIndices, 0);
     this._sortIndices(yIndices, 1);
     this._sortIndices(zIndices, 2);
-    this.root = this.buildTree([xIndices, yIndices, zIndices]);
+    this.root = this.buildTree([xIndices, yIndices, zIndices], this.depth);
   }
 
-  buildTree(indices) {
+  buildTree(indices, depth) {
+    this.depth = Math.max(depth, this.depth);
     let root = new Node(this.triangles, indices);
     if (root.indices.length <= this.maxTriangles) {
       root.leaf = true;
       return root;
     }
     let splitIndices = this._constructCachedIndexList(indices, root.splitAxis, root.splitIndex);
-    root.left = this.buildTree(splitIndices.left);
-    root.right = this.buildTree(splitIndices.right);
+    root.left = this.buildTree(splitIndices.left, depth + 1);
+    root.right = this.buildTree(splitIndices.right, depth + 1);
     root.clearTempBuffers();
     return root;
   }
