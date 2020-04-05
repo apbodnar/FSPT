@@ -270,8 +270,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     // Lazily cast all values to fixed point
     // Reinterpret the int bits as floats, then "fix" the bounding box values
     let masked = new Float32Array(new Int32Array(bvhBuffer).buffer);
-    for (let i = 0; i < bvhBuffer.length; i += 12) {
-      for (let j = 6; j < 12; j++) {
+    for (let i = 0; i < bvhBuffer.length; i += 9) {
+      for (let j = 3; j < 9; j++) {
         masked[i + j] = bvhBuffer[i + j];
       }
     }
@@ -364,7 +364,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let box = node.boundingBox.getBounds();
       let triIndex = node.leaf ? trianglesBuffer.length / 3 / 3 : -1;
       let reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
-      let bufferNode = [e.parent, e.sibling, node.splitAxis, e.left, e.right, triIndex].concat(reordered);
+      let bufferNode = [e.left, e.right, triIndex].concat(reordered);
       if (node.leaf) {
         let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
@@ -423,7 +423,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     }
 
     textures.bvh = createTexture();
-    let res = padBuffer(bvhBuffer, 4, 3);
+    let res = padBuffer(bvhBuffer, 3, 3);
     let masked = maskBVHBuffer(bvhBuffer);
     gl.bindTexture(gl.TEXTURE_2D, textures.bvh);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB32F, res[0], res[1], 0, gl.RGB, gl.FLOAT, masked);

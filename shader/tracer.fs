@@ -77,9 +77,6 @@ struct Ray {
 
 struct Node {
   int index;
-  int parent;
-  int sibling;
-  int split;
   int left;
   int right;
   int triangles;
@@ -161,18 +158,14 @@ TexCoords createTexCoords(int index){
 }
 
 Node createNode(int index){
-  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4);
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
-  vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
-  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
-  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
-  return Node(index, 
-    floatBitsToInt(first.x), 
+  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
+  return Node(index,
+    floatBitsToInt(first.x),
     floatBitsToInt(first.y), 
     floatBitsToInt(first.z), 
-    floatBitsToInt(second.x), 
-    floatBitsToInt(second.y), 
-    floatBitsToInt(second.z), 
     bbMin, 
     bbMax
   );
@@ -354,24 +347,6 @@ float rayBoxIntersect(Node node, Ray ray) {
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
   return tMax >= tMin && tMax > 0.0 ? tMin : MAX_T;
-}
-
-int nearChildIndex(Node node, Ray ray) {
-  uint axis = uint(node.split);
-  return ray.dir[axis] > 0.0 ? node.left : node.right;
-}
-
-Node nearChild(Node node, Ray ray) {
-  return createNode(nearChildIndex(node, ray));
-}
-
-int farChildIndex(Node node, Ray ray) {
-  uint axis = uint(node.split);
-  return ray.dir[axis] <= 0.0 ? node.left : node.right;
-}
-
-Node farChild(Node node, Ray ray){
-  return createNode(farChildIndex(node, ray));
 }
 
 vec2 barycentricTexCoord(vec3 weights, TexCoords texCoords){

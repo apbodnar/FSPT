@@ -37,8 +37,6 @@ export class BVH {
       if (!root.leaf) {
         node.left = traverseTree(root.left, parent);
         node.right = traverseTree(root.right, parent);
-        nodes[node.left].sibling = node.right;
-        nodes[node.right].sibling = node.left;
       }
       return parent
     }
