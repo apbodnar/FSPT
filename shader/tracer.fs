@@ -75,13 +75,16 @@ struct Ray {
   vec3 dir;
 };
 
+struct BoundingBox {
+  vec3 bMin;
+  vec3 bMax;
+};
+
 struct Node {
   int index;
   int left;
   int right;
   int triangles;
-  vec3 boxMin;
-  vec3 boxMax;
 };
 
 struct TexCoords {
@@ -157,17 +160,23 @@ TexCoords createTexCoords(int index){
   );
 }
 
+BoundingBox createBoundingBox(int index) {
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
+  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
+  return BoundingBox(
+    bbMin, 
+    bbMax
+  );
+}
+
 Node createNode(int index){
   ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
-  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
-  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
   return Node(index,
     floatBitsToInt(first.x),
     floatBitsToInt(first.y), 
-    floatBitsToInt(first.z), 
-    bbMin, 
-    bbMax
+    floatBitsToInt(first.z)
   );
 }
 
@@ -321,7 +330,7 @@ vec3 UE4Eval(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 matParams, in v
 }
 
 // Moller-Trumbore
-float rayTriangleIntersect(Ray ray, Triangle tri){
+float rayTriangleIntersect(in Ray ray, in Triangle tri){
   vec3 e1 = tri.v2 - tri.v1;
   vec3 e2 = tri.v3 - tri.v1;
   vec3 p = cross(ray.dir, e2);
@@ -338,10 +347,10 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   return dist > EPSILON ? dist : MAX_T;
 }
 
-float rayBoxIntersect(Node node, Ray ray) {
+float rayBoxIntersect(in BoundingBox box, in Ray ray) {
   vec3 inverse = 1.0 / ray.dir;
-  vec3 t1 = (node.boxMin - ray.origin) * inverse;
-  vec3 t2 = (node.boxMax - ray.origin) * inverse;
+  vec3 t1 = (box.bMin - ray.origin) * inverse;
+  vec3 t2 = (box.bMax - ray.origin) * inverse;
   vec3 minT = min(t1, t2);
   vec3 maxT = max(t1, t2);
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
@@ -376,7 +385,7 @@ vec3 barycentricWeights(Triangle tri, vec3 p){
   return vec3(u, v, w);
 }
 
-void processLeaf(Node leaf, Ray ray, inout Hit result){
+void processLeaf(in Node leaf, in Ray ray, inout Hit result){
   for(int i=0; i<LEAF_SIZE; ++i){
     Triangle tri = createTriangle(leaf.triangles + i);
     float res = rayTriangleIntersect(ray, tri);
@@ -399,12 +408,10 @@ Hit intersectScene(Ray ray){
 	while (idx > -1)
 	{
     current = createNode(idx);
-
 		int leftIndex = current.left;
 		int rightIndex = current.right;
-
-    leftHit = rayBoxIntersect(createNode(leftIndex), ray);
-    rightHit = rayBoxIntersect(createNode(rightIndex), ray);
+    leftHit = rayBoxIntersect(createBoundingBox(leftIndex), ray);
+    rightHit = rayBoxIntersect(createBoundingBox(rightIndex), ray);
 
     if (current.triangles > -1) {
       processLeaf(current, ray, result);
@@ -599,13 +606,13 @@ void main(void) {
       }
       
       // clamp albedo to avoid some precision issues
-      float colorAlbedo = i > 0 ? 0.5 : 1.0;
-      if( rnd() > colorAlbedo ){ break; }
+      // float colorAlbedo = i > 0 ? 0.5 : 1.0;
+      // if( rnd() > colorAlbedo ){ break; }
 
       vec3 indirect = getIndirectEmission(ray, result, mat);
       vec2 weights = bsdfPdf + envImp.a > 0.0 ? misWeights(envImp.a, bsdfPdf) : vec2(1, 0);
       color += accumulatedReflectance * envImp.rgb * weights.x;
-      accumulatedReflectance *= (throughput / colorAlbedo);
+      accumulatedReflectance *= (throughput);
       if(result.index < 0){
         color += accumulatedReflectance * envSample(ray.dir) * weights.y;
         break;

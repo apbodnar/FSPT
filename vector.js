@@ -1,4 +1,8 @@
 export class Vec3 {
+  static splat(s) {
+    return [s, s, s]
+  }
+
   static magnitude(v) {
     return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
   }
@@ -18,6 +22,10 @@ export class Vec3 {
 
   static mult(v1, v2) {
     return [v1[0] * v2[0], v1[1] * v2[1], v1[2] * v2[2]];
+  }
+
+  static multAdd(v1, v2, v3) {
+    return Vec3.add(Vec3.mult(v1, v2), v3);
   }
 
   static sqrt(v) {

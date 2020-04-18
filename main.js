@@ -10,6 +10,9 @@ import {
   BVH
 } from './bvh.js'
 import {
+  BVH3
+} from './bvh3.js'
+import {
   Vec3
 } from './vector.js'
 
@@ -346,7 +349,13 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
+    let bboxes = geometry.map((t) => {return t.getBBox()});
     console.log("Building BVH:", geometry.length, "triangles");
+    let bvh3 = new BVH3(bboxes);
+    //bvh3.printStatistics();
+    console.log(bvh3)
+    console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", 0);
+    time = new Date().getTime();
     bvh = new BVH(geometry, leafSize);
     console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", bvh.depth);
     time = new Date().getTime();

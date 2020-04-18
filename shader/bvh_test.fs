@@ -78,22 +78,16 @@ struct Ray {
   vec3 dir;
 };
 
+struct BoundingBox {
+  vec3 bMin;
+  vec3 bMax;
+};
+
 struct Node {
   int index;
-  int parent;
-  int sibling;
-  int split;
   int left;
   int right;
   int triangles;
-  vec3 boxMin;
-  vec3 boxMax;
-};
-
-struct TexCoords {
-  vec2 uv1;
-  vec2 uv2;
-  vec2 uv3;
 };
 
 struct Hit {
@@ -107,20 +101,6 @@ ivec2 indexToCoords(sampler2D tex, int index, int perElement){
   return ivec2((index * perElement) % dims.x,(index * perElement)/ dims.x);
 }
 
-Material createMaterial(int index){
-  ivec2 base = indexToCoords(matTex, index, 4);
-  vec4 first = texelFetch(matTex, base, 0);
-  vec4 second = texelFetch(matTex, base + ivec2(1,0), 0);
-  vec4 third = texelFetch(matTex, base + ivec2(2,0), 0);
-  vec4 fourth = texelFetch(matTex, base + ivec2(3,0), 0);
-  return Material(
-    MapIndices(first.x, first.y, first.z, second.x, second.y),
-    third.rgb,
-    fourth.r,
-    fourth.g
-  );
-}
-
 Triangle createTriangle(int index){
   ivec2 base = indexToCoords(triTex, index, 3);
   return Triangle(
@@ -130,54 +110,23 @@ Triangle createTriangle(int index){
   );
 }
 
-Triangle createLight(int index){
-  ivec2 base = indexToCoords(lightTex, index, 3);
-  return Triangle(
-    texelFetch(lightTex, base, 0).rgb,
-    texelFetch(lightTex, base + ivec2(1,0), 0).rgb,
-    texelFetch(lightTex, base + ivec2(2,0), 0).rgb
-  );
-}
-
-Normals createNormals(int index){
-  ivec2 base = indexToCoords(normTex, index, 9);
-  return Normals(
-    texelFetch(normTex, base, 0).rgb,
-    texelFetch(normTex, base + ivec2(3,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(6,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(1,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(4,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(7,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(2,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(5,0), 0).rgb,
-    texelFetch(normTex, base + ivec2(8,0), 0).rgb
-  );
-}
-
-TexCoords createTexCoords(int index){
-  ivec2 base = indexToCoords(uvTex, index, 3);
-  return TexCoords(
-    texelFetch(uvTex, base, 0).rg,
-    texelFetch(uvTex, base + ivec2(1,0), 0).rg,
-    texelFetch(uvTex, base + ivec2(2,0), 0).rg
+BoundingBox createBoundingBox(int index) {
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
+  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
+  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
+  return BoundingBox(
+    bbMin, 
+    bbMax
   );
 }
 
 Node createNode(int index){
-  ivec2 nodeCoords = indexToCoords(bvhTex, index, 4);
+  ivec2 nodeCoords = indexToCoords(bvhTex, index, 3);
   vec3 first = texelFetch(bvhTex, nodeCoords, 0).rgb;
-  vec3 second = texelFetch(bvhTex, nodeCoords + ivec2(1,0), 0).rgb;
-  vec3 bbMin = texelFetch(bvhTex, nodeCoords + ivec2(2,0), 0).rgb;
-  vec3 bbMax = texelFetch(bvhTex, nodeCoords + ivec2(3,0), 0).rgb;
-  return Node(index, 
-    floatBitsToInt(first.x), 
+  return Node(index,
+    floatBitsToInt(first.x),
     floatBitsToInt(first.y), 
-    floatBitsToInt(first.z), 
-    floatBitsToInt(second.x), 
-    floatBitsToInt(second.y), 
-    floatBitsToInt(second.z), 
-    bbMin, 
-    bbMax
+    floatBitsToInt(first.z)
   );
 }
 
@@ -199,33 +148,15 @@ float rayTriangleIntersect(Ray ray, Triangle tri){
   return dist > EPSILON ? dist : MAX_T;
 }
 
-float rayBoxIntersect(Node node, Ray ray) {
+float rayBoxIntersect(in BoundingBox box, in Ray ray) {
   vec3 inverse = 1.0 / ray.dir;
-  vec3 t1 = (node.boxMin - ray.origin) * inverse;
-  vec3 t2 = (node.boxMax - ray.origin) * inverse;
+  vec3 t1 = (box.bMin - ray.origin) * inverse;
+  vec3 t2 = (box.bMax - ray.origin) * inverse;
   vec3 minT = min(t1, t2);
   vec3 maxT = max(t1, t2);
   float tMax = min(min(maxT.x, maxT.y),maxT.z);
   float tMin = max(max(minT.x, minT.y),minT.z);
   return tMax >= tMin && tMax > 0.0 ? tMin : MAX_T;
-}
-
-int nearChildIndex(Node node, Ray ray) {
-  uint axis = uint(node.split);
-  return ray.dir[axis] > 0.0 ? node.left : node.right;
-}
-
-Node nearChild(Node node, Ray ray) {
-  return createNode(nearChildIndex(node, ray));
-}
-
-int farChildIndex(Node node, Ray ray) {
-  uint axis = uint(node.split);
-  return ray.dir[axis] <= 0.0 ? node.left : node.right;
-}
-
-Node farChild(Node node, Ray ray){
-  return createNode(farChildIndex(node, ray));
 }
 
 void processLeaf(Node leaf, Ray ray, inout Hit result){
@@ -252,12 +183,10 @@ Hit intersectScene(Ray ray, inout int count){
 	{
     count++;
     current = createNode(idx);
-
 		int leftIndex = current.left;
 		int rightIndex = current.right;
-
-    leftHit = rayBoxIntersect(createNode(leftIndex), ray);
-    rightHit = rayBoxIntersect(createNode(rightIndex), ray);
+    leftHit = rayBoxIntersect(createBoundingBox(leftIndex), ray);
+    rightHit = rayBoxIntersect(createBoundingBox(rightIndex), ray);
 
     if (current.triangles > -1) {
       processLeaf(current, ray, result);
@@ -288,41 +217,9 @@ Hit intersectScene(Ray ray, inout int count){
 		idx = stack[--ptr];
 	}
 
-	//state.hitDist = t;
 	return result;
 }
 
-// Hit intersectScene(Ray ray, inout int count){
-//   uint state = FROM_PARENT;
-//   Hit result = Hit(MAX_T, -1);
-//   Node current = nearChild(createNode(0), ray);
-//   while(true){
-//     count++;
-//     if(state == FROM_CHILD){
-//       if(current.index == 0){
-//         return result;
-//       }
-//       int parentNear = nearChildIndex(createNode(current.parent), ray);
-//       bool atNear = current.index == parentNear;
-//       current = createNode(atNear ? current.sibling : current.parent);
-//       state = atNear ? FROM_SIBLING : FROM_CHILD;
-//     } else {
-//       bool fromParent = state == FROM_PARENT;
-//       uint nextState = fromParent ? FROM_SIBLING : FROM_CHILD;
-//       int nextIndex = fromParent ? current.sibling : current.parent;
-//       if(rayBoxIntersect(current, ray) < result.t){
-//         if (current.triangles > -1) {
-//           processLeaf(current, ray, result);
-//         } else {
-//           nextIndex = nearChildIndex(current, ray);
-//           nextState = FROM_PARENT;
-//         }
-//       }
-//       current = createNode(nextIndex);
-//       state = nextState;
-//     }
-//   }
-// }
 
 void main(void) {
   seed = randBase + gl_FragCoord.x * 1000.0 + gl_FragCoord.y;
@@ -330,6 +227,6 @@ void main(void) {
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
   int count = 0;
   Hit result = intersectScene(ray, count);
-  vec3 color = vec3(float(1.0 / result.t));
+  vec3 color = vec3(float(count) * 0.001);
   fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
 }

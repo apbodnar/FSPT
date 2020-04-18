@@ -1,3 +1,11 @@
+import {
+  Vec3
+} from './vector.js'
+
+import {
+  BBox
+} from './bounding_box.js'
+
 export class BVH {
   constructor(triangles, maxTris) {
     let xIndices = triangles.map((_, i) => { return i });
@@ -118,6 +126,14 @@ export class BoundingBox {
     return this._box;
   }
 
+  get box() {
+    return this._box;
+  }
+
+  get centroid(){
+    return this._centroid
+  }
+
   getCenter(axis) {
     return this._centroid[axis];
   }
@@ -193,7 +209,7 @@ export class Node {
     for (let i = 0; i < idxCache.length; i++) {
       let sAf = surfacesFront[i];
       let sAb = surfacesBack[surfacesBack.length - 1 - i];
-      let cost = 2 + (sAf / parentSurfaceArea) * 2 * (i + 1) + (sAb / parentSurfaceArea) * 2 * (idxCache.length - 1 - i);
+      let cost = 1 + (sAf / parentSurfaceArea) * 2 * (i + 1) + (sAb / parentSurfaceArea) * 2 * (idxCache.length - 1 - i);
       if (cost < bestCost) {
         bestCost = cost;
         bestIndex = i + 1;
@@ -218,6 +234,18 @@ export class Triangle {
 
   setNormals(normals) {
     this.normals = normals;
+  }
+
+  getCenter() {
+    return Vec3.scale(Vec3.add(Vec3.add(this.verts[0], this.verts[1]), this.verts[2]), 1.0/3.0);
+  }
+
+  getBBox() {
+    let box = new BBox();
+    box.grow(this.verts[0]);
+    box.grow(this.verts[1]);
+    box.grow(this.verts[2]);
+    return box;
   }
 }
 
