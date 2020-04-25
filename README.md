@@ -57,7 +57,7 @@ Run an HTTP server of your choice from the root directory.
 **Warning** For some reason using javascript modules (`type="module"`) breaks python's SimpleHttpServer.
 I recommend using Node's `http-server`
 
-Depending on the port used, open a url like: http://localhost:8000/?scene=bunnies&res=800
+Depending on the port used, open a url like: http://localhost:8000/?scene=bunny&res=800
 
 `scene` is the base filename of the scene json file you wish to render.  
 `res` is the height and width of the canvas in pixels and defaults to the window dimensions if unused. Valid paterns are `res=<width>x<height>`, and `res=<square dimensions>` for a square viewport, `res=<scalar>x` to scale the internal resolution by 1 / `<scalar>`.
