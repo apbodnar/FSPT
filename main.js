@@ -984,7 +984,7 @@ let sceneMatch = window.location.search.match(/scene=([a-zA-Z0-9_]+)/);
 let scenePath = Array.isArray(sceneMatch) ? 'scene/' + sceneMatch[1] + '.json?frame=' + frameNumber : 'scene/bunny.json?frame=0';
 let sceneName = Array.isArray(sceneMatch) ? sceneMatch[1] : 'bunny';
 let modeMatch = window.location.search.match(/mode=([a-zA-Z_]+)/);
-let mode = Array.isArray(modeMatch) && modeMatch.length > 0 ? modeMatch[1] : null;
+let mode = Array.isArray(modeMatch) && modeMatch.length > 0 ? modeMatch[1] : '';
 let resolution = getResolution();
 
 PathTracer(scenePath, sceneName, resolution, frameNumber, mode);
