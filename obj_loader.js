@@ -11,8 +11,6 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
   let uvs = [];
   let currentGroup = "FSPT_DEFAULT_GROUP";
   let groups = {};
-  let tangents = [];
-  let bitangents = [];
   let materials = {};
   let skips = new Set(transforms.skips);
   let urls = null;
@@ -89,13 +87,12 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
     for (let i = 0; i < 3; i++) {
       let preBitangent = Vec3.normalize(Vec3.cross(preTangent, triangle.normals[i]));
       let tangent = Vec3.normalize(Vec3.cross(triangle.normals[i], preBitangent));
-      let bitangent = Vec3.normalize(Vec3.cross(triangle.normals[i], tangent));
-
+      let bitangent = Vec3.normalize(Vec3.cross(tangent, triangle.normals[i]));
 
       if (isNaN(Vec3.dot(tangent, bitangent))) {
         let t = Vec3.cross(triangle.normals[i], [0, 1, 0]);
         triangle.tangents[i] = t;
-        triangle.bitangents[i] = Vec3.cross(triangle.normals[i], t);
+        triangle.bitangents[i] = Vec3.cross(t, triangle.normals[i]);
       }
       triangle.tangents.push(tangent);
       triangle.bitangents.push(bitangent);

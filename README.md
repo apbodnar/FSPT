@@ -22,7 +22,7 @@ TODOs (Not Exhaustive):
 * Switch to a low discrepancy generator
 * Re-add refraction
 * Refactor texture packing to be far, far less wasteful of memory (current worst case could use megabytes where bytes are needed)
-* Fix area light sampling
+* Fix area light sampling | Explore solid angle sampling of volume lights
 * Parallelize BVH construction and texture packing with web workers
 * Faster BVH construction and traversal.
 * Tiled rendering
@@ -45,6 +45,7 @@ Try messing with the mouse, scrolling, and WASD + RF keys.  Be sure to adjust th
 ![alt text](images/lego.png)
 ![alt text](images/ape.png)
 ![alt text](images/tokyo.png)
+![alt text](images/dude.png)
 ![alt text](images/nier.png)
 ![alt text](images/mat.png)
 ![alt text](images/ajax.png)
@@ -67,7 +68,7 @@ A scene config file like `bunny.json` looks like:
 ```
 {
   "environment": "environment/autumn_meadow_2k.RGBE.PNG",
-  "environmentTheta": 1.66,
+  "environmentTheta": 0.66,
   "cameraPos": [-0.751,0.665,1.820],
   "cameraDir": [0.304,-0.489,-0.818],
   "props": [

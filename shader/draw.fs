@@ -7,11 +7,14 @@ precision highp float;
 uniform sampler2D fbTex;
 uniform float exposure;
 uniform float saturation;
+uniform float scale;
+uniform float maxSigma;
 uniform bool denoise;
 
 out vec4 fragColor;
 
 const vec3 lumaCoefs = vec3(0.2126, 0.7152, 0.0722);
+const int KERNEL_SIZE = 5;
 
 const mat3 ACESInputMat = mat3(
   0.59719, 0.35458, 0.04823,
@@ -36,61 +39,52 @@ vec3 RRTAndODTFit(vec3 v)
 vec3 ACESFitted(vec3 color)
 {
     color = color * ACESInputMat;
-
     // Apply RRT and ODT
     color = RRTAndODTFit(color);
-
     color = color * ACESOutputMat;
-
     // Clamp to [0, 1]
     color = clamp(color, 0.0, 1.0);
-
     return color;
 }
 
-vec3 smartDeNoise(float sigma, float kSigma, float threshold)
-{
-    vec2 uv = gl_FragCoord.xy / vec2(textureSize(fbTex, 0));
-    float radius = round(kSigma*sigma);
-    float radQ = radius * radius;
-    
-    float invSigmaQx2 = .5 / (sigma * sigma);      // 1.0 / (sigma^2 * 2.0)
-    float invSigmaQx2PI = INV_PI * invSigmaQx2;    // 1.0 / (sqrt(PI) * sigma)
-    
-    float invThresholdSqx2 = .5 / (threshold * threshold);     // 1.0 / (sigma^2 * 2.0)
-    float invThresholdSqrt2PI = INV_SQRT_OF_2PI / threshold;   // 1.0 / (sqrt(2*PI) * sigma)
-    
-    vec3 centrPx = texture(fbTex,uv).rgb * exposure; 
-    
-    float zBuff = 0.0;
-    vec3 aBuff = vec3(0.0);
-    vec2 size = vec2(textureSize(fbTex, 0));
-    
-    for(float x=-radius; x <= radius; x++) {
-        float pt = sqrt(radQ-x*x);  // pt = yRadius: have circular trend
-        for(float y=-pt; y <= pt; y++) {
-            vec2 d = vec2(x,y)/size;
-
-            float blurFactor = exp( -dot(d , d) * invSigmaQx2 ) * invSigmaQx2;
-            
-            vec3 walkPx =  texture(fbTex,uv+d).rgb * exposure;
-
-            vec3 dC = walkPx-centrPx;
-            float deltaFactor = exp( -dot(dC, dC) * invThresholdSqx2) * invThresholdSqrt2PI * blurFactor;
-                                 
-            zBuff += deltaFactor;
-            aBuff += deltaFactor*walkPx;
-        }
+vec3 filterFireflies() {
+  float sum = 0.0;
+  float sq_sum = 0.0;
+  vec3 middle;
+  float middleLuma;
+  float samples = float(KERNEL_SIZE * KERNEL_SIZE) - 1.0;
+  for (int i = 0; i < KERNEL_SIZE; i++) {
+    for (int j = 0; j < KERNEL_SIZE; j++) {
+      ivec2 os = ivec2(i - KERNEL_SIZE / 2, j - KERNEL_SIZE / 2);
+      ivec2 c = ivec2(gl_FragCoord * scale) + os;
+      //vec3 color = clamp(texelFetch(fbTex, c, 0).rgb, vec3(0), vec3(1000));
+      vec3 color = texelFetch(fbTex, c, 0).rgb;
+      float luma = dot(color, lumaCoefs);
+      if(os.x == 0 && os.y == 0){
+        middle = color;
+        middleLuma = luma;
+        continue;
+      }
+      sum += luma;
+      sq_sum += luma * luma;
     }
-    return aBuff/zBuff;
+  }
+  float mean = sum / samples;
+  float variance = sq_sum / samples - mean * mean;
+  float sigma = sqrt(variance);
+
+  if (abs(middleLuma - mean) > maxSigma * sigma) {
+    middle *= (mean / middleLuma);
+  }
+  return middle;
 }
 
 void main(void) {
   vec3 texColor = vec3(0);
   if(denoise) {
-    texColor = smartDeNoise(5.0, 2.0, .100).rgb;
+    texColor = filterFireflies() * exposure;
   } else {
-    texColor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb * exposure;
+    texColor = texelFetch(fbTex, ivec2(gl_FragCoord * scale), 0).rgb * exposure;
   }
   vec3 mapped = ACESFitted(texColor);
   mapped = mix( vec3(dot(mapped, lumaCoefs)), mapped, saturation);
