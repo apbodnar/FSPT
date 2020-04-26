@@ -26,25 +26,21 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   let bvh;
   let pingpong = 0;
   let dirty = true;
-  let scale;
+  let fovScale;
   let envTheta;
   let exposure;
   let dir;
   let eye;
-  let focalDepthElement;
-  let apertureSizeElement;
-  let expElement;
-  let satElement;
-  let denoiseElement;
+  let elements = {};
   let lensFeatures;
-  let sampleInput;
-  let sampleOutput;
   let saturation;
   let denoise;
+  let maxSigma;
   let lightRanges = [];
   let radianceBins = null;
   let atlasRes = 2048;
   let moving = false;
+  let resScale = 1;
   let isFramed = !!window.frameElement;
   let active = !isFramed;
   const maxT = 1e6;
@@ -55,33 +51,39 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   function initGlobals(scene) {
-    focalDepthElement = document.getElementById("focal-depth");
-    apertureSizeElement = document.getElementById("aperture-size");
-    sampleInput = document.getElementById('max-samples');
-    sampleOutput = document.getElementById("counter");
-    expElement = document.getElementById("exposure");
-    satElement = document.getElementById("saturation");
-    denoiseElement = document.getElementById("denoise");
-    saturation = satElement.value;
-    denoise = denoiseElement.checked;
-    sampleInput.value = scene.samples || 2000;
+    elements.canvasElement = document.getElementById("trace");
+    elements.cameraDirElement = document.getElementById("camera-dir");
+    elements.eyePosElement = document.getElementById("eye-pos");
+    elements.thetaElement = document.getElementById("env-theta");
+    elements.focalDepthElement = document.getElementById("focal-depth");
+    elements.apertureSizeElement = document.getElementById("aperture-size");
+    elements.sampleInputElement = document.getElementById('max-samples');
+    elements.sampleOutputElement = document.getElementById("counter");
+    elements.expElement = document.getElementById("exposure");
+    elements.satElement = document.getElementById("saturation");
+    elements.denoiseElement = document.getElementById("denoise");
+    elements.sigmaElement = document.getElementById("sigma");
+    saturation = elements.satElement.value;
+    denoise = elements.denoiseElement.checked;
+    maxSigma = elements.sigmaElement.value;
+    elements.sampleInputElement.value = scene.samples || 2000;
 
-    scale = scene.fovScale || 0.5;
+    fovScale = scene.fovScale || 0.5;
     envTheta = scene.environmentTheta || 0;;
     exposure = scene.exposure || 1.0;
     dir = scene.cameraDir || [0, 0, -1];
     eye = scene.cameraPos || [0, 0, 2];
-    lensFeatures = [1 - 1 / focalDepthElement.value, apertureSizeElement.value];
+    lensFeatures = [1 - 1 / elements.focalDepthElement.value, elements.apertureSizeElement.value];
   }
 
-  function initGL(canvas) {
-    gl = canvas.getContext("webgl2", {
+  function initGL() {
+    gl = elements.canvasElement.getContext("webgl2", {
       preserveDrawingBuffer: true,
       antialias: false,
       powerPreference: "high-performance"
     });
-    canvas.width = resolution[0];
-    canvas.height = resolution[1];
+    elements.canvasElement.width = resolution[0];
+    elements.canvasElement.height = resolution[1];
   }
 
   function getShader(gl, str, id) {
@@ -118,7 +120,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   function initPrograms(assets) {
     programs.camera = initProgram(
       "shader/camera",
-      ["P", "I", "lensFeatures", "resolution", "randBase", "scale"],
+      ["P", "I", "lensFeatures", "resolution", "randBase", "fovScale"],
       ["corner"],
       assets
     );
@@ -134,7 +136,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     );
     programs.draw = initProgram(
       "shader/draw",
-      ["fbTex", "exposure", "saturation", "denoise"],
+      ["fbTex", "exposure", "saturation", "denoise", "maxSigma", "scale"],
       ["corner"],
       assets
     );
@@ -349,12 +351,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
-    let bboxes = geometry.map((t) => {return t.getBBox()});
+    let bboxes = geometry.map((t) => { return t.getBBox() });
     console.log("Building BVH:", geometry.length, "triangles");
-    let bvh3 = new BVH3(bboxes);
+    //let bvh3 = new BVH3(bboxes);
     //bvh3.printStatistics();
-    console.log(bvh3)
-    console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", 0);
+    //console.log(bvh3)
+    //console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", 0);
     time = new Date().getTime();
     bvh = new BVH(geometry, leafSize);
     console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", bvh.depth);
@@ -370,10 +372,8 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     for (let i = 0; i < bvhArray.length; i++) {
       let e = bvhArray[i];
       let node = e.node;
-      let box = node.boundingBox.getBounds();
       let triIndex = node.leaf ? trianglesBuffer.length / 3 / 3 : -1;
-      let reordered = [box[0], box[2], box[4], box[1], box[3], box[5]];
-      let bufferNode = [e.left, e.right, triIndex].concat(reordered);
+      let bufferNode = [e.left, e.right, triIndex].concat(node.boundingBox.min, node.boundingBox.max);
       if (node.leaf) {
         let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
@@ -464,7 +464,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     writeBanner("");
 
     initAtlas(assets, texturePacker);
-
+    console.log("Textures uploaded");
     return new Promise(resolve => {
       resolve(true)
     });
@@ -512,13 +512,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     function rayBoxIntersect(bbox) {
       let invDir = Vec3.inverse(dir),
-        box = bbox.getBounds(),
-        tx1 = (box[0] - eye[0]) * invDir[0],
-        tx2 = (box[1] - eye[0]) * invDir[0],
-        ty1 = (box[2] - eye[1]) * invDir[1],
-        ty2 = (box[3] - eye[1]) * invDir[1],
-        tz1 = (box[4] - eye[2]) * invDir[2],
-        tz2 = (box[5] - eye[2]) * invDir[2];
+        tx1 = (bbox.min[0] - eye[0]) * invDir[0],
+        tx2 = (bbox.max[0] - eye[0]) * invDir[0],
+        ty1 = (bbox.min[1] - eye[1]) * invDir[1],
+        ty2 = (bbox.max[1] - eye[1]) * invDir[1],
+        tz1 = (bbox.min[2] - eye[2]) * invDir[2],
+        tz2 = (bbox.max[2] - eye[2]) * invDir[2];
 
       let tmin = Math.min(tx1, tx2);
       let tmax = Math.max(tx1, tx2);
@@ -569,7 +568,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
 
     let dist = findTriangles(bvh.root, maxT);
     lensFeatures[0] = 1 - 1 / dist;
-    focalDepthElement.value = dist.toFixed(3);
+    elements.focalDepthElement.value = dist.toFixed(3);
   }
 
   function initAtlas(assets, texturePacker) {
@@ -644,26 +643,25 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   function initEvents() {
-    let canvasElement = document.getElementById("trace");
-    let cameraDirElement = document.getElementById("camera-dir");
-    let eyePosElement = document.getElementById("eye-pos");
-    let thetaElement = document.getElementById("env-theta");
     let xi, yi;
     let mode = false;
+    const keySet = new Set(['w', 'a', 's', 'd', 'r', 'f']);
+    let activeEvents = new Set();
 
     function addTranslation(shift) {
       eye = Vec3.add(eye, shift);
     }
 
-    canvasElement.addEventListener("mousedown", function (e) {
+    elements.canvasElement.addEventListener("mousedown", function (e) {
       mode = e.which === 1;
       xi = e.layerX;
       yi = e.layerY;
     }, false);
-    canvasElement.addEventListener("mousemove", function (e) {
+    elements.canvasElement.addEventListener("mousemove", function (e) {
       if (mode) {
         moving = true;
         dirty = true;
+        activeEvents.add("mouse");
         let rx = (xi - e.layerX) / 180.0;
         let ry = (yi - e.layerY) / 180.0;
         dir = Vec3.normalize(Vec3.rotateY(dir, rx));
@@ -671,94 +669,108 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         dir = Vec3.normalize(Vec3.rotateArbitrary(dir, axis, ry));
         xi = e.layerX;
         yi = e.layerY;
-        cameraDirElement.value = String(dir.map((comp) => {
+        elements.cameraDirElement.value = String(dir.map((comp) => {
           return comp.toFixed(3)
         }));
       }
     }, false);
-    canvasElement.addEventListener("mouseup", function (e) {
+    elements.canvasElement.addEventListener("mouseup", function (e) {
       mode = false;
-      moving = false;
+      activeEvents.delete("mouse");
+      if (activeEvents.size === 0) {
+        moving = false;
+      }
       if (e.which === 1) {
         dirty = true;
       }
       shootAutoFocusRay();
     }, false);
-    canvasElement.addEventListener('mousewheel', function (e) {
-      scale -= e.wheelDelta / 1200 * scale;
+    elements.canvasElement.addEventListener('mousewheel', function (e) {
+      fovScale -= e.wheelDelta / 1200 * fovScale;
       dirty = true;
     }, false);
 
-    thetaElement.addEventListener('input', function (e) {
+    elements.thetaElement.addEventListener('input', function (e) {
       envTheta = parseFloat(e.target.value);
       dirty = true;
     }, false);
 
-    expElement.addEventListener('input', function (e) {
+    elements.expElement.addEventListener('input', function (e) {
       exposure = parseFloat(e.target.value);
     }, false);
 
-    satElement.addEventListener('input', function (e) {
+    elements.satElement.addEventListener('input', function (e) {
       saturation = parseFloat(e.target.value);
     }, false);
 
-
-    focalDepthElement.addEventListener("input", function (e) {
+    elements.focalDepthElement.addEventListener("input", function (e) {
       lensFeatures[0] = 1 - (1 / parseFloat(e.target.value));
       dirty = true;
     }, false);
 
-    apertureSizeElement.addEventListener("input", function (e) {
+    elements.apertureSizeElement.addEventListener("input", function (e) {
       lensFeatures[1] = parseFloat(e.target.value);
       dirty = true;
     }, false);
 
-    denoiseElement.addEventListener("click", function (e) {
+    elements.denoiseElement.addEventListener("click", function (e) {
       denoise = Number(e.target.checked);
+    }, false);
+
+    elements.sigmaElement.addEventListener("input", function (e) {
+      maxSigma = Number(e.target.value);
     }, false);
 
     document.addEventListener("keypress", function (e) {
       let strafe = Vec3.normalize(Vec3.cross(dir, [0, 1, 0]));
-      switch (e.key) {
-        case 'w':
-          addTranslation(Vec3.scale(dir, 0.1));
-          dirty = true;
-          break;
-        case 'a':
-          addTranslation(Vec3.scale(strafe, -0.1));
-          dirty = true;
-          break;
-        case 's':
-          addTranslation(Vec3.scale(dir, -0.1));
-          dirty = true;
-          break;
-        case 'd':
-          addTranslation(Vec3.scale(strafe, 0.1));
-          dirty = true;
-          break;
-        case 'r':
-          addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), -0.1));
-          dirty = true;
-          break;
-        case 'f':
-          addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), 0.1));
-          dirty = true;
-          break;
+      if (keySet.has(e.key)) {
+        activeEvents.add(e.key);
+        switch (e.key) {
+          case 'w':
+            addTranslation(Vec3.scale(dir, 0.1));
+            break;
+          case 'a':
+            addTranslation(Vec3.scale(strafe, -0.1));
+            break;
+          case 's':
+            addTranslation(Vec3.scale(dir, -0.1));
+            break;
+          case 'd':
+            addTranslation(Vec3.scale(strafe, 0.1));
+            break;
+          case 'r':
+            addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), -0.1));
+            break;
+          case 'f':
+            addTranslation(Vec3.scale(Vec3.normalize(Vec3.cross(dir, strafe)), 0.1));
+            break;
+        }
+        moving = true;
+        dirty = true;
       }
-      eyePosElement.value = String(eye.map((comp) => {
+      elements.eyePosElement.value = String(eye.map((comp) => {
         return comp.toFixed(3)
       }));
       shootAutoFocusRay();
     }, false);
+    document.addEventListener("keyup", function (e) {
+      if (keySet.has(e.key)) {
+        activeEvents.delete(e.key);
+        if (activeEvents.size === 0) {
+          moving = false;
+        }
+        dirty = true;
+      }
+    });
   }
 
   function drawCamera() {
     let program = programs.camera;
     gl.useProgram(program);
-    gl.viewport(0, 0, resolution[0], resolution[1]);
+    gl.viewport(0, 0, resolution[0] * resScale, resolution[1] * resScale);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
-    gl.uniform1f(program.uniforms.scale, scale);
+    gl.uniform1f(program.uniforms.fovScale, fovScale);
     gl.uniform1f(program.uniforms.randBase, Math.random() * 10000);
     gl.uniform2fv(program.uniforms.lensFeatures, lensFeatures);
     gl.uniform2fv(program.uniforms.resolution, resolution);
@@ -772,10 +784,9 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   function drawTracer(i) {
     let program = programs.tracer;
     gl.useProgram(program);
-    //gl.viewport(offsetX, offsetY, height, width);
+    gl.viewport(0, 0, resolution[0] * resScale, resolution[1] * resScale);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
-    gl.uniform1f(program.uniforms.scale, scale);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.uniform1i(program.uniforms.triTex, 1);
     gl.uniform1i(program.uniforms.bvhTex, 2);
@@ -827,53 +838,42 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     gl.viewport(0, 0, resolution[0], resolution[1]);
     gl.vertexAttribPointer(program.attributes.corner, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(program.attributes.corner);
+    gl.uniform1f(program.uniforms.maxSigma, maxSigma);
     gl.uniform1f(program.uniforms.saturation, saturation);
     gl.uniform1f(program.uniforms.exposure, exposure);
     gl.uniform1i(program.uniforms.denoise, denoise);
+    gl.uniform1f(program.uniforms.scale, resScale);
     gl.uniform1i(program.uniforms.fbTex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D, textures.screen[i % 2]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  let currentTile = 0;
-  let numTilesX = 1;
-  let numTilesY = 1;
-
-  function tick() {
-    let max = parseInt(sampleInput.value);
-    if (dirty) {
+  function clear() {
+    if (!moving) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[0]);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[1]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers.screen[pingpong + 1 % 2]);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      pingpong = 0;
-      currentTile = 0;
-      dirty = false;
-      console.log("Cleared")
     }
+    pingpong = 0;
+    dirty = false;
+    console.log("Cleared")
+  }
 
-
-    if (max && pingpong < max && active) {
-      let tileX = currentTile % numTilesX;
-      let tileY = Math.floor(currentTile / numTilesX);
-      let offsetX = Math.floor(resolution[0] * tileX / numTilesX);
-      let offsetY = Math.floor(resolution[1] * tileY / numTilesY);
-      let width = Math.ceil(resolution[0] / numTilesX);
-      let height = Math.ceil(resolution[1] / numTilesY);
-      //console.log(tileX, tileY, offsetX, offsetY, width, height, dirty);
-      gl.viewport(offsetX, offsetY, width, height);
+  function tick() {
+    let max = parseInt(elements.sampleInputElement.value);
+    resScale = moving ? 0.25 : 1.0;
+    if (max && pingpong <= max && active) {
       drawCamera();
-      drawTracer(moving ? 0 : pingpong);
-      currentTile++;
-      if (currentTile === numTilesX * numTilesY) {
-        currentTile = 0;
-        pingpong++;
-        sampleOutput.value = pingpong;
-      }
+      drawTracer(pingpong);
+      elements.sampleOutputElement.value = pingpong;
     }
     drawQuad(pingpong);
-
+    if (dirty) {
+      clear()
+    }
+    pingpong++;
     if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();
       return
@@ -903,17 +903,19 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
   }
 
   async function start(res) {
-    let modeSet = new Set(mode.split('_').map(e => e.toLowerCase()));
-    if (mode === 'test') {
-      res["shader/tracer.fs"] = res["shader/bvh_test.fs"];
-    } else {
-      if (modeSet.has('nee')) {
-        console.log('Using next event estimation');
-        preprocDirs.push('#define USE_EXPLICIT');
-      }
-      if (modeSet.has('alpha')) {
-        console.log('Using alpha textures');
-        preprocDirs.push('#define USE_ALPHA');
+    if (mode) {
+      let modeSet = new Set(mode.split('_').map(e => e.toLowerCase()));
+      if (mode === 'test') {
+        res["shader/tracer.fs"] = res["shader/bvh_test.fs"];
+      } else {
+        if (modeSet.has('nee')) {
+          console.log('Using next event estimation');
+          preprocDirs.push('#define USE_EXPLICIT');
+        }
+        if (modeSet.has('alpha')) {
+          console.log('Using alpha textures');
+          preprocDirs.push('#define USE_ALPHA');
+        }
       }
     }
     preprocDirs.push('#define LEAF_SIZE ' + leafSize);
@@ -923,14 +925,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     window.addEventListener("mouseout", function () {
       active = !isFramed;
     });
-    let canvas = document.getElementById("trace");
-    initGL(canvas);
+    initGL();
     await initBVH(res);
     commitPreprocessor(res);
     initPrograms(res);
     initBuffers();
     initEvents();
     shootAutoFocusRay();
+    console.log("Beginning render");
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.BLEND);
     tick();

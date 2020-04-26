@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Blinn Phong Ping Pong</title>
+    <title>Fragment Shader Path Tracer</title>
     <link rel="stylesheet" type="text/css" href="application.css">
     <script type="module" src="vector.js"></script>
     <script type="module" src="utility.js"></script>
@@ -33,11 +33,13 @@
         <label for="env-theta">Env Theta</label><br>
         <input id="env-theta" value="0" type="range" min="0" max="1" step="0.01"><br>
         <label for="exposure">Exposure</label><br>
-        <input id="exposure" value="1" type="range" min="0" max="20" step="0.01"><br>
+        <input id="exposure" value="1" type="range" min="0" max="6" step="0.01"><br>
         <label for="saturation">Saturation</label><br>
         <input id="saturation" value="1" type="range" min="0" max="6" step="0.01"><br>
-        <label for="denoise">Denoise</label><br>
-        <input id="denoise" type="checkbox"></input>
+        <label for="denoise">Firefly Filter</label><br>
+        <input id="denoise" type="checkbox"></input><br>
+        <label for="sigma">Firefly Sigma</label><br>
+        <input id="sigma" value="2" type="range" min="1" max="8" step="0.01"></input><br>
     </form>
     <canvas id="trace"></canvas>
     <script type="module" src="main.js"></script>

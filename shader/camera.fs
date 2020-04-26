@@ -2,7 +2,7 @@
 precision highp float;
 
 uniform float randBase;
-uniform float scale;
+uniform float fovScale;
 uniform vec2 resolution;
 uniform vec2 lensFeatures; // x: focal depth y: aperture size
 uniform vec3 P;
@@ -20,7 +20,7 @@ float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
 
 vec3 getScreen(vec3 basisX, vec3 basisY){
   vec2 inCam = uv * vec2(resolution.x / resolution.y, 1);
-  return inCam.x * basisX * scale + inCam.y * basisY * scale + I + P;
+  return inCam.x * basisX * fovScale + inCam.y * basisY * fovScale + I + P;
 }
 
 vec3 getAA(vec3 basisX, vec3 basisY){
@@ -39,7 +39,7 @@ void main(void) {
   vec3 basisX = normalize(cross(I, vec3(0,1,0)));
   vec3 basisY = normalize(cross(basisX, I));
   vec3 screen = getScreen(basisX, basisY);
-  vec3 aa = getAA(basisX, basisY) * scale;
+  vec3 aa = getAA(basisX, basisY) * fovScale;
   vec3 dof = getDOF(basisX, basisY);
   fragColor[0] = vec4(P + dof, 1);
   fragColor[1] = vec4(normalize((screen + aa + dof * lensFeatures.x) - (P + dof)), 1);

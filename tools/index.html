@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Fragment Shader Path Tracer</title>
+    <link rel="stylesheet" type="text/css" href="./application.css">
+</head>
+
+<body>
+    <h3 id="banner"></h3>
+    <form id="scene-params">
+        <label for="first-input">First Image</label><br>
+        <input id="first-input" type="file"><br>
+        <label for="second-input">Second Image</label><br>
+        <input id="second-input" type="file"><br>
+        <textarea id="vertex" rows="8" cols="80">
+#version 300 es
+precision highp float;
+in vec3 corner;
+out vec2 uv;
+void main(void) {
+    uv = (corner.xy * vec2(0.5, -0.5)) + vec2(0.5);
+    gl_Position = vec4(corner, 1.0);
+}
+</textarea><br>
+        <textarea id="fragment" rows="15" cols="80">
+#version 300 es
+precision highp float;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
+
+in vec2 uv;
+out vec4 fragColor;
+
+void main(void) {
+    vec3 tex1Color = texture(tex1, uv).rgb;
+    vec3 tex2Color = texture(tex2, uv).rgb;
+    fragColor = vec4(tex1Color.r, tex2Color.r, 0, 1);
+}
+</textarea><br>
+        <input id="start" type="button" value="Start"></button>
+    </form>
+    <img id="first-image">
+    <img id="second-image">
+    <canvas id="trace"></canvas>
+    <script type="module" src="./image_tool.js"></script>
+</body>
+
+</html>
