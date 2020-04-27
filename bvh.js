@@ -19,7 +19,7 @@ export class BVH {
   buildTree(indices, depth) {
     this.depth = Math.max(depth, this.depth);
     let root = new Node(this.triangles, indices);
-    if (root.indices[root.splitAxis].length <= this.maxTriangles) {
+    if (root.indices[root.splitAxis || 0].length <= this.maxTriangles) {
       root.leaf = true;
       return root;
     }
