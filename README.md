@@ -119,6 +119,8 @@ A scene config file like `bunny.json` looks like:
 
 Special thanks to github user [knightcrawler25](https://github.com/knightcrawler25/GLSL-PathTracer)'s excellent GLSL path tracer which was a useful reference for the UE4 BRDF and PDF
 
+Thanks to github user [enkimute](https://github.com/enkimute/hdrpng.js) For hdrpng.js, an extremely useful HDRi conversion tool.
+
 [Mud Material](https://sketchfab.com/3d-models/mud-material-8f6c45d163b24b02a845dd47561a6efe) by SketchFab user Angelo under CC Attribution liscense.
 
 [Stylized Blue Lava Material ( Free )](https://sketchfab.com/3d-models/stylized-blue-lava-material-free-1503b4a9a03540789ca26907af3a07c8) by SketchFab user Plexus Design Türkiye under CC Attribution liscense.

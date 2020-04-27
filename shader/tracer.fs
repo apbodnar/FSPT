@@ -452,14 +452,14 @@ void main(void) {
     vec3 accumulatedReflectance = vec3(1);
     for(int i=0; i < NUM_BOUNCES; ++i){
       Material mat = createMaterial(result.index);
-      vec3 origin = ray.origin + ray.dir * result.t;
       Triangle tri = createTriangle(result.index);
-      vec3 baryWeights = barycentricWeights(tri, origin);
       TexCoords texCoords = createTexCoords(result.index);
+      vec3 origin = ray.origin + ray.dir * result.t;
+      vec3 baryWeights = barycentricWeights(tri, origin);
       vec2 texCoord = barycentricTexCoord(baryWeights, texCoords);
       vec3 texDiffuse = texture(texArray, vec3(texCoord, mat.mapIndices.diffuse)).rgb;
       vec3 texEmmissive = texture(texArray, vec3(texCoord, mat.mapIndices.specular)).rgb;
-      vec4 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness));
+      vec2 texMetallicRoughness = texture(texArray, vec3(texCoord, mat.mapIndices.roughness)).rg;
       vec3 texNormal = (texture(texArray, vec3(texCoord, mat.mapIndices.normal)).rgb - vec3(0.5, 0.5, 0.0)) * vec3(2.0, 2.0, 1.0);
       texMetallicRoughness.g *= texMetallicRoughness.g;
       seed = origin.x * randBase * origin.y * 1.396529836 + origin.z * 4761.52835;
@@ -470,11 +470,11 @@ void main(void) {
       // TODO: make this configurable in the materials
       color += accumulatedReflectance * texEmmissive * 10.0;
       vec3 incident = -ray.dir;
-      ray.dir = ue4Sample(incident, macroNormal, texMetallicRoughness.rg);
-      float bsdfPdf = ue4pdf(incident, macroNormal, texMetallicRoughness.rg, ray.dir);
+      ray.dir = ue4Sample(incident, macroNormal, texMetallicRoughness);
+      float bsdfPdf = ue4pdf(incident, macroNormal, texMetallicRoughness, ray.dir);
       vec3 throughput;
       if(bsdfPdf > 0.0) { 
-        throughput = ue4Eval(incident, macroNormal, texDiffuse, texMetallicRoughness.rg, ray.dir) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        throughput = ue4Eval(incident, macroNormal, texDiffuse, texMetallicRoughness, ray.dir) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
       } else {
         throughput = vec3(0.0);
       }
@@ -483,7 +483,7 @@ void main(void) {
       // float colorAlbedo = albedo(texDiffuse);
       // if( rnd() > colorAlbedo ){ break; }
 
-      vec4 envColorPdf = sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, texMetallicRoughness.rg);
+      vec4 envColorPdf = sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, texMetallicRoughness);
       result = intersectScene(ray);
       vec2 weights = misWeights(envColorPdf.a, bsdfPdf);
       color += accumulatedReflectance * envColorPdf.rgb * weights.x;

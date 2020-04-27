@@ -7,11 +7,9 @@ import {
   ProcessEnvRadiance
 } from './env_sampler.js'
 import {
-  BVH
+  BVH,
+  BoundingBox
 } from './bvh.js'
-import {
-  BVH3
-} from './bvh3.js'
 import {
   Vec3
 } from './vector.js'
@@ -148,6 +146,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let width = Math.ceil(root / perElement) * perElement;
     let height = Math.ceil(num_pixels / width);
     let numToPad = channels * width * height - buffer.length;
+    console.log("Padding ", numToPad, " bytes.")
     for (let i = 0; i < numToPad; i++) {
       buffer.push(-1);
     }
@@ -309,15 +308,15 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     }
     let props = mergeSceneProps(scene);
     let texturePacker = new TexturePacker(atlasRes, props.length);
-    let bounds = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+    let bounds = new BoundingBox();// { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     for (let i = 0; i < props.length; i++) {
       let prop = props[i];
       let basePath = prop.path.split('/').slice(0, -1).join('/');
       console.log("Parsing:", prop.path);
       let parsed = await ObjLoader.parseMesh(assets[prop.path], prop, scene.worldTransforms, basePath);
       let groups = parsed.groups;
-      bounds.max = Vec3.max(bounds.max, parsed.bounds.max);
-      bounds.min = Vec3.min(bounds.min, parsed.bounds.min);
+      bounds.addVertex(parsed.bounds.max);
+      bounds.addVertex(parsed.bounds.min);
       if (parsed.urls && parsed.urls.size > 0) {
         console.log("Downloading: \n", Array.from(parsed.urls).join('\n'));
         let newTextures = await Utility.loadAll(Array.from(parsed.urls));
@@ -338,7 +337,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     if (scene.normalize) {
       let diff = Vec3.sub(bounds.max, bounds.min);
       let longest = Math.max(Math.max(diff[0], diff[1]), diff[2]);
-      let centroid = Vec3.scale(Vec3.add(bounds.max, bounds.min), 0.5);
+      let centroid = bounds.centroid;
       let scale = 2 * scene.normalize / longest;
       console.log("Centering and scaling scene to size bounds:", scale);
       for (let i = 0; i < geometry.length; i++) {
@@ -351,12 +350,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     console.log("Packed " + texturePacker.imageSet.length + " textures")
 
     let time = new Date().getTime();
-    let bboxes = geometry.map((t) => { return t.getBBox() });
     console.log("Building BVH:", geometry.length, "triangles");
-    //let bvh3 = new BVH3(bboxes);
-    //bvh3.printStatistics();
-    //console.log(bvh3)
-    //console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", 0);
     time = new Date().getTime();
     bvh = new BVH(geometry, leafSize);
     console.log("BVH built in ", (new Date().getTime() - time) / 1000.0, " seconds.  Depth: ", bvh.depth);
@@ -868,12 +862,12 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       drawCamera();
       drawTracer(pingpong);
       elements.sampleOutputElement.value = pingpong;
+      pingpong++;
     }
     drawQuad(pingpong);
     if (dirty) {
       clear()
     }
-    pingpong++;
     if (pingpong >= max && frameNumber >= 0) {
       uploadOutput();
       return

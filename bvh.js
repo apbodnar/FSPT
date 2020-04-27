@@ -2,10 +2,6 @@ import {
   Vec3
 } from './vector.js'
 
-import {
-  BBox
-} from './bounding_box.js'
-
 export class BVH {
   constructor(triangles, maxTris) {
     let xIndices = triangles.map((_, i) => { return i });
@@ -23,7 +19,7 @@ export class BVH {
   buildTree(indices, depth) {
     this.depth = Math.max(depth, this.depth);
     let root = new Node(this.triangles, indices);
-    if (root.indices.length <= this.maxTriangles) {
+    if (root.indices[root.splitAxis].length <= this.maxTriangles) {
       root.leaf = true;
       return root;
     }
@@ -38,9 +34,9 @@ export class BVH {
     let nodes = [],
       i = -1;
 
-    function traverseTree(root, prev) {
+    function traverseTree(root) {
       let parent = ++i;
-      let node = { node: root, parent: prev };
+      let node = { node: root };
       nodes.push(node);
       if (!root.leaf) {
         node.left = traverseTree(root.left, parent);
@@ -92,21 +88,30 @@ export class BVH {
 
 export class BoundingBox {
   // if indices are passed, assume triangles is ALL triangles
-  constructor(triangles, indices = null) {
+  constructor() {
     this.min = [Infinity, Infinity, Infinity];
     this.max = [-Infinity, -Infinity, -Infinity];
-    let numTris = indices ? indices.length : triangles.length;
-    for (let i = 0; i < numTris; i++) {
-      let idx = indices ? indices[i] : i;
-      for (let j = 0; j < triangles[idx].verts.length; j++) {
-        let vert = triangles[idx].verts[j];
-        for (let k = 0; k < vert.length; k++) {
-          this.min[k] = Math.min(vert[k], this.min[k]);
-          this.max[k] = Math.max(vert[k], this.max[k]);
-        }
-      }
+  }
+
+  static forTriangle(tri) {
+    let box = new BoundingBox();
+    for (let i = 0; i < tri.verts.length; i++) {
+      box.addVertex(tri.verts[i])
     }
-    this.centroid = Vec3.scale(Vec3.add(this.min, this.max), 0.5);
+    return box;
+  }
+
+  static forNode(node) {
+    let box = new BoundingBox();
+    for (let i = 0; i < node.indices[0].length; i++) {
+      box.addTriangle(node.triangles[node.indices[0][i]]);
+    }
+    return box;
+  }
+
+  addVertex(vert) {
+    this.min = Vec3.min(vert, this.min);
+    this.max = Vec3.max(vert, this.max);
   }
 
   addTriangle(triangle) {
@@ -114,40 +119,39 @@ export class BoundingBox {
     this.max = Vec3.max(this.max, triangle.boundingBox.max);
   }
 
+  get centroid() {
+    return Vec3.scale(Vec3.add(this.min, this.max), 0.5);
+  }
+
   getSurfaceArea() {
     let xl = this.max[0] - this.min[0];
     let yl = this.max[1] - this.min[1];
     let zl = this.max[2] - this.min[2];
-
     return (xl * yl + xl * zl + yl * zl) * 2;
   }
 }
 
 export class Node {
   constructor(triangles, indices) {
-    this._triangles = triangles;
-    this._indices = indices;
-    this.boundingBox = new BoundingBox(triangles, indices[0]);
+    this.triangles = triangles;
+    this.indices = indices;
+    this.boundingBox = BoundingBox.forNode(this);
     this.leaf = false;
     this.left = null;
     this.right = null;
     this.setSplit()
   }
 
-  get indices() {
-    return this.splitAxis ? this._indices[this.splitAxis] : this._indices[0];
-  }
-
   getTriangles() {
     // Avoid using this until final export
-    return this.indices.map((v) => {
-      return this._triangles[v];
+    return this.indices[0].map((v) => {
+      return this.triangles[v];
     });
   }
 
   clearTempBuffers() {
-    this._indices = null;
-    this._triangles = null;
+    this.indices = null;
+    this.triangles = null;
   }
 
   setSplit() {
@@ -155,14 +159,13 @@ export class Node {
     for (let axis = 0; axis < 3; axis++) {
       let bbFront = new BoundingBox([]);
       let bbBack = new BoundingBox([]);
-      let idxCache = this._indices[axis];
+      let idxCache = this.indices[axis];
       let surfacesFront = [];
       let surfacesBack = [];
       let parentSurfaceArea = this.boundingBox.getSurfaceArea();
       for (let i = 0; i < idxCache.length; i++) {
-        let tri = this._triangles[idxCache[i]];
-        bbFront.addTriangle(tri);
-        bbBack.addTriangle(this._triangles[idxCache[idxCache.length - 1 - i]]);
+        bbFront.addTriangle(this.triangles[idxCache[i]]);
+        bbBack.addTriangle(this.triangles[idxCache[idxCache.length - 1 - i]]);
         surfacesFront.push(bbFront.getSurfaceArea());
         surfacesBack.push(bbBack.getSurfaceArea());
       }
@@ -189,21 +192,13 @@ export class Triangle {
     this.tangents = [];
     this.bitangents = [];
     this.normals = null;
-    this.boundingBox = new BoundingBox([this]);
+    this.boundingBox = BoundingBox.forTriangle(this);
     this.transforms = transforms;
     this.material = {};
   }
 
   setNormals(normals) {
     this.normals = normals;
-  }
-
-  getBBox() {
-    let box = new BBox();
-    box.grow(this.verts[0]);
-    box.grow(this.verts[1]);
-    box.grow(this.verts[2]);
-    return box;
   }
 }
 
