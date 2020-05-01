@@ -14,8 +14,9 @@ const float M_TAU = M_PI * 2.0;
 const float INV_PI = 1.0 / M_PI;
 const float EXPLICIT_COS_THRESHOLD = -0.1;
 const float N1 = 1.0;
-const float N2 = 1.6;
+const float N2 = 1.35;
 const float SR = N1/N2;
+const float ISR = N2 / N1;
 const float R0 = ((N1 - N2)/(N1 + N2))*((N1 - N2)/(N1 + N2));
 
 uniform uint tick;
@@ -99,11 +100,6 @@ struct TexCoords {
 struct Hit {
   float t;
   int index;
-};
-
-struct Sample {
-  vec3 dir;
-  float pdf;
 };
 
 ivec2 indexToCoords(sampler2D tex, int index, int perElement){
@@ -224,18 +220,16 @@ float smithG(float NDotv, float alphaG) {
 	return 1.0 / (NDotv + sqrt(a + b - a * b));
 }
 
-float ue4pdf(vec3 incident, vec3 normal, vec2 metallicRoughness, in vec3 bsdfDir, in bool specular){
+float gtr2Pdf(vec3 incident, vec3 normal, vec2 metallicRoughness, vec3 bsdfDir) {
 	float specularAlpha = max(0.001, metallicRoughness.y);
 	vec3 halfVec = normalize(bsdfDir + incident);
-  float pdf;
-  if (specular) {
-    float cosTheta = abs(dot(halfVec, normal));
-	  float pdfgtr2 = gtr2(cosTheta, specularAlpha) * cosTheta;
-    pdf = pdfgtr2 / (4.0 * abs(dot(bsdfDir, halfVec)));
-  } else {
-    pdf = abs(dot(bsdfDir, normal)) * INV_PI;
-  }
-	return pdf;
+  float cosTheta = abs(dot(halfVec, normal));
+  float pdfgtr2 = gtr2(cosTheta, specularAlpha) * cosTheta;
+  return pdfgtr2 / (4.0 * abs(dot(bsdfDir, halfVec)));
+}
+
+float lambertPdf(vec3 normal, vec2 metallicRoughness, vec3 bsdfDir) {
+  return abs(dot(bsdfDir, normal)) * INV_PI;
 }
 
 float schlick(vec3 incident, vec3 normal){
@@ -281,32 +275,6 @@ vec3 evalSpecular(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 metallicRo
   roughg = roughg * roughg;
   float Gs = smithG(ndl, roughg) * smithG(ndv, roughg);
   return Gs * Fs * Ds;
-}
-
-vec3 evalLambert(vec3 diffuseColor) {
-  return diffuseColor * INV_PI;
-}
-
-vec3 ue4Eval(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 metallicRoughness, in vec3 bsdfDir, in bool specular) {
-  float ndl = dot(normal, bsdfDir);
-  float ndv = dot(normal, incident);
-	if (ndl <= 0.0 || ndv <= 0.0)
-		return vec3(0.0);
-  vec3 color;
-  if(specular) {
-    vec3 H = normalize(bsdfDir + incident);
-    float ndh = dot(normal, H);
-    float a = max(0.001, metallicRoughness.y);
-    float Ds = gtr2(ndh, a);
-    vec3 Fs = mix(vec3(1.0), diffuseColor, metallicRoughness.x);
-    float roughg = (metallicRoughness.y * 0.5 + 0.5);
-    roughg = roughg * roughg;
-    float Gs = smithG(ndl, roughg) * smithG(ndv, roughg);
-    color = Gs * Fs * Ds;
-  } else {
-    color = diffuseColor * INV_PI;
-  }
-	return color;
 }
 
 float rayTriangleIntersect(in Ray ray, in Triangle tri){
@@ -430,7 +398,7 @@ vec3 envSample(vec3 dir){
   return envColor(c);
 }
 
-vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, vec2 metallicRoughness, bool specular) {
+vec4 sampleEnvImportance(vec3 origin, vec3 normal, out vec3 envDir) {
   vec4 colorPdf = vec4(0);
   int idx = int(float(ENV_BINS) * rnd());
   vec4 bin = vec4(radianceBins[idx]);
@@ -443,14 +411,13 @@ vec4 sampleEnvImportance(vec3 incident, vec3 origin, vec3 normal, vec3 diffuse, 
   float x = cos(theta) * sinPhi;
   float y = cos(phi);
   float z = sin(theta) * sinPhi;
-  vec3 dir = vec3(x, y, z);
-  float ddn = dot(dir, normal);
+  envDir = vec3(x, y, z);
+  float ddn = dot(envDir, normal);
   colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y) * M_TAU * M_PI * cos(asin(y)));
   if (ddn > EXPLICIT_COS_THRESHOLD) {
-    Hit shadow = intersectScene(Ray(origin, dir));
+    Hit shadow = intersectScene(Ray(origin, envDir));
     if (shadow.index == -1 && colorPdf.a > EPSILON) {
-      colorPdf.rgb = ue4Eval(incident, normal, diffuse, metallicRoughness, dir, specular) / colorPdf.a;
-      colorPdf.rgb *= envSample(dir);
+      colorPdf.rgb = envSample(envDir) / colorPdf.a;
       colorPdf.rgb *= clamp(ddn, 0.0, 1.0);
     }
   }
@@ -482,37 +449,44 @@ void main(void) {
       texMetallicRoughness.g *= texMetallicRoughness.g;
       seed = origin.x * randBase * origin.y * 1.396529836 + origin.z * 4761.52835;
       vec3 baryNormal;
-      vec3 baryTangent;
-      vec3 baryBiTangent;
       vec3 macroNormal = barycentricNormal(baryWeights, createNormals(result.index), texNormal, baryNormal);
-      macroNormal = dot(-ray.dir, baryNormal) < 0.0 ? -macroNormal : macroNormal;
+      bool inside = dot(-ray.dir, baryNormal) < 0.0;
+      macroNormal = inside ? -macroNormal : macroNormal;
       ray.origin = origin + macroNormal * EPSILON * 2.0;
 
       // TODO: make this configurable in the materials
       color += accumulatedReflectance * texEmmissive * 10.0;
       vec3 incident = -ray.dir;
+      vec3 envDir;
+      vec3 throughput;
+      float bsdfPdf;
+      vec4 envColorPdf = mat.dielectric >= 0.0 ? vec4(0) : sampleEnvImportance( ray.origin, macroNormal, envDir);
       vec3 microNormal = sampleMicrofacet(macroNormal, texMetallicRoughness);
       bool specular =  mix(schlick(incident, macroNormal), 1.0, texMetallicRoughness.x) > rnd();
       if (specular) {
         ray.dir = reflect(-incident, microNormal);
+        bsdfPdf = gtr2Pdf(incident, macroNormal, texMetallicRoughness, ray.dir);
+        throughput = evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, ray.dir) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        envColorPdf.rgb *= evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, envDir);
+      } else if (mat.dielectric >= 0.0) {
+        bsdfPdf = 1.0;
+        throughput = vec3(1);
+        ray.origin = origin - macroNormal * EPSILON * 4.0;
+        ray.dir = refract(-incident, microNormal, inside ? ISR : SR);
+        macroNormal *= -1.0;
+        // This should be safe since total internal reflection will go through the specular path
+        i--;
       } else {
         ray.dir = sampleLambert(macroNormal);
+        bsdfPdf = lambertPdf(macroNormal, texMetallicRoughness, ray.dir);
+        throughput = texDiffuse * INV_PI * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        envColorPdf.rgb *= throughput;
       }
 
-      float bsdfPdf = ue4pdf(incident, macroNormal, texMetallicRoughness, ray.dir, specular);
-      vec3 throughput;
-      if(bsdfPdf > 0.0) { 
-        throughput = ue4Eval(incident, macroNormal, texDiffuse, texMetallicRoughness, ray.dir, specular) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
-      } else {
-        throughput = vec3(0.0);
-      }
-
-      // clamp albedo to avoid some precision issues
-      // float colorAlbedo = albedo(texDiffuse);
-      // if( rnd() > colorAlbedo ){ break; }
-
-      vec4 envColorPdf = sampleEnvImportance(incident, ray.origin, macroNormal, texDiffuse, texMetallicRoughness, specular);
+      // Apply some bad approximation of beers law if refracting
+      throughput = inside ? max(vec3(1) - ((vec3(1) - texDiffuse) * result.t * mat.dielectric), vec3(0)) : throughput;
       result = intersectScene(ray);
+
       vec2 weights = misWeights(envColorPdf.a, bsdfPdf);
       color += accumulatedReflectance * envColorPdf.rgb * weights.x;
       accumulatedReflectance *= (throughput);

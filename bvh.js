@@ -49,6 +49,36 @@ export class BVH {
     return nodes;
   }
 
+  _bisectIndices(indices, axis, index) {
+    let leftBox = new BoundingBox();
+    let leftIndices = [[], [], []];
+    let rightIndices = [[], [], []];
+    for (let i = 0; i < indices[axis].length; i++) {
+      let idx = indices[axis][i];
+      if (i < index) {
+        let tri = this.triangles[idx];
+        leftBox.addTriangle(tri);
+        leftIndices[axis].push(idx)
+      } else {
+        rightIndices[axis].push(idx)
+      }
+    }
+
+    let remainingAxes = [0, 1, 2].filter((e) => { return e !== axis });
+    for (let i = 0; i < remainingAxes.length; i++) {
+      for (let j = 0; j < indices[remainingAxes[i]].length; j++) {
+        let idx = indices[remainingAxes[i]][j];
+        let tri = this.triangles[idx];
+        if (leftBox.containsTriangle(tri)) {
+          leftIndices[remainingAxes[i]].push(idx);
+        } else {
+          rightIndices[remainingAxes[i]].push(idx);
+        }
+      }
+    }
+    return { left: leftIndices, right: rightIndices };
+  }
+
   _constructCachedIndexList(indices, axis, index) {
     // Avoid re sorting by plucking from pre sorted buffers
     let leftIndices = [[], [], []];
@@ -119,6 +149,22 @@ export class BoundingBox {
     this.max = Vec3.max(this.max, triangle.boundingBox.max);
   }
 
+  containsTriangle(triangle) {
+    let minDiff = Vec3.sub(this.min, triangle.boundingBox.min);
+    for (let i = 0; i < 3; i++) {
+      if (minDiff[i] > 0) {
+        return false;
+      }
+    }
+    let maxDiff = Vec3.sub(this.max, triangle.boundingBox.max);
+    for (let i = 0; i < 3; i++) {
+      if (maxDiff[i] < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   get centroid() {
     return Vec3.scale(Vec3.add(this.min, this.max), 0.5);
   }
@@ -157,8 +203,8 @@ export class Node {
   setSplit() {
     let bestCost = Infinity;
     for (let axis = 0; axis < 3; axis++) {
-      let bbFront = new BoundingBox([]);
-      let bbBack = new BoundingBox([]);
+      let bbFront = new BoundingBox();
+      let bbBack = new BoundingBox();
       let idxCache = this.indices[axis];
       let surfacesFront = [];
       let surfacesBack = [];
