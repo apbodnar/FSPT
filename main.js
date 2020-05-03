@@ -264,7 +264,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     material.roughnessIndex = roughnessIndex;
     material.normalIndex = normalIndex;
     material.specularIndex = specularIndex;
-    material.ior = transforms.ior || 1.3;
+    material.ior = transforms.ior || 1.4;
     material.dielectric = transforms.dielectric || group.material["dielectric"] || -1;
     material.emittance = transforms.emittance;
     return material;

@@ -6,18 +6,13 @@ precision highp float;
 precision highp int;
 precision highp sampler2DArray;
 
-const int NUM_BOUNCES = 3;
+const int NUM_BOUNCES = 4;
 const float MAX_T = 100000.0;
 const float EPSILON = 0.000001;
 const float M_PI = 3.14159265;
 const float M_TAU = M_PI * 2.0;
 const float INV_PI = 1.0 / M_PI;
 const float EXPLICIT_COS_THRESHOLD = -0.1;
-const float N1 = 1.0;
-const float N2 = 1.35;
-const float SR = N1/N2;
-const float ISR = N2 / N1;
-const float R0 = ((N1 - N2)/(N1 + N2))*((N1 - N2)/(N1 + N2));
 
 uniform uint tick;
 uniform float numLights;
@@ -232,9 +227,21 @@ float lambertPdf(vec3 normal, vec2 metallicRoughness, vec3 bsdfDir) {
   return abs(dot(bsdfDir, normal)) * INV_PI;
 }
 
-float schlick(vec3 incident, vec3 normal){
-  float dh = 1.0 - dot(incident, normal);
-  return R0 + (1.0 - R0)*dh*dh*dh*dh*dh;
+float schlick(vec3 incident, vec3 normal, vec2 ns){
+  float r0 = (ns.x - ns.y) / (ns.x + ns.y);
+  r0 *= r0;
+  float cosTheta = dot(normal, incident);
+  if (ns.x > ns.y)
+  {
+      float n = ns.x / ns.y;
+      float sinTheta2 = n * n * (1.0 - cosTheta * cosTheta);
+      // Total internal reflection
+      if (sinTheta2 > 1.0)
+          return 1.0;
+      cosTheta = sqrt(1.0 - sinTheta2);
+  }
+  float x = 1.0 - cosTheta;
+  return r0 + (1.0 - r0)*x*x*x*x*x;
 }
 
 vec3 sampleMicrofacet(vec3 normal, vec2 metallicRoughness) {
@@ -451,6 +458,7 @@ void main(void) {
       vec3 baryNormal;
       vec3 macroNormal = barycentricNormal(baryWeights, createNormals(result.index), texNormal, baryNormal);
       bool inside = dot(-ray.dir, baryNormal) < 0.0;
+      vec2 ns = inside ? vec2(mat.ior, 1.0) : vec2(1.0, mat.ior);
       macroNormal = inside ? -macroNormal : macroNormal;
       ray.origin = origin + macroNormal * EPSILON * 2.0;
 
@@ -462,7 +470,7 @@ void main(void) {
       float bsdfPdf;
       vec4 envColorPdf = mat.dielectric >= 0.0 ? vec4(0) : sampleEnvImportance( ray.origin, macroNormal, envDir);
       vec3 microNormal = sampleMicrofacet(macroNormal, texMetallicRoughness);
-      bool specular =  mix(schlick(incident, macroNormal), 1.0, texMetallicRoughness.x) > rnd();
+      bool specular =  mix(schlick(incident, microNormal, ns), 1.0, texMetallicRoughness.x) > rnd();
       if (specular) {
         ray.dir = reflect(-incident, microNormal);
         bsdfPdf = gtr2Pdf(incident, macroNormal, texMetallicRoughness, ray.dir);
@@ -472,7 +480,7 @@ void main(void) {
         bsdfPdf = 1.0;
         throughput = vec3(1);
         ray.origin = origin - macroNormal * EPSILON * 4.0;
-        ray.dir = refract(-incident, microNormal, inside ? ISR : SR);
+        ray.dir = refract(-incident, microNormal, ns.x / ns.y);
         macroNormal *= -1.0;
         // This should be safe since total internal reflection will go through the specular path
         i--;

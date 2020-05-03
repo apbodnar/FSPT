@@ -14,13 +14,13 @@ Features:
 * Varible focus depth and auto-focus
 * Normal maps
 * PBR material maps. Metallicness, roughness, emissivity.
+* Refraction, Beer's law
 * Post processing: exposure, saturation, denoising
 * HDRi importance sampling
 * "Camera shaders"
 
 TODOs (Not Exhaustive):
 * Switch to a low discrepancy generator
-* Re-add refraction
 * Refactor texture packing to be far, far less wasteful of memory (current worst case could use megabytes where bytes are needed)
 * Fix area light sampling | Explore solid angle sampling of volume lights
 * Parallelize BVH construction and texture packing with web workers
@@ -29,9 +29,6 @@ TODOs (Not Exhaustive):
 * Port to WebGPU compute shaders once widely available
 
 ## Demo
-
-**WARNING**: Any one of these links could crash your drivers/system. Run at your own risk. I recommend trying the links in order. If your system remains responsive, maybe try the next one.  
-I've tested with FF and Chrome on Windows and Linux with a GTX 1080 and GTX 980
 
 **Light sampling is currently broken**
 
@@ -65,7 +62,7 @@ Depending on the port used, open a url like: http://localhost:8000/?scene=bunny&
 
 A scene config file like `bunny.json` looks like:
 
-```
+```json
 {
   "environment": "environment/autumn_meadow_2k.RGBE.PNG",
   "environmentTheta": 0.66,
