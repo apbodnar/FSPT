@@ -187,9 +187,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let rangePixels = height / (stops.length - 1);
       let sigma = (i % rangePixels) / rangePixels;
       let color = Vec3.lerp(stops[stopIdx], stops[stopIdx + 1], sigma);
-      pixelsTmp.push(color[0]);
-      pixelsTmp.push(color[1]);
-      pixelsTmp.push(color[2]);
+      pixelsTmp.push(...color);
     }
 
     let pixels = new Float32Array(pixelsTmp);
@@ -371,37 +369,19 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       if (node.leaf) {
         let tris = node.getTriangles();
         for (let j = 0; j < tris.length; j++) {
-          let subBuffer = [].concat(tris[j].verts[0], tris[j].verts[1], tris[j].verts[2]);
-          subBuffer.forEach(function (el) {
-            trianglesBuffer.push(el);
-          });
-        }
-        for (let j = 0; j < tris.length; j++) {
+          trianglesBuffer.push(...tris[j].verts[0], ...tris[j].verts[1], ...tris[j].verts[2]);
+
           let material = tris[j].material;
-          let subBuffer = [].concat(
-            [material.diffuseIndex, material.specularIndex, material.normalIndex],
-            [material.roughnessIndex, 0, 0],
-            material.emittance,
-            [material.ior, material.dielectric, 0]
+          materialBuffer.push(
+            material.diffuseIndex, material.specularIndex, material.normalIndex,
+            material.roughnessIndex, 0, 0,
+            ...material.emittance,
+            material.ior, material.dielectric, 0
           );
-          subBuffer.forEach(function (el) {
-            materialBuffer.push(el);
-          });
-        }
-        for (let j = 0; j < tris.length; j++) {
-          let subBuffer = [];
           for (let k = 0; k < 3; k++) {
-            subBuffer = subBuffer.concat(tris[j].normals[k], tris[j].tangents[k], tris[j].bitangents[k]);
+            normalBuffer.push(...tris[j].normals[k], ...tris[j].tangents[k], ...tris[j].bitangents[k]);
           }
-          subBuffer.forEach(function (el) {
-            normalBuffer.push(el);
-          });
-        }
-        for (let j = 0; j < tris.length; j++) {
-          let subBuffer = [].concat(tris[j].uvs[0], tris[j].uvs[1], tris[j].uvs[2]);
-          subBuffer.forEach(function (el) {
-            uvBuffer.push(el);
-          });
+          uvBuffer.push(...tris[j].uvs[0], ...tris[j].uvs[1], ...tris[j].uvs[2]);
         }
       }
       for (let j = 0; j < bufferNode.length; j++) {
@@ -413,9 +393,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       lightRanges.push(lightBuffer.length / 9);
       for (let j = 0; j < lights[i].length; j++) {
         let t = lights[i][j];
-        [].concat(t.verts[0], t.verts[1], t.verts[2]).forEach(function (e) {
-          lightBuffer.push(e);
-        });
+        lightBuffer.push(...t.verts[0], ...t.verts[1], ...t.verts[2]);
       }
       lightRanges.push(lightBuffer.length / 9 - 1);
     }

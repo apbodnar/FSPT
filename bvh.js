@@ -49,52 +49,26 @@ export class BVH {
     return nodes;
   }
 
-  _bisectIndices(indices, axis, index) {
-    let leftBox = new BoundingBox();
-    let leftIndices = [[], [], []];
-    let rightIndices = [[], [], []];
-    for (let i = 0; i < indices[axis].length; i++) {
-      let idx = indices[axis][i];
-      if (i < index) {
-        let tri = this.triangles[idx];
-        leftBox.addTriangle(tri);
-        leftIndices[axis].push(idx)
-      } else {
-        rightIndices[axis].push(idx)
-      }
-    }
-
-    let remainingAxes = [0, 1, 2].filter((e) => { return e !== axis });
-    for (let i = 0; i < remainingAxes.length; i++) {
-      for (let j = 0; j < indices[remainingAxes[i]].length; j++) {
-        let idx = indices[remainingAxes[i]][j];
-        let tri = this.triangles[idx];
-        if (leftBox.containsTriangle(tri)) {
-          leftIndices[remainingAxes[i]].push(idx);
-        } else {
-          rightIndices[remainingAxes[i]].push(idx);
-        }
-      }
-    }
-    return { left: leftIndices, right: rightIndices };
-  }
-
-  _constructCachedIndexList(indices, axis, index) {
+  _constructCachedIndexList(indices, splitAxis, splitIndex) {
     // Avoid re sorting by plucking from pre sorted buffers
-    let leftIndices = [[], [], []];
-    leftIndices[axis] = indices[axis].slice(0, index);
-    let rightIndices = [[], [], []];
-    rightIndices[axis] = indices[axis].slice(index, indices[axis].length);
-    let setLeft = new Set(leftIndices[axis]);
-    let remainingAxes = [0, 1, 2].filter((e) => { return e !== axis });
+    let leftIndices = [null, null, null];
+    leftIndices[splitAxis] = indices[splitAxis].slice(0, splitIndex);
+    let rightIndices = [null, null, null];
+    rightIndices[splitAxis] = indices[splitAxis].slice(splitIndex, indices[splitAxis].length);
+    let setLeft = new Set(leftIndices[splitAxis]);
+    let remainingAxes = [0, 1, 2].filter((e) => { return e !== splitAxis });
 
     for (let i = 0; i < remainingAxes.length; i++) {
-      for (let j = 0; j < indices[remainingAxes[i]].length; j++) {
-        let idx = indices[remainingAxes[i]][j];
+      let axis = remainingAxes[i];
+      leftIndices[axis] = Array(leftIndices[splitAxis].length)
+      rightIndices[axis] = Array(rightIndices[splitAxis].length)
+      let li = 0, ri = 0;
+      for (let j = 0; j < indices[axis].length; j++) {
+        let idx = indices[axis][j];
         if (setLeft.has(idx)) {
-          leftIndices[remainingAxes[i]].push(idx);
+          leftIndices[axis][li++] = idx;
         } else {
-          rightIndices[remainingAxes[i]].push(idx);
+          rightIndices[axis][ri++] = idx;
         }
       }
     }
@@ -206,14 +180,14 @@ export class Node {
       let bbFront = new BoundingBox();
       let bbBack = new BoundingBox();
       let idxCache = this.indices[axis];
-      let surfacesFront = [];
-      let surfacesBack = [];
+      let surfacesFront = Array(idxCache.length);
+      let surfacesBack = Array(idxCache.length);
       let parentSurfaceArea = this.boundingBox.getSurfaceArea();
       for (let i = 0; i < idxCache.length; i++) {
         bbFront.addTriangle(this.triangles[idxCache[i]]);
         bbBack.addTriangle(this.triangles[idxCache[idxCache.length - 1 - i]]);
-        surfacesFront.push(bbFront.getSurfaceArea());
-        surfacesBack.push(bbBack.getSurfaceArea());
+        surfacesFront[i] = bbFront.getSurfaceArea();
+        surfacesBack[i] = bbBack.getSurfaceArea();
       }
 
       for (let i = 0; i < idxCache.length; i++) {
