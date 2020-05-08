@@ -39,12 +39,12 @@ export class TexturePacker {
       console.log("Using texture dimensions of " + this.maxRes + "px instead of specified " + this.res + "px.")
       this.res = this.maxRes;
     }
-    this.glWriter = new WebGLTextureWriter(this.res);
     return this.res;
   }
 
   getPixels() {
     let time = new Date().getTime();
+    this.glWriter = new WebGLTextureWriter(this.res);
     let pixels = new Uint8Array(this.res * this.res * 4 * this.imageSet.length);
     for (let i = 0; i < this.imageSet.length; i++) {
       let img = this.imageSet[i];
@@ -66,6 +66,7 @@ export class TexturePacker {
 
 class WebGLTextureWriter {
   constructor(atlasRes) {
+    this.res = atlasRes;
     this.canvasElement = document.createElement('canvas');
     this.canvasElement.width = atlasRes;
     this.canvasElement.height = atlasRes;
@@ -96,28 +97,28 @@ class WebGLTextureWriter {
     let vsStr = `#version 300 es
     precision highp float;
     in vec3 corner;
-    out vec2 uv;
     void main(void) {
-        uv = (corner.xy * vec2(0.5, -0.5)) + vec2(0.5);
         gl_Position = vec4(corner, 1.0);
     }
     `;
     let fsStr = `#version 300 es
     precision highp float;
+    uniform vec2 dims;
     uniform vec4 swizzle;
     uniform sampler2D tex;
     
-    in vec2 uv;
     out vec4 fragColor;
     
     void main(void) {
+      vec2 uv = gl_FragCoord.xy / dims;
+      uv.y = 1.0 - uv.y;
       vec4 c = texture(tex, uv);
       fragColor = vec4(c.rgb * c.a, 1.0);
     }`;
     let fs = getShader(fsStr, "FRAGMENT_SHADER");
     let vs = getShader(vsStr, "VERTEX_SHADER");
     this.program = gl.createProgram();
-    let uniforms = ["tex", "swizzle"];
+    let uniforms = ["tex", "swizzle", "dims"];
     let attributes = ["corner"]
     this.program.uniforms = {};
     this.program.attributes = {};
@@ -164,6 +165,7 @@ class WebGLTextureWriter {
     gl.viewport(0, 0, this.canvasElement.width, this.canvasElement.height);
     gl.enableVertexAttribArray(this.program.attributes.corner);
     gl.uniform1i(this.program.uniforms.tex, 0);
+    gl.uniform2f(this.program.uniforms.dims, this.res, this.res);
     gl.activeTexture(gl.TEXTURE0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
