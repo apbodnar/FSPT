@@ -163,6 +163,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       parseInt(color[2] * 255) + ",1)";
     ctx.fillRect(0, 0, 1, 1);
     canvas.currentSrc = ctx.fillStyle;
+    canvas.noGamma = true;
     return canvas;
   }
 
@@ -210,15 +211,15 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     let specularIndex = null;
     if (group.material["map_kd"]) {
       let assetUrl = basePath + "/" + group.material["map_kd"];
-      diffuseIndex = texturePacker.addTexture(assets[assetUrl]);
+      diffuseIndex = texturePacker.addTexture(assets[assetUrl], true);
     } else if (group.material["kd"]) {
-      diffuseIndex = texturePacker.addTexture(createFlatTexture(group.material["kd"]));
+      diffuseIndex = texturePacker.addColor(group.material["kd"]);
     } else if (typeof transforms.diffuse === 'string') {
-      diffuseIndex = texturePacker.addTexture(assets[transforms.diffuse]);
+      diffuseIndex = texturePacker.addTexture(assets[transforms.diffuse], true);
     } else if (typeof transforms.diffuse === 'object') {
-      diffuseIndex = texturePacker.addTexture(createFlatTexture(transforms.diffuse));
+      diffuseIndex = texturePacker.addColor(transforms.diffuse);
     } else {
-      diffuseIndex = texturePacker.addTexture(createFlatTexture([0.5, 0.5, 0.5]));
+      diffuseIndex = texturePacker.addColor([0.5, 0.5, 0.5]);
     }
 
     if (group.material["map_pmr"]) {
@@ -227,15 +228,15 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       img.swizzle = group.material["pmr_swizzle"];
       roughnessIndex = texturePacker.addTexture(img);
     } else if (group.material["pmr"]) {
-      roughnessIndex = texturePacker.addTexture(createFlatTexture(group.material["pmr"]));
+      roughnessIndex = texturePacker.addColor(group.material["pmr"]);
     } else if (typeof transforms.metallicRoughness === 'string') {
       let img = assets[transforms.metallicRoughness];
       img.swizzle = transforms.mrSwizzle;
       roughnessIndex = texturePacker.addTexture(img);
     } else if (typeof transforms.metallicRoughness === 'object') {
-      roughnessIndex = texturePacker.addTexture(createFlatTexture(transforms.metallicRoughness));
+      roughnessIndex = texturePacker.addColor(transforms.metallicRoughness);
     } else {
-      roughnessIndex = texturePacker.addTexture(createFlatTexture([0.1, 0.3, 0]));
+      roughnessIndex = texturePacker.addColor([0.0, 0.3, 0]);
     }
 
     // TODO rename this
@@ -243,11 +244,11 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
       let assetUrl = basePath + "/" + group.material["map_kem"];
       specularIndex = texturePacker.addTexture(assets[assetUrl]);
     } else if (group.material["kem"]) {
-      specularIndex = texturePacker.addTexture(createFlatTexture(group.material["kem"]));
+      specularIndex = texturePacker.addColor(group.material["kem"]);
     } else if (typeof transforms.emission === 'string') {
       specularIndex = texturePacker.addTexture(assets[transforms.emission]);
     } else {
-      specularIndex = texturePacker.addTexture(createFlatTexture([0, 0, 0]));
+      specularIndex = texturePacker.addColor([0, 0, 0]);
     }
 
     if (group.material["map_bump"]) {
@@ -256,14 +257,14 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
     } else if (transforms.normal) {
       normalIndex = texturePacker.addTexture(assets[transforms.normal]);
     } else {
-      normalIndex = texturePacker.addTexture(createFlatTexture([0.5, 0.5, 1]));
+      normalIndex = texturePacker.addColor([0.5, 0.5, 1]);
     }
     material.diffuseIndex = diffuseIndex;
     material.roughnessIndex = roughnessIndex;
     material.normalIndex = normalIndex;
     material.specularIndex = specularIndex;
-    material.ior = transforms.ior || 1.4;
-    material.dielectric = transforms.dielectric || group.material["dielectric"] || -1;
+    material.ior = group.material["ior"] || transforms.ior || 1.4;
+    material.dielectric = group.material["dielectric"] || transforms.dielectric || -1;
     material.emittance = transforms.emittance;
     return material;
   }

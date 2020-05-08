@@ -3,7 +3,7 @@ export async function loadAll(urls) {
     let counter = urls.length;
     let resHash = {};
     urls.forEach(function (url) {
-      if (url.toLowerCase().match(/(\.png$)|(\.jpg$)|(\.jpeg$)/)) {
+      if (url.toLowerCase().match(/(\.png$)|(\.bmp$)|(\.jpg$)|(\.jpeg$)/)) {
         let img = new Image();
         img.onload = function () {
           counter--;

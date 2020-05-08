@@ -479,9 +479,8 @@ void main(void) {
       } else if (mat.dielectric >= 0.0) {
         bsdfPdf = 1.0;
         throughput = vec3(1);
-        ray.origin = origin - macroNormal * EPSILON * 4.0;
+        ray.origin = origin - macroNormal * EPSILON * 2.0;
         ray.dir = refract(-incident, microNormal, ns.x / ns.y);
-        macroNormal *= -1.0;
         // This should be safe since total internal reflection will go through the specular path
         i--;
       } else {

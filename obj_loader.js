@@ -82,12 +82,13 @@ export async function parseMesh(objText, transforms, worldTransforms, basePath) 
     let deltaUv1 = Vec3.sub(triangle.uvs[2], triangle.uvs[0]);
 
     let r = 1.0 / ((deltaUv0[0] * deltaUv1[1]) - (deltaUv0[1] * deltaUv1[0]));
-    let preTangent = Vec3.scale(Vec3.sub(Vec3.scale(deltaPos0, deltaUv1[1]), Vec3.scale(deltaPos1, deltaUv0[1])), r);
-
+    let preTangent = Vec3.normalize(Vec3.scale(Vec3.sub(Vec3.scale(deltaPos0, deltaUv1[1]), Vec3.scale(deltaPos1, deltaUv0[1])), r));
+    //let bt = Vec3.normalize(Vec3.scale(Vec3.sub(Vec3.scale(deltaPos1, deltaUv0[0]), Vec3.scale(deltaPos0, deltaUv1[0])), r));
     for (let i = 0; i < 3; i++) {
-      let preBitangent = Vec3.normalize(Vec3.cross(preTangent, triangle.normals[i]));
-      let tangent = Vec3.normalize(Vec3.cross(triangle.normals[i], preBitangent));
-      let bitangent = Vec3.normalize(Vec3.cross(tangent, triangle.normals[i]));
+      let normal = triangle.normals[i];
+      let preBitangent = Vec3.normalize(Vec3.cross(normal, preTangent));
+      let tangent = Vec3.normalize(Vec3.cross(preBitangent, normal));
+      let bitangent = Vec3.normalize(Vec3.cross(normal, tangent));
 
       if (isNaN(Vec3.dot(tangent, bitangent))) {
         let t = Vec3.cross(triangle.normals[i], [0, 1, 0]);

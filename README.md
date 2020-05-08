@@ -40,7 +40,7 @@ Try messing with the mouse, scrolling, and WASD + RF keys.  Be sure to adjust th
 
 ![alt text](images/gi.png)
 ![alt text](images/lego.png)
-![alt text](images/ape.png)
+![alt text](images/vr.png)
 ![alt text](images/tokyo.png)
 ![alt text](images/dude.png)
 ![alt text](images/nier.png)
