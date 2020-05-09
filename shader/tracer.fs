@@ -463,7 +463,7 @@ void main(void) {
       ray.origin = origin + macroNormal * EPSILON * 2.0;
 
       // TODO: make this configurable in the materials
-      color += accumulatedReflectance * texEmmissive * texDiffuse * 10.0;
+      color += accumulatedReflectance * texEmmissive * texDiffuse * 30.0;
       vec3 incident = -ray.dir;
       vec3 envDir;
       vec3 throughput;
