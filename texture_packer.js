@@ -8,7 +8,6 @@ export class TexturePacker {
     this.imageSet = [];
     this.imageKeys = {};
     this.maxRes = 0;
-    this.glWriter = null;
   }
 
   addTexture(image, corrected) {
@@ -44,17 +43,17 @@ export class TexturePacker {
 
   getPixels() {
     let time = new Date().getTime();
-    this.glWriter = new WebGLTextureWriter(this.res);
+    let glWriter = new WebGLTextureWriter(this.res);
     let pixels = new Uint8Array(this.res * this.res * 4 * this.imageSet.length);
     for (let i = 0; i < this.imageSet.length; i++) {
       let img = this.imageSet[i];
       if (Array.isArray(img)) {
-        this.glWriter.setAndDrawColor(img);
+        glWriter.setAndDrawColor(img);
       } else {
-        this.glWriter.setAndDrawTexture(img);
+        glWriter.setAndDrawTexture(img);
       }
 
-      let pixBuffer = this.glWriter.getPixels();
+      let pixBuffer = glWriter.getPixels();
       let offset = i * this.res * this.res * 4;
       pixels.set(pixBuffer, offset)
     }
@@ -104,7 +103,7 @@ class WebGLTextureWriter {
     let fsStr = `#version 300 es
     precision highp float;
     uniform vec2 dims;
-    uniform vec4 swizzle;
+    uniform uvec4 swizzle;
     uniform sampler2D tex;
     
     out vec4 fragColor;
@@ -113,6 +112,11 @@ class WebGLTextureWriter {
       vec2 uv = gl_FragCoord.xy / dims;
       uv.y = 1.0 - uv.y;
       vec4 c = texture(tex, uv);
+      vec4 copy = c;
+      c[0] = copy[swizzle[0]];
+      c[1] = copy[swizzle[1]];
+      c[2] = copy[swizzle[2]];
+      c[3] = copy[swizzle[3]];
       fragColor = vec4(c.rgb * c.a, 1.0);
     }`;
     let fs = getShader(fsStr, "FRAGMENT_SHADER");
@@ -141,6 +145,8 @@ class WebGLTextureWriter {
         -1.0, -1.0, 0.0
     ];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(this.program, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.program.attributes.corner);
   }
 
   setAndDrawColor(color) {
@@ -161,11 +167,10 @@ class WebGLTextureWriter {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.vertexAttribPointer(this.program, 3, gl.FLOAT, false, 0, 0);
     gl.viewport(0, 0, this.canvasElement.width, this.canvasElement.height);
-    gl.enableVertexAttribArray(this.program.attributes.corner);
     gl.uniform1i(this.program.uniforms.tex, 0);
     gl.uniform2f(this.program.uniforms.dims, this.res, this.res);
+    gl.uniform4uiv(this.program.uniforms.swizzle, img.swizzle || [0, 1, 2, 3])
     gl.activeTexture(gl.TEXTURE0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

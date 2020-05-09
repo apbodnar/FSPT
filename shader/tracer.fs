@@ -463,7 +463,7 @@ void main(void) {
       ray.origin = origin + macroNormal * EPSILON * 2.0;
 
       // TODO: make this configurable in the materials
-      color += accumulatedReflectance * texEmmissive * 10.0;
+      color += accumulatedReflectance * texEmmissive * texDiffuse * 10.0;
       vec3 incident = -ray.dir;
       vec3 envDir;
       vec3 throughput;
@@ -496,7 +496,7 @@ void main(void) {
 
       vec2 weights = misWeights(envColorPdf.a, bsdfPdf);
       color += accumulatedReflectance * envColorPdf.rgb * weights.x;
-      accumulatedReflectance *= (throughput);
+      accumulatedReflectance *= throughput;
       if(result.index < 0){
         color += accumulatedReflectance * envSample(ray.dir) * weights.y;
         break;
@@ -505,5 +505,5 @@ void main(void) {
   }
   color = clamp(color, 0.0, 1024.0);
   vec3 tcolor = texelFetch(fbTex, ivec2(gl_FragCoord), 0).rgb;
-  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0),1.0);
+  fragColor = vec4((color + (tcolor * float(tick)))/(float(tick)+1.0), 1.0);
 }
