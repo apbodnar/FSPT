@@ -180,6 +180,17 @@ Node createNode(int index){
 
 float rnd() { return fract(sin(seed += 0.211324865405187)*43758.5453123); }
 
+vec2 hammersley(uint i, float iN) {
+    float tof = 0.5 / 2147483648.0;
+    uint bits = i;
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return vec2(float(i) * iN, float(bits) * tof);
+}
+
 vec2 misWeights(float a, float b ) {
     if (a > EPSILON && b > EPSILON) {
       float a2 = a * a;
@@ -282,6 +293,10 @@ vec3 evalSpecular(vec3 incident, vec3 normal, vec3 diffuseColor, vec2 metallicRo
   roughg = roughg * roughg;
   float Gs = smithG(ndl, roughg) * smithG(ndv, roughg);
   return Gs * Fs * Ds;
+}
+
+vec3 evalLambert(vec3 diffuseColor) {
+  return diffuseColor * INV_PI;
 }
 
 float rayTriangleIntersect(in Ray ray, in Triangle tri){
@@ -420,15 +435,14 @@ vec4 sampleEnvImportance(vec3 origin, vec3 normal, out vec3 envDir) {
   float z = sin(theta) * sinPhi;
   envDir = vec3(x, y, z);
   float ddn = dot(envDir, normal);
-  colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y) * M_TAU * M_PI * cos(asin(y)));
   if (ddn > EXPLICIT_COS_THRESHOLD) {
+    colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y) * M_TAU * M_PI * sinPhi);
     Hit shadow = intersectScene(Ray(origin, envDir));
     if (shadow.index == -1 && colorPdf.a > EPSILON) {
       colorPdf.rgb = envSample(envDir) / colorPdf.a;
       colorPdf.rgb *= clamp(ddn, 0.0, 1.0);
     }
   }
-  //colorPdf.a *= ue4pdf(incident, normal, metallicRoughness, dir);
   return colorPdf;
 }
 
@@ -468,8 +482,8 @@ void main(void) {
       vec3 envDir;
       vec3 throughput;
       float bsdfPdf;
-      vec4 envColorPdf = mat.dielectric >= 0.0 ? vec4(0) : sampleEnvImportance( ray.origin, macroNormal, envDir);
       vec3 microNormal = sampleMicrofacet(macroNormal, texMetallicRoughness);
+      vec4 envColorPdf = mat.dielectric >= 0.0 ? vec4(0) : sampleEnvImportance( ray.origin, macroNormal, envDir);
       bool specular =  mix(schlick(incident, microNormal, ns), 1.0, texMetallicRoughness.x) > rnd();
       if (specular) {
         ray.dir = reflect(-incident, microNormal);
@@ -486,11 +500,11 @@ void main(void) {
       } else {
         ray.dir = sampleLambert(macroNormal);
         bsdfPdf = lambertPdf(macroNormal, texMetallicRoughness, ray.dir);
-        throughput = texDiffuse * INV_PI * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
-        envColorPdf.rgb *= throughput;
+        throughput = evalLambert(texDiffuse) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        envColorPdf.rgb *= evalLambert(texDiffuse);
       }
 
-      // Apply some bad approximation of beers law if refracting
+      //Apply some bad approximation of beers law if refracting
       throughput = inside ? max(vec3(1) - ((vec3(1) - texDiffuse) * result.t * mat.dielectric), vec3(0)) : throughput;
       result = intersectScene(ray);
 

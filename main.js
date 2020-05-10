@@ -298,6 +298,7 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         radianceBins = ProcessEnvRadiance(assets[scene.environment]);
         preprocDirs.push('#define ENV_BINS ' + radianceBins.length / 4);
         console.log("Processing env took", (new Date().getTime() - time) / 1000.0, "seconds for", radianceBins.length / 4, "bins");
+        //debugger;
       }
     } else {
       textures.env = createEnvironmentMapPixels([
