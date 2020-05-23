@@ -333,7 +333,10 @@ async function PathTracer(scenePath, sceneName, resolution, frameNumber, mode) {
         });
       });
     }
+
     console.log("Scene bounds:", bounds);
+    console.log("Scene lights:", lights);
+
     if (scene.normalize) {
       let diff = Vec3.sub(bounds.max, bounds.min);
       let longest = Math.max(Math.max(diff[0], diff[1]), diff[2]);
