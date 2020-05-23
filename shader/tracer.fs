@@ -197,10 +197,8 @@ vec2 misWeights(float a, float b ) {
       float b2 = b * b;
       float a2b2 = a2 + b2;
       return vec2(a2, b2) / a2b2;
-    } else if (a > EPSILON) {
-      return vec2(1, 0);
     } else {
-      return vec2(0, 1);
+      return vec2(1, 0);
     }
 }
 
@@ -420,30 +418,19 @@ vec3 envSample(vec3 dir){
   return envColor(c);
 }
 
-vec4 sampleEnvImportance(vec3 origin, vec3 normal, out vec3 envDir) {
-  vec4 colorPdf = vec4(0);
+vec4 sampleEnv() {
+  vec4 dirPdf = vec4(0);
   int idx = int(float(ENV_BINS) * rnd());
   vec4 bin = vec4(radianceBins[idx]);
   vec2 dims = vec2(textureSize(envTex, 0));
-  float nominal = (dims.x * dims.y) / float(ENV_BINS);
   vec2 uv = vec2(-envTheta, 0) + vec2((bin.z - bin.x) * rnd() + bin.x, (bin.w - bin.y) * rnd() + bin.y) / dims;
   float theta = uv.x * M_TAU;
   float phi = uv.y * M_PI;
   float sinPhi = sin(phi);
-  float x = cos(theta) * sinPhi;
-  float y = cos(phi);
-  float z = sin(theta) * sinPhi;
-  envDir = vec3(x, y, z);
-  float ddn = dot(envDir, normal);
-  if (ddn > EXPLICIT_COS_THRESHOLD) {
-    colorPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y) * M_TAU * M_PI * sinPhi);
-    Hit shadow = intersectScene(Ray(origin, envDir));
-    if (shadow.index == -1 && colorPdf.a > EPSILON) {
-      colorPdf.rgb = envSample(envDir) / colorPdf.a;
-      colorPdf.rgb *= clamp(ddn, 0.0, 1.0);
-    }
-  }
-  return colorPdf;
+  dirPdf.xyz = vec3(cos(theta) * sinPhi, cos(phi), sin(theta) * sinPhi);
+  float nominal = (dims.x * dims.y) / float(ENV_BINS);
+  dirPdf.a = nominal / ((bin.z - bin.x) * (bin.w - bin.y) * M_TAU * M_PI * sinPhi);
+  return dirPdf;
 }
 
 void main(void) {
@@ -479,20 +466,22 @@ void main(void) {
       // TODO: make this configurable in the materials
       color += accumulatedReflectance * texEmmissive * texDiffuse * 30.0;
       vec3 incident = -ray.dir;
-      vec3 envDir;
-      vec3 throughput;
+      vec3 envThroughput;
+      vec3 bsdfThroughput;
       float bsdfPdf;
       vec3 microNormal = sampleMicrofacet(macroNormal, texMetallicRoughness);
-      vec4 envColorPdf = mat.dielectric >= 0.0 ? vec4(0) : sampleEnvImportance( ray.origin, macroNormal, envDir);
+      vec4 envDirPdf = sampleEnv();
+      float cosEnv = dot(macroNormal, envDirPdf.xyz);
       bool specular =  mix(schlick(incident, microNormal, ns), 1.0, texMetallicRoughness.x) > rnd();
       if (specular) {
         ray.dir = reflect(-incident, microNormal);
         bsdfPdf = gtr2Pdf(incident, macroNormal, texMetallicRoughness, ray.dir);
-        throughput = evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, ray.dir) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
-        envColorPdf.rgb *= evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, envDir);
+        bsdfThroughput = evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, ray.dir) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        envThroughput = evalSpecular(incident, macroNormal, texDiffuse, texMetallicRoughness, envDirPdf.xyz) * clamp(cosEnv, 0.0, 1.0) / envDirPdf.a;
       } else if (mat.dielectric >= 0.0) {
         bsdfPdf = 1.0;
-        throughput = vec3(1);
+        bsdfThroughput = vec3(1);
+        envThroughput = vec3(0);
         ray.origin = origin - macroNormal * EPSILON * 2.0;
         ray.dir = refract(-incident, microNormal, ns.x / ns.y);
         // This should be safe since total internal reflection will go through the specular path
@@ -500,18 +489,24 @@ void main(void) {
       } else {
         ray.dir = sampleLambert(macroNormal);
         bsdfPdf = lambertPdf(macroNormal, texMetallicRoughness, ray.dir);
-        throughput = evalLambert(texDiffuse) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
-        envColorPdf.rgb *= evalLambert(texDiffuse);
+        bsdfThroughput = evalLambert(texDiffuse) * clamp(dot(macroNormal, ray.dir), 0.0, 1.0) / bsdfPdf;
+        envThroughput = evalLambert(texDiffuse) * clamp(cosEnv, 0.0, 1.0) / envDirPdf.a;
       }
 
       //Apply some bad approximation of beers law if refracting
-      throughput = inside ? max(vec3(1) - ((vec3(1) - texDiffuse) * result.t * mat.dielectric), vec3(0)) : throughput;
-      result = intersectScene(ray);
+      bsdfThroughput = inside ? max(vec3(1) - ((vec3(1) - texDiffuse) * result.t * mat.dielectric), vec3(0)) : bsdfThroughput;
 
-      vec2 weights = misWeights(envColorPdf.a, bsdfPdf);
-      color += accumulatedReflectance * envColorPdf.rgb * weights.x;
-      accumulatedReflectance *= throughput;
-      if(result.index < 0){
+      vec2 weights = misWeights(envDirPdf.a, bsdfPdf);
+      if (mat.dielectric < 0.0 && cosEnv > 0.0) {
+        Hit shadow = intersectScene(Ray(ray.origin, envDirPdf.xyz));
+        if (shadow.index == -1) {
+          color += accumulatedReflectance * envThroughput * envSample(envDirPdf.xyz) * weights.x;
+        }
+      }
+
+      result = intersectScene(ray);
+      accumulatedReflectance *= bsdfThroughput;
+      if(result.index == -1){
         color += accumulatedReflectance * envSample(ray.dir) * weights.y;
         break;
       }

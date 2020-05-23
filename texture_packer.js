@@ -7,7 +7,7 @@ export class TexturePacker {
     this.res = atlasRes;
     this.imageSet = [];
     this.imageKeys = {};
-    this.maxRes = 0;
+    this.maxRes = 1;
   }
 
   addTexture(image, corrected) {
